@@ -28,6 +28,8 @@ _EXTRACTION_PROMPT = """You are a resume parser. Given the resume text below, ex
 - experience_years: total professional experience in years, best estimate
 - education: each entry has a degree and optionally an institution
 - summary: 2-3 sentences, third person, professional tone
+- "experience": list of objects with "title", "company", "duration", "description"
+- "projects": list of objects with "name", "description", "technologies" (list of strings)
 
 Resume text:
 ---
@@ -58,6 +60,31 @@ _RESPONSE_SCHEMA = {
             },
         },
         "summary": {"type": "STRING"},
+        "experience": {
+            "type": "ARRAY",
+            "items": {
+                "type": "OBJECT",
+                "properties": {
+                    "title": {"type": "STRING"},
+                    "company": {"type": "STRING"},
+                    "duration": {"type": "STRING"},
+                    "description": {"type": "STRING"},
+                },
+                "required": ["title"],
+            },
+        },
+        "projects": {
+            "type": "ARRAY",
+            "items": {
+                "type": "OBJECT",
+                "properties": {
+                    "name": {"type": "STRING"},
+                    "description": {"type": "STRING"},
+                    "technologies": {"type": "ARRAY", "items": {"type": "STRING"}},
+                },
+                "required": ["name"],
+            },
+        },
     },
     "required": ["skills", "technologies", "experience_years", "education", "summary"],
 }
@@ -130,4 +157,6 @@ class GeminiResumeExtractor(IResumeExtractionProvider):
             education=payload.get("education") or [],
             summary=payload.get("summary") or "",
             raw_text=raw_text,
+            experience=payload.get("experience") or [],
+            projects=payload.get("projects") or [],
         )

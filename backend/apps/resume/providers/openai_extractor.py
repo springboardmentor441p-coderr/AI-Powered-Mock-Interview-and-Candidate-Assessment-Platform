@@ -21,6 +21,8 @@ object with EXACTLY these keys and nothing else:
 - "experience_years": number - total professional experience in years, best estimate
 - "education": list of objects with "degree" and optionally "institution"
 - "summary": string, 2-3 sentences, third person, professional tone
+- "experience": list of objects with "title", "company", "duration", "description"
+- "projects": list of objects with "name", "description", "technologies" (list of strings)
 
 Return ONLY valid JSON, no markdown fences, no commentary.
 
@@ -91,4 +93,6 @@ class OpenAIResumeExtractionProvider(IResumeExtractionProvider):
             education=payload.get("education") or [],
             summary=payload.get("summary") or "",
             raw_text=raw_text,
+            experience=payload.get("experience") or [],
+            projects=payload.get("projects") or [],
         )

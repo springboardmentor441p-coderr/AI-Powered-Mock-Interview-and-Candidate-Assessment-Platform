@@ -205,31 +205,56 @@ class InterviewOrchestrator(BaseService):
     # ------------------------------------------------------------------
 
     def _build_system_prompt(self, session: InterviewSession) -> str:
-        skills = ", ".join(session.resume.skills) if session.resume and session.resume.skills else "not specified"
+        resume = session.resume
+        skills = ", ".join(resume.skills) if resume and resume.skills else "not specified"
+
+        # Experience block
+        experience_lines = []
+        if resume and resume.experience:
+            for exp in resume.experience:
+                line = f"  - {exp.get('title', '')} at {exp.get('company', '')} ({exp.get('duration', '')}): {exp.get('description', '')}"
+                experience_lines.append(line)
+        experience_block = "\n".join(experience_lines) if experience_lines else "  - not specified"
+
+        # Projects block
+        project_lines = []
+        if resume and resume.projects:
+            for proj in resume.projects:
+                techs = ", ".join(proj.get("technologies") or [])
+                line = f"  - {proj.get('name', '')}: {proj.get('description', '')} [Tech: {techs}]"
+                project_lines.append(line)
+        projects_block = "\n".join(project_lines) if project_lines else "  - not specified"
+
         topics = list(session.seed_topics.order_by("order").values_list("text", flat=True))  # type: ignore[attr-defined]
         topics_block = "\n".join(f"- {t}" for t in topics) if topics else "- (no seed topics; improvise based on the candidate's background)"
 
         return f"""You are conducting a live, spoken {session.interview_type} interview for a {session.domain} \
-role at {session.difficulty} difficulty. You are talking, not typing - keep turns short, natural, and \
-conversational, like a real human interviewer on a call.
+            role at {session.difficulty} difficulty. You are talking, not typing - keep turns short, natural, and \
+            conversational, like a real human interviewer on a call.
 
-Candidate background/skills from their resume: {skills}
+            Candidate background/skills from their resume: {skills}
 
-Suggested talking points to draw from (not a rigid script - ask about them in your own words, in \
-whatever order fits the conversation, and skip ones the candidate has already addressed):
-{topics_block}
+            Work experience:
+            {experience_block}
 
-Rules:
-- Ask ONE question at a time. Never stack multiple questions in one turn.
-- If the candidate starts speaking while you're talking, stop immediately and listen - do not \
-finish your sentence. Respond to what they actually said.
-- Ask natural, specific follow-up questions based on their answers before moving on - don't just \
-march down a checklist.
-- When you're out of natural follow-ups on the current topic, call the ask_next_question tool to \
-get the next topic; don't invent a topic switch yourself.
-- Keep a warm, encouraging, professional tone throughout.
-- When ask_next_question tells you all topics are covered, thank the candidate, ask if they have \
-any questions for you, and then call the hangUp tool to end the interview."""
+            Projects:
+            {projects_block}
+
+            Suggested talking points to draw from (not a rigid script - ask about them in your own words, in \
+            whatever order fits the conversation, and skip ones the candidate has already addressed):
+            {topics_block}
+
+            Rules:
+            - Ask ONE question at a time. Never stack multiple questions in one turn.
+            - If the candidate starts speaking while you're talking, stop immediately and listen - do not \
+            finish your sentence. Respond to what they actually said.
+            - Ask natural, specific follow-up questions based on their answers before moving on - don't just \
+            march down a checklist.
+            - When you're out of natural follow-ups on the current topic, call the ask_next_question tool to \
+            get the next topic; don't invent a topic switch yourself.
+            - Keep a warm, encouraging, professional tone throughout.
+            - When ask_next_question tells you all topics are covered, thank the candidate, ask if they have \
+            any questions for you, and then call the hangUp tool to end the interview."""
 
     def _opening_line(self, session: InterviewSession) -> str:
         return (

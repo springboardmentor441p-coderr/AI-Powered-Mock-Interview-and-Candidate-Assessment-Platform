@@ -25,7 +25,8 @@ class ResumeExtractionResult:
     education: list[dict]
     summary: str
     raw_text: str
-
+    experience: list[dict] = field(default_factory=list)   # ADD
+    projects: list[dict] = field(default_factory=list)     # ADD
 
 @dataclass
 class FeedbackResult:

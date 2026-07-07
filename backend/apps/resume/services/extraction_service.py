@@ -53,6 +53,8 @@ class ExtractionService(BaseService):
         resume.technologies = result.technologies
         resume.education = result.education
         resume.raw_text = result.raw_text or resume.raw_text
+        resume.experience = result.experience
+        resume.projects = result.projects
         resume.status = Resume.Status.PROCESSED
         self._repo.update(
             resume,
@@ -62,6 +64,8 @@ class ExtractionService(BaseService):
             technologies=resume.technologies,
             education=resume.education,
             raw_text=resume.raw_text,
+            experience=resume.experience,
+            projects=resume.projects,
             status=resume.status,
         )
 

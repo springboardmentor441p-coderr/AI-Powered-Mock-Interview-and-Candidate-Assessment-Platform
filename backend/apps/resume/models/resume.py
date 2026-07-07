@@ -40,6 +40,8 @@ class Resume(models.Model):
     skills = models.JSONField(default=list, blank=True)
     technologies = models.JSONField(default=list, blank=True)
     education = models.JSONField(default=list, blank=True)
+    experience = models.JSONField(default=list, blank=True)   
+    projects = models.JSONField(default=list, blank=True)     
 
     failure_reason = models.TextField(blank=True)
     is_primary = models.BooleanField(default=False)

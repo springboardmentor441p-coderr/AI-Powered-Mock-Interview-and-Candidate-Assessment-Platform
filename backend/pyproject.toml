@@ -12,6 +12,7 @@ dependencies = [
     "django-environ==0.11.2",
     "django-extensions==3.2.3",
     "django-filter==24.2",
+    "django-stubs>=6.0.6",
     "djangorestframework==3.15.1",
     "djangorestframework-simplejwt==5.3.1",
     "drf-spectacular==0.27.2",
