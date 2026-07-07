@@ -1,0 +1,1 @@
+from .resume_tasks import process_resume_task

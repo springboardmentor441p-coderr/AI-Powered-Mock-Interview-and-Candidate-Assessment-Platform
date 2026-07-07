@@ -1,0 +1,31 @@
+# Optional third-party provider SDKs.
+#
+# Every import from these packages is wrapped in a lazy `try/except ImportError`
+# inside the relevant provider adapter (apps/*/providers/**), so none of these
+# are hard runtime requirements: the app degrades to raising ExternalServiceError
+# (or falls back to a mock provider) if a given package isn't installed.
+#
+# They're kept in their own file (rather than base.txt) so that a given
+# deployment only needs to install the providers it actually enables via
+# settings/env vars. Included from dev.txt so local type-checking (pyright)
+# and tests can exercise every provider.
+
+# apps/ai/providers/llm, apps/ai/providers/speech, apps/resume/providers
+openai==1.35.3
+google-genai>=1.0.0
+
+# apps/ai/providers/emotion (DeepFaceEmotionDetectionProvider)
+opencv-python==4.10.0.84
+deepface==0.0.92
+
+# apps/ai/providers/eye_tracking (MediaPipeEyeTrackingProvider)
+mediapipe==0.10.14
+
+# apps/notification/providers/sendgrid.py
+sendgrid==6.11.0
+
+# infrastructure/storage/s3.py
+boto3==1.34.131
+
+# infrastructure/monitoring/sentry.py (also in prod.txt for production use)
+sentry-sdk==2.5.1
