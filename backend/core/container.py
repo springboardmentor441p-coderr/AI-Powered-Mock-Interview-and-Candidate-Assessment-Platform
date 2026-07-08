@@ -58,6 +58,10 @@ def _make_session_service(ai_factory):
     from apps.interview.services.session_service import SessionService
     return SessionService(question_provider=ai_factory.question_generation())
 
+def _make_seed_topic_service(ai_factory):
+    from apps.interview.services.seed_topic_service import SeedTopicService
+    return SeedTopicService(provider=ai_factory.seed_topic_generation())
+
 def _make_interview_orchestrator(ai_factory):
     from apps.interview.services.orchestrator_service import InterviewOrchestrator
     return InterviewOrchestrator(realtime_provider=ai_factory.realtime_voice())
@@ -128,6 +132,7 @@ class Container(containers.DeclarativeContainer):
 
     # Interview
     session_service = providers.Factory(_make_session_service, ai_factory=ai_factory)
+    seed_topic_service = providers.Factory(_make_seed_topic_service, ai_factory=ai_factory)
     interview_orchestrator = providers.Factory(_make_interview_orchestrator, ai_factory=ai_factory)
 
     # Assessment

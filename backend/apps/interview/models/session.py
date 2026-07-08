@@ -39,6 +39,11 @@ class InterviewSession(models.Model):
     video_recording = models.FileField(upload_to="sessions/video/", null=True, blank=True)
     audio_recording = models.FileField(upload_to="sessions/audio/", null=True, blank=True)
 
+    # True once SeedTopicService has generated and stored the seed topics.
+    # The frontend can poll this field before showing "Start Interview" to ensure
+    # the AI has a full topic plan ready before the call begins.
+    seed_topics_ready = models.BooleanField(default=False, db_index=True)
+
     # --- Realtime voice call fields (populated once InterviewOrchestrator starts the call) ---
     realtime_provider = models.CharField(max_length=20, blank=True, default="")
     call_id = models.CharField(max_length=255, blank=True, default="", db_index=True)

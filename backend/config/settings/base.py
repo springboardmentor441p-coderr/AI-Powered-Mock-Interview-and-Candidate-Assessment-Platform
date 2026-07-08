@@ -182,6 +182,9 @@ OPENAI_RESUME_MODEL = env_str(env, "OPENAI_RESUME_MODEL", default="gpt-4o-mini")
 WHISPER_API_KEY = env_str(env, "WHISPER_API_KEY", default="")
 GEMINI_API_KEY = env_str(env, "GEMINI_API_KEY", default="")
 GEMINI_RESUME_MODEL = env_str(env, "GEMINI_RESUME_MODEL", default="gemini-2.5-flash")
+# Model used for resume-aware seed topic generation (can differ from resume extraction
+# model since seed topics benefit from more creative reasoning).
+GEMINI_SEED_TOPIC_MODEL = env_str(env, "GEMINI_SEED_TOPIC_MODEL", default="gemini-2.5-flash")
 SENDGRID_API_KEY = env_str(env, "SENDGRID_API_KEY", default="")
 
 # Publicly reachable base URL for this backend, used to build the

@@ -52,18 +52,32 @@ class ConversationTurnSerializer(serializers.ModelSerializer):
 
 
 class RealtimeSessionDetailSerializer(serializers.ModelSerializer):
-    """Detail view for realtime-mode sessions: conversation turns instead of fixed answers."""
+    """
+    Detail view for realtime-mode sessions: conversation turns instead of fixed answers.
+
+    Extra fields for seed topic status:
+      - seed_topics_ready: bool — True once the Celery task has finished generating topics.
+                            Frontend should poll this before enabling "Start Interview".
+      - seed_topics_count: int  — How many seed topics are stored (pending + asked combined).
+    """
     turns = serializers.SerializerMethodField()
+    seed_topics_count = serializers.SerializerMethodField()
 
     class Meta:
         model = InterviewSession
-        fields = ("id", "mode", "interview_type", "domain", "difficulty", "status",
-                  "call_id", "call_join_url", "interrupt_count",
-                  "started_at", "completed_at", "duration_seconds", "turns", "created_at")
+        fields = (
+            "id", "mode", "interview_type", "domain", "difficulty", "status",
+            "call_id", "call_join_url", "interrupt_count",
+            "seed_topics_ready", "seed_topics_count",
+            "started_at", "completed_at", "duration_seconds", "turns", "created_at",
+        )
         read_only_fields = fields
 
     def get_turns(self, obj):
         return ConversationTurnSerializer(obj.turns.order_by("order"), many=True).data
+
+    def get_seed_topics_count(self, obj) -> int:
+        return obj.seed_topics.count()  # type: ignore[attr-defined]
 
 
 class CreateSessionSerializer(serializers.Serializer):

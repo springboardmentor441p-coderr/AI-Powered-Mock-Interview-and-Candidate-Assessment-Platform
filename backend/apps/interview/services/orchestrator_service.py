@@ -81,6 +81,11 @@ class InterviewOrchestrator(BaseService):
             raise BusinessRuleViolation("This session was not created in realtime mode.")
         if session.status != InterviewSession.Status.SCHEDULED:
             raise BusinessRuleViolation(f"Cannot start a call for a session in status '{session.status}'.")
+        if not session.seed_topics_ready:
+            raise BusinessRuleViolation(
+                "Seed topics are still being generated. "
+                "Please wait a moment and try again — this usually takes under 10 seconds."
+            )
 
         base_url = settings.BACKEND_PUBLIC_URL.rstrip("/")
         tool_webhook_url = f"{base_url}/api/interview/realtime/sessions/{session.id}/tools/ask-next-question/"
@@ -139,7 +144,19 @@ class InterviewOrchestrator(BaseService):
             session=session, speaker=ConversationTurn.Speaker.AI, turn_type=ConversationTurn.TurnType.QUESTION,
             text=next_topic.text, seed_topic=next_topic, order=session.turns.count(),  # type: ignore[attr-defined]
         )
-        return f"Ask the candidate, in your own natural words: {next_topic.text}"
+
+        # Build the instruction Ultravox will act on. Include what concepts
+        # a good answer should cover so the AI knows when to probe deeper
+        # vs when to accept the answer and move on.
+        instruction = f"Ask the candidate, in your own natural words: {next_topic.text}"
+        if next_topic.expected_topics:
+            concepts = ", ".join(next_topic.expected_topics)
+            instruction += (
+                f"\n\nA strong answer should cover: {concepts}. "
+                "If the candidate's answer is vague or skips key concepts, "
+                "ask a targeted follow-up before calling ask_next_question again."
+            )
+        return instruction
 
     # ------------------------------------------------------------------
     # Account-level lifecycle webhooks (call.started / call.joined / call.ended)

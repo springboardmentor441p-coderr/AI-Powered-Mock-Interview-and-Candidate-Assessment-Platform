@@ -12,6 +12,7 @@ from apps.ai.providers.llm.interfaces import (
     IFeedbackGenerationProvider,
     IQuestionGenerationProvider,
     IResumeExtractionProvider,
+    ISeedTopicGenerationProvider,
 )
 from apps.ai.providers.realtime_voice.interfaces import IRealtimeVoiceProvider
 from apps.ai.providers.speech.interfaces import ICommunicationAnalysisProvider, ISpeechToTextProvider
@@ -66,6 +67,21 @@ class AIProviderFactory:
         from apps.ai.providers.llm.mock_question_generator import MockQuestionGenerator
 
         return MockQuestionGenerator()
+
+    def seed_topic_generation(self) -> ISeedTopicGenerationProvider:
+        """
+        Returns a resume-aware seed topic provider.
+        Gemini is the production provider; mock is used for dev/test.
+        Both OpenAI and Gemini provider settings activate the Gemini seed topic provider
+        since Gemini is specifically tuned for structured JSON with response_schema.
+        """
+        if self.provider in ("gemini", "openai", "ultravox"):
+            from apps.ai.providers.llm.gemini_seed_topic_provider import GeminiSeedTopicProvider
+
+            return GeminiSeedTopicProvider()
+        from apps.ai.providers.llm.mock_seed_topic_provider import MockSeedTopicProvider
+
+        return MockSeedTopicProvider()
 
     def feedback_generation(self) -> IFeedbackGenerationProvider:
         if self.provider == "openai":
