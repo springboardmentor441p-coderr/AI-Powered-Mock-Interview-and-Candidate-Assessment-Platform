@@ -162,24 +162,14 @@ def extract_resume_details(pdf_path):
     # Return JSON
     # ---------------------------
     return {
-
-        "Name": name,
-
-        "Email": email[0] if email else "Not Found",
-
-        "Phone": phone[0].strip() if phone else "Not Found",
-
-        "Education": education,
-
-        "Experience": experience,
-
-        "Projects": projects,
-
-        "Certifications": certifications,
-
-        "Languages": languages,
-
-        "Skills": extracted_skills,
-
-        "Resume_Text": text
-    }
+    "name": name,
+    "email": email[0] if email else "Not Found",
+    "phone": phone[0].strip() if phone else "Not Found",
+    "education": education,
+    "experience": experience if experience != "Not Found" else "Fresher",
+    "projects": projects,
+    "certifications": certifications,
+    "languages": languages,
+    "skills": extracted_skills,
+    "resume_text": text
+   }

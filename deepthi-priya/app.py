@@ -1,7 +1,7 @@
-import psycopg2
+import os
 from flask import Flask, request, jsonify
 from parser import extract_resume_details
-import os
+from database import get_db_connection
 
 app = Flask(__name__)
 
@@ -11,6 +11,7 @@ app = Flask(__name__)
 UPLOAD_FOLDER = "uploads"
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
+
 # -----------------------
 # Home route
 # -----------------------
@@ -18,29 +19,6 @@ os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 def home():
     return "SmartHire AI Resume Parser is Running!"
 
-# -----------------------
-# PostgreSQL connection
-# -----------------------
-def get_db_connection():
-    conn = psycopg2.connect(
-        host="localhost",
-        database="smarthire_ai",
-        user="postgres",
-        password="Deepthi@18"   
-    )
-    return conn
-
-# -----------------------
-# Test DB connection
-# -----------------------
-@app.route("/test-db")
-def test_db():
-    conn = get_db_connection()
-    cur = conn.cursor()
-    cur.execute("SELECT 1;")
-    result = cur.fetchone()
-    conn.close()
-    return jsonify({"message": "DB Connected Successfully", "result": result})
 
 # -----------------------
 # Upload + Parse + Store
@@ -48,42 +26,50 @@ def test_db():
 @app.route("/upload", methods=["POST"])
 def upload_resume():
 
-    # check file
+    # Check file
     if "resume" not in request.files:
         return jsonify({"error": "No file uploaded"})
 
     file = request.files["resume"]
 
-    # save file
+    if file.filename == "":
+        return jsonify({"error": "No file selected"})
+
+    # Save uploaded resume
     filepath = os.path.join(UPLOAD_FOLDER, file.filename)
     file.save(filepath)
 
-    # parse resume
+
+    # Extract resume details
     details = extract_resume_details(filepath)
 
-    # save into database
+
+    # Save required details into SQLite
     try:
         conn = get_db_connection()
         cur = conn.cursor()
 
         cur.execute("""
             INSERT INTO resumes (
-                name, email, phone, education, skills,
-                experience, projects, certifications,
-                languages, resume_text, uploaded_at
+                name,
+                email,
+                phone,
+                skills,
+                education,
+                experience,
+                projects,
+                resume_path
             )
-            VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,CURRENT_TIMESTAMP)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
         """, (
-            details.get("name"),
-            details.get("email"),
-            details.get("phone"),
-            details.get("education"),
-            details.get("skills"),
-            details.get("experience"),
-            details.get("projects"),
-            details.get("certifications"),
-            details.get("languages"),
-            details.get("resume_text")
+            details.get("name", "Not mentioned"),
+            details.get("email", "Not mentioned"),
+            details.get("phone", "Not mentioned"),
+            ", ".join(details.get("skills", [])) if details.get("skills") else "Not mentioned",
+            details.get("education", "Not mentioned"),
+            details.get("experience", "Fresher"),
+            details.get("projects", "Not mentioned"),
+            filepath
         ))
 
         conn.commit()
@@ -93,10 +79,12 @@ def upload_resume():
     except Exception as e:
         return jsonify({"error": str(e)})
 
+
     return jsonify({
         "message": "Resume uploaded and stored successfully",
         "data": details
     })
+
 
 # -----------------------
 # Run server
