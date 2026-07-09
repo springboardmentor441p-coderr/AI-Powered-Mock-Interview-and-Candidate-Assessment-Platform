@@ -1,0 +1,34 @@
+const questions = [
+    "Tell me about yourself.",
+    "Why do you want to become a software engineer?",
+    "Explain one project you have worked on."
+];
+
+let currentQuestion = 0;
+
+const questionElement = document.getElementById("question");
+const answerElement = document.getElementById("answer");
+
+document.getElementById("startBtn").addEventListener("click", () => {
+    currentQuestion = 0;
+    questionElement.textContent = questions[currentQuestion];
+    answerElement.value = "";
+    document.getElementById("nextBtn").disabled = false;
+});
+
+document.getElementById("nextBtn").addEventListener("click", () => {
+    currentQuestion++;
+
+    if (currentQuestion < questions.length) {
+        questionElement.textContent = questions[currentQuestion];
+        answerElement.value = "";
+    } else {
+        questionElement.textContent = "Interview Completed!";
+        document.getElementById("nextBtn").disabled = true;
+    }
+});
+
+document.getElementById("endBtn").addEventListener("click", () => {
+    alert("Interview Ended");
+    window.location.href = "/";
+});

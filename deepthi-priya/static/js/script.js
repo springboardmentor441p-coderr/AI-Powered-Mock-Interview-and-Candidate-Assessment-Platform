@@ -36,6 +36,10 @@ document.getElementById("uploadForm").addEventListener("submit", async function 
             document.getElementById("certifications").textContent = details.certifications;
             document.getElementById("languages").textContent = details.languages;
 
+            setTimeout(() => {
+                window.location.href = "/interview";
+            }, 1500);
+
         } else {
             document.getElementById("status").textContent = data.error || "Upload failed";
         }

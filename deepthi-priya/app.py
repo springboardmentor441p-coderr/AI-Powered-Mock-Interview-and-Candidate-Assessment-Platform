@@ -19,6 +19,9 @@ os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 def home():
     return render_template("index.html")
 
+@app.route("/interview")
+def interview():
+    return render_template("interview.html")
 
 # -----------------------
 # Upload + Parse + Store
