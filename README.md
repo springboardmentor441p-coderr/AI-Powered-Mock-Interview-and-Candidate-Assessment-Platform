@@ -1,7 +1,7 @@
 # AI-Powered-Mock-Interview-and-Candidate-Assessment-Platform
 # SmartHire AI
 
-## AI-Powered Mock Interview and Candidate Assessment Platform
+
 
 SmartHire AI is an AI-based recruitment platform designed to help candidates practice interviews and receive automated assessment feedback. The platform allows candidates to upload their resumes, extracts resume information, and provides an intelligent mock interview experience.
 
