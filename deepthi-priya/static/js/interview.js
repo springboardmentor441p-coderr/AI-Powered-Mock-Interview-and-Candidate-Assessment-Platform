@@ -1,5 +1,5 @@
 const questions = [
-    "Tell me about yourself.",
+    "Welcome to SmartHire AI. Tell me about yourself.",
     "Why do you want to become a software engineer?",
     "Explain one project you have worked on."
 ];
@@ -8,47 +8,103 @@ let currentQuestion = 0;
 
 const questionBox = document.getElementById("question");
 const answerBox = document.getElementById("answer");
-const startButton = document.getElementById("startBtn");
-const nextButton = document.getElementById("nextBtn");
-const endButton = document.getElementById("endBtn");
+
+const startBtn = document.getElementById("startBtn");
+const speakBtn = document.getElementById("speakBtn");
+const listenBtn = document.getElementById("listenBtn");
+const nextBtn = document.getElementById("nextBtn");
+const endBtn = document.getElementById("endBtn");
 
 
-startButton.addEventListener("click", function () {
-
-    currentQuestion = 0;
+// Start Interview
+startBtn.addEventListener("click", () => {
 
     questionBox.textContent = questions[currentQuestion];
 
-    answerBox.value = "";
-
-    nextButton.disabled = false;
+    speakBtn.disabled = false;
+    nextBtn.disabled = false;
 
 });
 
 
-nextButton.addEventListener("click", function () {
+// Text to Speech
+speakBtn.addEventListener("click", () => {
+
+    let speech = new SpeechSynthesisUtterance(
+        questionBox.textContent
+    );
+
+    speech.rate = 1;
+    speech.pitch = 1;
+
+    window.speechSynthesis.speak(speech);
+
+});
+
+
+// Speech to Text
+listenBtn.addEventListener("click", () => {
+
+    const SpeechRecognition =
+        window.SpeechRecognition ||
+        window.webkitSpeechRecognition;
+
+
+    if (!SpeechRecognition) {
+        alert("Speech recognition is not supported in this browser");
+        return;
+    }
+
+
+    const recognition = new SpeechRecognition();
+
+    recognition.lang = "en-US";
+
+    recognition.start();
+
+
+    recognition.onresult = function(event) {
+
+        let transcript =
+            event.results[0][0].transcript;
+
+        answerBox.value = transcript;
+
+    };
+
+});
+
+
+// Next Question
+nextBtn.addEventListener("click", () => {
 
     currentQuestion++;
 
-    if (currentQuestion < questions.length) {
+    if(currentQuestion < questions.length){
 
-        questionBox.textContent = questions[currentQuestion];
+        questionBox.textContent =
+            questions[currentQuestion];
+
         answerBox.value = "";
 
-    } else {
+    }
+    else{
 
-        questionBox.textContent = "Interview Completed!";
-        nextButton.disabled = true;
+        questionBox.textContent =
+            "Interview Completed";
+
+        nextBtn.disabled = true;
 
     }
 
 });
 
 
-endButton.addEventListener("click", function () {
+// End Interview
+endBtn.addEventListener("click", () => {
 
     alert("Interview Ended");
 
-    window.location.href = "/";
+    window.location.href="/";
 
 });

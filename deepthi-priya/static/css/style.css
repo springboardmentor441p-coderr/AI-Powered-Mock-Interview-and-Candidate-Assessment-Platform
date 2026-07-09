@@ -1,0 +1,155 @@
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: 'Poppins', sans-serif;
+    background: linear-gradient(135deg, #4f46e5, #7c3aed, #06b6d4);
+    min-height: 100vh;
+    padding: 40px 20px;
+}
+
+.container {
+    width: 90%;
+    max-width: 1100px;
+    margin: auto;
+}
+
+.hero {
+    text-align: center;
+    color: white;
+    margin-bottom: 40px;
+}
+
+.hero h1 {
+    font-size: 48px;
+    margin-bottom: 10px;
+}
+
+.hero p {
+    font-size: 18px;
+    opacity: 0.9;
+}
+
+.upload-card,
+.details-card {
+    background: rgba(255,255,255,0.18);
+    backdrop-filter: blur(15px);
+    border-radius: 20px;
+    padding: 30px;
+    margin-bottom: 35px;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+}
+
+.upload-card h2,
+.details-card h2 {
+    text-align: center;
+    color: white;
+    margin-bottom: 25px;
+}
+
+.upload-box {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    border: 3px dashed white;
+    border-radius: 15px;
+    padding: 40px;
+    cursor: pointer;
+    color: white;
+    transition: 0.3s;
+}
+
+.upload-box:hover {
+    background: rgba(255,255,255,0.15);
+    transform: scale(1.02);
+}
+
+.upload-box i {
+    font-size: 55px;
+    margin-bottom: 15px;
+}
+
+.upload-box span {
+    font-size: 18px;
+}
+
+.upload-box input {
+    display: none;
+}
+
+button {
+    width: 100%;
+    margin-top: 25px;
+    padding: 15px;
+    border: none;
+    border-radius: 12px;
+    background: white;
+    color: #4f46e5;
+    font-size: 17px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: 0.3s;
+}
+
+button:hover {
+    background: #eef2ff;
+    transform: translateY(-3px);
+}
+
+#status {
+    margin-top: 20px;
+    text-align: center;
+    color: white;
+    font-size: 16px;
+    font-weight: 500;
+}
+
+.grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px,1fr));
+    gap: 20px;
+}
+
+.item {
+    background: white;
+    border-radius: 15px;
+    padding: 18px;
+    transition: 0.3s;
+}
+
+.item:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 10px 20px rgba(0,0,0,.15);
+}
+
+.item h4 {
+    color: #4f46e5;
+    margin-bottom: 10px;
+}
+
+.item p {
+    color: #444;
+    word-break: break-word;
+    line-height: 1.6;
+}
+
+@media (max-width:768px) {
+
+    .hero h1 {
+        font-size: 34px;
+    }
+
+    .hero p {
+        font-size: 16px;
+    }
+
+    .upload-card,
+    .details-card {
+        padding: 20px;
+    }
+
+}

@@ -1,24 +1,131 @@
-<form id="uploadForm">
-    <input type="file" id="resume" name="resume" accept=".pdf">
-    <button type="submit">Upload Resume</button>
-</form>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SmartHire AI</title>
 
+    <link rel="stylesheet" href="/static/css/style.css">
 
-<h3>Extracted Resume Details</h3>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 
-<p>Name: <span id="name"></span></p>
-<p>Email: <span id="email"></span></p>
-<p>Phone: <span id="phone"></span></p>
-<p>Education: <span id="education"></span></p>
-<p>Skills: <span id="skills"></span></p>
-<p>Experience: <span id="experience"></span></p>
-<p>Projects: <span id="projects"></span></p>
-<p>Certifications: <span id="certifications"></span></p>
-<p>Languages: <span id="languages"></span></p>
+    <link
+        rel="stylesheet"
+        href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.6.0/css/all.min.css"
+    >
+</head>
 
+<body>
 
-<h3>Status Message</h3>
-<p id="status"></p>
+<div class="container">
 
+    <div class="hero">
+
+        <h1>
+            <i class="fa-solid fa-robot"></i>
+            SmartHire AI
+        </h1>
+
+        <p>
+            AI-Powered Resume Parser & Mock Interview Platform
+        </p>
+
+    </div>
+
+    <div class="upload-card">
+
+        <h2>Upload Your Resume</h2>
+
+        <form id="uploadForm">
+
+            <label class="upload-box">
+
+                <i class="fa-solid fa-file-arrow-up"></i>
+
+                <span>Choose PDF Resume</span>
+
+                <input
+                    type="file"
+                    id="resume"
+                    name="resume"
+                    accept=".pdf"
+                >
+
+            </label>
+
+            <button type="submit">
+                <i class="fa-solid fa-cloud-arrow-up"></i>
+                Upload Resume
+            </button>
+
+        </form>
+
+        <p id="status"></p>
+
+    </div>
+
+    <div class="details-card">
+
+        <h2>
+            <i class="fa-solid fa-user"></i>
+            Resume Details
+        </h2>
+
+        <div class="grid">
+
+            <div class="item">
+                <h4>Name</h4>
+                <p id="name">-</p>
+            </div>
+
+            <div class="item">
+                <h4>Email</h4>
+                <p id="email">-</p>
+            </div>
+
+            <div class="item">
+                <h4>Phone</h4>
+                <p id="phone">-</p>
+            </div>
+
+            <div class="item">
+                <h4>Education</h4>
+                <p id="education">-</p>
+            </div>
+
+            <div class="item">
+                <h4>Skills</h4>
+                <p id="skills">-</p>
+            </div>
+
+            <div class="item">
+                <h4>Experience</h4>
+                <p id="experience">-</p>
+            </div>
+
+            <div class="item">
+                <h4>Projects</h4>
+                <p id="projects">-</p>
+            </div>
+
+            <div class="item">
+                <h4>Certifications</h4>
+                <p id="certifications">-</p>
+            </div>
+
+            <div class="item">
+                <h4>Languages</h4>
+                <p id="languages">-</p>
+            </div>
+
+        </div>
+
+    </div>
+
+</div>
 
 <script src="/static/js/script.js"></script>
+
+</body>
+</html>
