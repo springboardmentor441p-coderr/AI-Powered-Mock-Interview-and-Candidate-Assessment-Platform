@@ -1,28 +1,24 @@
-+--------------------------------------------------+
-|               SmartHire AI                       |
-|     Resume Parser & Candidate Assessment         |
-+--------------------------------------------------+
+<form id="uploadForm">
+    <input type="file" id="resume" name="resume" accept=".pdf">
+    <button type="submit">Upload Resume</button>
+</form>
 
-          Upload Your Resume (PDF)
 
-          [ Choose File ]
+<h3>Extracted Resume Details</h3>
 
-          [ Upload Resume ]
+<p>Name: <span id="name"></span></p>
+<p>Email: <span id="email"></span></p>
+<p>Phone: <span id="phone"></span></p>
+<p>Education: <span id="education"></span></p>
+<p>Skills: <span id="skills"></span></p>
+<p>Experience: <span id="experience"></span></p>
+<p>Projects: <span id="projects"></span></p>
+<p>Certifications: <span id="certifications"></span></p>
+<p>Languages: <span id="languages"></span></p>
 
-----------------------------------------------------
 
-            Extracted Resume Details
+<h3>Status Message</h3>
+<p id="status"></p>
 
-Name:
-Email:
-Phone:
-Education:
-Skills:
-Experience:
-Projects:
-Certifications:
-Languages:
 
-----------------------------------------------------
-            Status Message
-(Upload Successful / Error)
+<script src="/static/js/script.js"></script>

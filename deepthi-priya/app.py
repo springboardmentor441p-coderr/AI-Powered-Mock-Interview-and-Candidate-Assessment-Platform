@@ -1,5 +1,5 @@
 import os
-from flask import Flask, request, jsonify
+from flask import Flask, request, jsonify, render_template
 from parser import extract_resume_details
 from database import get_db_connection
 
@@ -17,7 +17,7 @@ os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 # -----------------------
 @app.route("/")
 def home():
-    return "SmartHire AI Resume Parser is Running!"
+    return render_template("index.html")
 
 
 # -----------------------
@@ -26,65 +26,33 @@ def home():
 @app.route("/upload", methods=["POST"])
 def upload_resume():
 
-    # Check file
-    if "resume" not in request.files:
-        return jsonify({"error": "No file uploaded"})
-
-    file = request.files["resume"]
-
-    if file.filename == "":
-        return jsonify({"error": "No file selected"})
-
-    # Save uploaded resume
-    filepath = os.path.join(UPLOAD_FOLDER, file.filename)
-    file.save(filepath)
-
-
-    # Extract resume details
-    details = extract_resume_details(filepath)
-
-
-    # Save required details into SQLite
     try:
-        conn = get_db_connection()
-        cur = conn.cursor()
+        if "resume" not in request.files:
+            return jsonify({"error": "No file uploaded"})
 
-        cur.execute("""
-            INSERT INTO resumes (
-                name,
-                email,
-                phone,
-                skills,
-                education,
-                experience,
-                projects,
-                resume_path
-            )
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-        """, (
-            details.get("name", "Not mentioned"),
-            details.get("email", "Not mentioned"),
-            details.get("phone", "Not mentioned"),
-            ", ".join(details.get("skills", [])) if details.get("skills") else "Not mentioned",
-            details.get("education", "Not mentioned"),
-            details.get("experience", "Fresher"),
-            details.get("projects", "Not mentioned"),
-            filepath
-        ))
+        file = request.files["resume"]
 
-        conn.commit()
-        cur.close()
-        conn.close()
+        if file.filename == "":
+            return jsonify({"error": "No file selected"})
+
+        filepath = os.path.join(UPLOAD_FOLDER, file.filename)
+        file.save(filepath)
+
+        print("File saved:", filepath)
+
+        details = extract_resume_details(filepath)
+        print("Extracted Details:")
+
+        print(details)
+
+        return jsonify({
+            "message": "Parsing successful",
+            "data": details
+        })
 
     except Exception as e:
-        return jsonify({"error": str(e)})
-
-
-    return jsonify({
-        "message": "Resume uploaded and stored successfully",
-        "data": details
-    })
-
+        print("ERROR:", e)
+        return jsonify({"error": str(e)}), 500
 
 # -----------------------
 # Run server
