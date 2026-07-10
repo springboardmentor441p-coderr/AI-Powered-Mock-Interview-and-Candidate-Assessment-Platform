@@ -8,7 +8,7 @@ Run with:
 import logging
 
 from fastapi import FastAPI
-
+from app.routers import interview
 from app.routers import resume
 
 logging.basicConfig(
@@ -23,7 +23,7 @@ app = FastAPI(
 )
 
 app.include_router(resume.router)
-
+app.include_router(interview.router)
 
 @app.get("/health", tags=["Health"])
 async def health_check() -> dict:

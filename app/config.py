@@ -34,5 +34,17 @@ class Settings:
     # How long to wait for Ollama to respond before giving up (seconds)
     OLLAMA_TIMEOUT_SECONDS: int = int(os.getenv("OLLAMA_TIMEOUT_SECONDS", "120"))
 
+    # ==========================================================
+    # Interview Engine Configuration
+    # ==========================================================
+
+    INTERVIEW_MAX_QUESTIONS: int = 10
+
+    INTERVIEW_TEMPERATURE: float = 0.4
+
+    INTERVIEW_EVALUATION_TEMPERATURE: float = 0.0
+
+    INTERVIEW_FEEDBACK_TEMPERATURE: float = 0.0
+
 
 settings = Settings()
