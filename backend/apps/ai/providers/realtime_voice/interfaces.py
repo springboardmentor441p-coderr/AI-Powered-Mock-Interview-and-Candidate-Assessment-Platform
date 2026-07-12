@@ -93,3 +93,15 @@ class IRealtimeVoiceProvider(ABC):
     def build_tool_response(self, *, tool_call_id: str, result: str) -> dict:
         """Build the payload this provider expects as the HTTP response to a tool_call webhook."""
         ...
+
+    def ensure_account_webhook_registered(self, *, webhook_url: str, events: list[str]) -> None:
+        """
+        Idempotently register/update this provider's account-level lifecycle
+        webhook (one-time setup, not part of the per-call flow - see
+        `apps/interview/management/commands/setup_realtime_webhook.py`).
+
+        Not every provider has this concept (e.g. `Mock`, or a future vendor
+        that only supports per-call callbacks), so this is a concrete no-op
+        rather than an abstract method - overriding it is opt-in.
+        """
+        return None

@@ -35,6 +35,18 @@ from apps.interview.models import ConversationTurn, InterviewSession, Question, 
 # interview is naturally wrapping up, instead of us guessing when to hang up.
 _HANG_UP_TOOL = {"toolName": "hangUp"}
 
+# Time-budget thresholds for handle_ask_next_question's pacing decisions.
+# Deliberately read from the provider-agnostic INTERVIEW_* settings, not
+# from ULTRAVOX_MAX_CALL_SECONDS - pacing is a domain concern (how long
+# *this interview* should run), not a detail of which realtime voice
+# vendor is plugged in. The vendor's own hard cap (e.g. Ultravox's
+# `maxDuration`) is configured off the same INTERVIEW_MAX_DURATION_SECONDS
+# value, so both stay in sync without the orchestrator knowing which
+# vendor is active.
+_MAX_DURATION_SECONDS = getattr(settings, "INTERVIEW_MAX_DURATION_SECONDS", 2700)
+_SOFT_WRAPUP_RATIO = getattr(settings, "INTERVIEW_SOFT_WRAPUP_PERCENT", 80) / 100
+_HARD_WRAPUP_BUFFER_SECONDS = getattr(settings, "INTERVIEW_HARD_WRAPUP_BUFFER_SECONDS", 90)
+
 
 def _ask_next_question_tool(webhook_url: str, tool_secret: str) -> dict:
     """
@@ -43,6 +55,14 @@ def _ask_next_question_tool(webhook_url: str, tool_secret: str) -> dict:
     and returns instructions the model should say next, which keeps
     the conversation grounded in the candidate's actual resume/domain
     instead of drifting.
+
+    `tool_secret` is sent as a *static* parameter bound to the
+    `X-Tool-Secret` header (see
+    https://docs.ultravox.ai/tools/custom/parameters) - static params
+    are set once here and are never exposed to or settable by the
+    model, unlike `dynamicParameters`. This is what
+    `SessionRealtimeToolAskNextQuestionView` checks; without it every
+    real call from Ultravox would be rejected with 401.
     """
     return {
         "temporaryTool": {
@@ -59,6 +79,13 @@ def _ask_next_question_tool(webhook_url: str, tool_secret: str) -> dict:
                     "location": "PARAMETER_LOCATION_BODY",
                     "schema": {"type": "string", "description": "Brief note on what was just covered."},
                     "required": False,
+                }
+            ],
+            "staticParameters": [
+                {
+                    "name": "X-Tool-Secret",
+                    "location": "PARAMETER_LOCATION_HEADER",
+                    "value": tool_secret,
                 }
             ],
             "http": {"baseUrlPattern": webhook_url, "httpMethod": "POST"},
@@ -96,7 +123,7 @@ class InterviewOrchestrator(BaseService):
             first_message=self._opening_line(session),
             tools=[_ask_next_question_tool(tool_webhook_url, tool_secret), _HANG_UP_TOOL],
             webhook_url=f"{base_url}/api/interview/realtime/webhooks/ultravox/",
-            metadata={"session_id": str(session.id), "tool_secret": tool_secret},
+            metadata={"session_id": str(session.id)},
         )
 
         session.status = InterviewSession.Status.IN_PROGRESS
@@ -121,6 +148,14 @@ class InterviewOrchestrator(BaseService):
         Marks the previously-asked seed topic covered and hands back
         the next one, if any are left; otherwise tells the model to
         wrap up naturally.
+
+        Time-aware: seed topics are a *plan*, not a contract - if the
+        call is close to its hard time limit, we override the plan and
+        tell the model to wrap up even if PENDING topics remain, so the
+        candidate gets a natural close instead of being cut off
+        mid-sentence when the vendor forcibly ends the call. See the
+        module-level `_MAX_DURATION_SECONDS` / `_SOFT_WRAPUP_RATIO` /
+        `_HARD_WRAPUP_BUFFER_SECONDS` constants.
         """
         if arguments.get("previous_topic_covered"):
             asked = session.seed_topics.filter(status=Question.Status.ASKED).order_by("-order").first()  # type: ignore[attr-defined]
@@ -129,6 +164,18 @@ class InterviewOrchestrator(BaseService):
                     session=session, provider=session.realtime_provider or "ultravox",
                     event_type="topic_note", payload={"note": arguments["previous_topic_covered"]},
                 )
+
+        remaining_seconds = self._time_remaining_seconds(session)
+
+        # Hard cutoff: even if topics remain, there isn't enough runway
+        # left for a full question-and-answer exchange - force a close
+        # instead of risking the call being cut mid-question.
+        if remaining_seconds is not None and remaining_seconds <= _HARD_WRAPUP_BUFFER_SECONDS:
+            return (
+                "You're almost out of time for this interview. Skip any remaining planned topics: "
+                "thank the candidate warmly for their time, ask if they have any brief questions for "
+                "you, then use the hangUp tool right away."
+            )
 
         next_topic = session.seed_topics.filter(status=Question.Status.PENDING).order_by("order").first()  # type: ignore[attr-defined]
         if next_topic is None:
@@ -156,7 +203,29 @@ class InterviewOrchestrator(BaseService):
                 "If the candidate's answer is vague or skips key concepts, "
                 "ask a targeted follow-up before calling ask_next_question again."
             )
+
+        # Soft warning zone: still ask the topic, but nudge the model to
+        # keep things moving and start converging on a close, rather than
+        # opening up a long new tangent this late in the call.
+        if remaining_seconds is not None and remaining_seconds <= _MAX_DURATION_SECONDS * (1 - _SOFT_WRAPUP_RATIO):
+            instruction += (
+                "\n\nNote: time is running short for this interview. Keep this topic and any "
+                "follow-up brief, and be ready to wrap up soon rather than opening a long new thread."
+            )
+
         return instruction
+
+    def _time_remaining_seconds(self, session: InterviewSession) -> float | None:
+        """
+        Seconds left before the interview's time budget runs out, or
+        None if we have no basis to estimate it (session hasn't
+        actually started yet). Budgeted against `started_at`, the same
+        anchor `_complete_session` uses for `duration_seconds`.
+        """
+        if not session.started_at:
+            return None
+        elapsed = (timezone.now() - session.started_at).total_seconds()
+        return _MAX_DURATION_SECONDS - elapsed
 
     # ------------------------------------------------------------------
     # Account-level lifecycle webhooks (call.started / call.joined / call.ended)

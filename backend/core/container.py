@@ -19,9 +19,9 @@ from dependency_injector import containers, providers
 # ---------------------------------------------------------------------------
 
 # --- AI providers (via AIProviderFactory) -----------------------------------
-def _make_ai_factory(provider: str):
+def _make_ai_factory(provider: str, realtime_voice_provider: str):
     from apps.ai.factories.provider_factory import AIProviderFactory
-    return AIProviderFactory(provider=provider)
+    return AIProviderFactory(provider=provider, realtime_voice_provider=realtime_voice_provider)
 
 # --- Resume services --------------------------------------------------------
 def _make_upload_service():
@@ -117,7 +117,11 @@ class Container(containers.DeclarativeContainer):
     config = providers.Configuration()
 
     # AI provider factory - single factory, passed to any service that needs an AI provider
-    ai_factory = providers.Factory(_make_ai_factory, provider=config.ai_provider)
+    ai_factory = providers.Factory(
+        _make_ai_factory,
+        provider=config.ai_provider,
+        realtime_voice_provider=config.realtime_voice_provider,
+    )
 
     # Identity
     user_repository = providers.Factory(_make_user_repository)
@@ -153,7 +157,11 @@ class Container(containers.DeclarativeContainer):
 def _build_container() -> Container:
     from django.conf import settings
     instance = Container()
-    instance.config.ai_provider.from_value(getattr(settings, "AI_SERVICE_PROVIDER", "mock"))
+    ai_provider = getattr(settings, "AI_SERVICE_PROVIDER", "mock")
+    instance.config.ai_provider.from_value(ai_provider)
+    instance.config.realtime_voice_provider.from_value(
+        getattr(settings, "REALTIME_VOICE_PROVIDER", None) or ai_provider
+    )
     instance.config.email_provider.from_value(getattr(settings, "EMAIL_PROVIDER", "smtp"))
     return instance
 

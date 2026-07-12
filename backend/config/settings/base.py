@@ -176,6 +176,12 @@ RESUME_UPLOAD_MAX_SIZE_MB = 5
 RESUME_ALLOWED_EXTENSIONS = [".pdf", ".doc", ".docx"]
 
 AI_SERVICE_PROVIDER = env_str(env, "AI_SERVICE_PROVIDER", default="mock")
+# Which realtime voice vendor powers live interview calls. Deliberately
+# separate from AI_SERVICE_PROVIDER (text/LLM tasks like resume extraction,
+# seed topics, feedback) so you can e.g. run Gemini for those while using
+# real Ultravox for the call, or vice versa. Falls back to AI_SERVICE_PROVIDER
+# if unset, so existing single-flag deployments keep working unchanged.
+REALTIME_VOICE_PROVIDER = env_str(env, "REALTIME_VOICE_PROVIDER", default="") or None
 EMAIL_PROVIDER = env_str(env, "EMAIL_PROVIDER", default="smtp")
 OPENAI_API_KEY = env_str(env, "OPENAI_API_KEY", default="")
 OPENAI_RESUME_MODEL = env_str(env, "OPENAI_RESUME_MODEL", default="gpt-4o-mini")
@@ -201,7 +207,23 @@ ULTRAVOX_API_KEY = env_str(env, "ULTRAVOX_API_KEY", default="")
 ULTRAVOX_MODEL = env_str(env, "ULTRAVOX_MODEL", default="fixie-ai/ultravox")
 ULTRAVOX_VOICE = env_str(env, "ULTRAVOX_VOICE", default="Mark")
 ULTRAVOX_RECORDING_ENABLED = env_bool(env, "ULTRAVOX_RECORDING_ENABLED", default=False)
-ULTRAVOX_MAX_CALL_SECONDS = env_int(env, "ULTRAVOX_MAX_CALL_SECONDS", default=2700)
+
+# How long an interview call is allowed to run, and how the orchestrator
+# paces itself against that budget. Deliberately provider-agnostic (not
+# named ULTRAVOX_*) since this is a domain decision - "how long should
+# this interview be" - not a detail of whichever realtime voice vendor
+# is plugged in. See InterviewOrchestrator.handle_ask_next_question and
+# UltravoxRealtimeVoiceProvider.create_call, both of which read these.
+INTERVIEW_MAX_DURATION_SECONDS = env_int(env, "INTERVIEW_MAX_DURATION_SECONDS", default=2700)
+# Once this fraction of the time budget has elapsed, ask_next_question
+# starts nudging the model to keep answers/topics brief and converge on
+# a close, while still allowing new topics.
+INTERVIEW_SOFT_WRAPUP_PERCENT = env_int(env, "INTERVIEW_SOFT_WRAPUP_PERCENT", default=80)
+# Inside this many seconds of the hard cutoff, ask_next_question stops
+# handing out new topics altogether and forces an immediate, graceful
+# close - better than letting the vendor cut the call off mid-sentence.
+INTERVIEW_HARD_WRAPUP_BUFFER_SECONDS = env_int(env, "INTERVIEW_HARD_WRAPUP_BUFFER_SECONDS", default=90)
+
 # Shared secret the ask_next_question custom-tool callback must present
 # (X-Tool-Secret header) - Ultravox calls that endpoint with AllowAny
 # permissions since it's a server-to-server webhook, not a user request.

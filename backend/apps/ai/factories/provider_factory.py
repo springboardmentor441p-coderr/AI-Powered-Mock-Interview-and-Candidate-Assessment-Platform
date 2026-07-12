@@ -19,10 +19,22 @@ from apps.ai.providers.speech.interfaces import ICommunicationAnalysisProvider, 
 
 
 class AIProviderFactory:
-    """Resolves the active `AI_SERVICE_PROVIDER` setting to concrete adapters."""
+    """
+    Resolves the active `AI_SERVICE_PROVIDER` setting to concrete adapters.
 
-    def __init__(self, provider: str = "mock"):
+    `realtime_voice_provider` is intentionally a *separate* knob from
+    `provider`: the realtime voice vendor (Ultravox, ...) and the text/LLM
+    vendor (OpenAI, Gemini, ...) are orthogonal concerns that happen to both
+    live behind this one factory. Coupling them to a single setting would
+    make it impossible to run e.g. Gemini for seed-topic/resume extraction
+    while using real Ultravox for the live call (or vice versa). Defaults
+    to `provider` only for backwards compatibility with deployments that
+    haven't set REALTIME_VOICE_PROVIDER explicitly.
+    """
+
+    def __init__(self, provider: str = "mock", realtime_voice_provider: str | None = None):
         self.provider = provider
+        self.realtime_voice_provider = realtime_voice_provider if realtime_voice_provider is not None else provider
 
     def speech_to_text(self) -> ISpeechToTextProvider:
         if self.provider == "openai":
@@ -106,7 +118,7 @@ class AIProviderFactory:
         return MockResumeExtractor()
 
     def realtime_voice(self) -> IRealtimeVoiceProvider:
-        if self.provider == "ultravox":
+        if self.realtime_voice_provider == "ultravox":
             from apps.ai.providers.realtime_voice.ultravox_provider import UltravoxRealtimeVoiceProvider
 
             return UltravoxRealtimeVoiceProvider()
