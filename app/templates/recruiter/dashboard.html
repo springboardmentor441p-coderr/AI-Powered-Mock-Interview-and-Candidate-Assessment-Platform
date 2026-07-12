@@ -1,0 +1,81 @@
+{% extends "base.html" %}
+{% block title %}Recruiter Dashboard - {{ app_name }}{% endblock %}
+
+{% block content %}
+<h3 class="mb-4">Recruiter Dashboard</h3>
+
+<div class="row g-4 mb-4">
+    <div class="col-md-4">
+        <div class="card shadow stat-card text-center p-3">
+            <h2 class="text-primary">{{ total_candidates }}</h2>
+            <p class="mb-0">Candidates</p>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card shadow stat-card text-center p-3">
+            <h2 class="text-success">{{ total_interviews }}</h2>
+            <p class="mb-0">Completed Interviews</p>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card shadow stat-card text-center p-3">
+            <a href="{{ url_for('recruiter.compare') }}" class="btn btn-primary">Compare Candidates</a>
+        </div>
+    </div>
+</div>
+
+<div class="row g-4 mb-4">
+    <div class="col-md-8">
+        <div class="card shadow">
+            <div class="card-header">Performance Ranking</div>
+            <div class="card-body table-responsive">
+                <table class="table table-sm">
+                    <thead><tr><th>#</th><th>Candidate</th><th>Interviews</th><th>Avg Score</th></tr></thead>
+                    <tbody>
+                        {% for r in rankings %}
+                        <tr>
+                            <td>{{ loop.index }}</td>
+                            <td>{{ r.name }}</td>
+                            <td>{{ r.interview_count }}</td>
+                            <td><span class="badge bg-primary">{{ r.average_score }}</span></td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card shadow">
+            <div class="card-header">Interviews by Domain</div>
+            <div class="card-body"><canvas id="domainChart"></canvas></div>
+        </div>
+    </div>
+</div>
+
+<div class="card shadow">
+    <div class="card-header d-flex justify-content-between">
+        <span>Interview Templates</span>
+        <a href="{{ url_for('recruiter.templates') }}" class="btn btn-sm btn-primary">Manage</a>
+    </div>
+    <div class="card-body">
+        {% for t in templates %}
+        <div class="border-bottom py-2">{{ t.name }} - {{ t.domain }} ({{ t.difficulty }})</div>
+        {% else %}
+        <p class="text-muted">No templates created yet.</p>
+        {% endfor %}
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    new Chart(document.getElementById('domainChart'), {
+        type: 'bar',
+        data: {
+            labels: {{ domain_labels|tojson }},
+            datasets: [{ label: 'Interviews', data: {{ domain_counts|tojson }}, backgroundColor: '#3949ab' }]
+        }
+    });
+</script>
+{% endblock %}

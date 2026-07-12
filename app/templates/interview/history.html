@@ -1,0 +1,58 @@
+{% extends "base.html" %}
+{% block title %}Interview History - {{ app_name }}{% endblock %}
+
+{% block content %}
+<h3 class="mb-4">Interview History</h3>
+<a href="{{ url_for('interview.create') }}" class="btn btn-primary mb-3"><i class="bi bi-plus"></i> New Interview</a>
+
+{% if interviews %}
+<div class="table-responsive">
+    <table class="table table-hover shadow-sm bg-white rounded">
+        <thead class="table-primary">
+            <tr>
+                <th>Title</th>
+                <th>Domain</th>
+                <th>Category</th>
+                <th>Difficulty</th>
+                <th>Status</th>
+                <th>Score</th>
+                <th>Date</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for interview in interviews %}
+            <tr>
+                <td>{{ interview.title }}</td>
+                <td>{{ interview.domain }}</td>
+                <td>{{ interview.category }}</td>
+                <td><span class="badge bg-secondary">{{ interview.difficulty }}</span></td>
+                <td>
+                    {% if interview.status == 'completed' %}
+                    <span class="badge bg-success">Completed</span>
+                    {% elif interview.status == 'in_progress' %}
+                    <span class="badge bg-warning">In Progress</span>
+                    {% elif interview.status == 'cancelled' %}
+                    <span class="badge bg-danger">Cancelled</span>
+                    {% else %}
+                    <span class="badge bg-info">{{ interview.status }}</span>
+                    {% endif %}
+                </td>
+                <td>{{ "%.1f"|format(interview.score.overall_score) if interview.score else '-' }}</td>
+                <td>{{ interview.created_at.strftime('%Y-%m-%d') }}</td>
+                <td>
+                    {% if interview.status == 'completed' %}
+                    <a href="{{ url_for('interview.results', interview_id=interview.id) }}" class="btn btn-sm btn-outline-primary">Results</a>
+                    {% elif interview.status == 'in_progress' %}
+                    <a href="{{ url_for('interview.session', interview_id=interview.id) }}" class="btn btn-sm btn-warning">Continue</a>
+                    {% endif %}
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% else %}
+<div class="alert alert-info">No interviews yet. <a href="{{ url_for('interview.create') }}">Create your first mock interview</a>.</div>
+{% endif %}
+{% endblock %}

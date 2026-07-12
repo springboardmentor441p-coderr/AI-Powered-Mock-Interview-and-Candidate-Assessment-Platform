@@ -1,0 +1,108 @@
+{% extends "base.html" %}
+{% block title %}Candidate Dashboard - {{ app_name }}{% endblock %}
+
+{% block content %}
+<h3 class="mb-4">Candidate Dashboard</h3>
+
+<div class="row g-4 mb-4">
+    <div class="col-md-3">
+        <div class="card shadow stat-card">
+            <div class="card-body text-center">
+                <h2 class="text-primary">{{ total_interviews }}</h2>
+                <p class="mb-0">Total Interviews</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card shadow stat-card">
+            <div class="card-body text-center">
+                <h2 class="text-success">{{ completed_interviews }}</h2>
+                <p class="mb-0">Completed</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card shadow stat-card">
+            <div class="card-body text-center">
+                <h2 class="text-info">{{ average_score }}</h2>
+                <p class="mb-0">Avg Score</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card shadow stat-card">
+            <div class="card-body text-center">
+                <a href="{{ url_for('interview.create') }}" class="btn btn-primary btn-lg w-100">Start Interview</a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row g-4 mb-4">
+    <div class="col-md-8">
+        <div class="card shadow">
+            <div class="card-header">Performance Trend</div>
+            <div class="card-body"><canvas id="trendChart" height="120"></canvas></div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card shadow">
+            <div class="card-header">Skills</div>
+            <div class="card-body"><canvas id="skillsChart"></canvas></div>
+        </div>
+    </div>
+</div>
+
+{% if resume %}
+<div class="card shadow mb-4">
+    <div class="card-header d-flex justify-content-between">
+        <span>Resume Summary</span>
+        <a href="{{ url_for('resume.view', resume_id=resume.id) }}" class="btn btn-sm btn-outline-primary">View Full</a>
+    </div>
+    <div class="card-body"><p>{{ resume.summary }}</p></div>
+</div>
+{% else %}
+<div class="alert alert-warning">Upload your resume to get personalized interview questions.
+    <a href="{{ url_for('resume.upload') }}">Upload Now</a>
+</div>
+{% endif %}
+
+<div class="card shadow">
+    <div class="card-header">Recent Interviews</div>
+    <div class="card-body">
+        {% for interview in interviews %}
+        <div class="d-flex justify-content-between border-bottom py-2">
+            <span>{{ interview.title }} ({{ interview.domain }})</span>
+            <span>
+                {% if interview.score %}{{ "%.1f"|format(interview.score.overall_score) }}{% else %}-{% endif %}
+                <a href="{{ url_for('interview.results', interview_id=interview.id) if interview.status == 'completed' else url_for('interview.session', interview_id=interview.id) }}" class="btn btn-sm btn-link">View</a>
+            </span>
+        </div>
+        {% else %}
+        <p class="text-muted">No interviews yet.</p>
+        {% endfor %}
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    const trendLabels = {{ trend_labels|tojson }};
+    const trendScores = {{ trend_scores|tojson }};
+    const skillLabels = {{ skill_labels|tojson }};
+
+    if (trendLabels.length) {
+        new Chart(document.getElementById('trendChart'), {
+            type: 'line',
+            data: { labels: trendLabels, datasets: [{ label: 'Overall Score', data: trendScores, borderColor: '#1a237e', tension: 0.3 }] },
+            options: { scales: { y: { min: 0, max: 100 } } }
+        });
+    }
+    if (skillLabels.length) {
+        new Chart(document.getElementById('skillsChart'), {
+            type: 'doughnut',
+            data: { labels: skillLabels, datasets: [{ data: skillLabels.map(() => 1), backgroundColor: ['#1a237e','#3949ab','#5c6bc0','#7986cb','#9fa8da'] }] }
+        });
+    }
+</script>
+{% endblock %}

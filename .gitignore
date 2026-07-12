@@ -1,0 +1,60 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+*.egg
+.Python
+dist/
+build/
+*.so
+
+# Virtual environments
+.venv/
+venv/
+env/
+ENV/
+
+# Environment / secrets
+.env
+.env.local
+.env.*.local
+
+# Database
+instance/
+*.db
+*.sqlite3
+
+# Uploads / generated media
+uploads/
+
+# IDE / editors
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+Desktop.ini
+
+# Logs / cache / temp
+*.log
+.cache/
+.pytest_cache/
+.mypy_cache/
+.coverage
+htmlcov/
+tmp/
+temp/
+
+# Node / frontend build artifacts (if present)
+node_modules/
+.next/
+.nuxt/
+out/
+
+# Docker overrides
+docker-compose.override.yml

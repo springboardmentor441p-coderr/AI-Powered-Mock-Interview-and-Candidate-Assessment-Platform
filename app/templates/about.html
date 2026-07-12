@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+{% block title %}About - {{ app_name }}{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-8">
+        <div class="card shadow p-4">
+            <h2>About {{ app_name }}</h2>
+            <p class="lead">An AI-powered mock interview and candidate assessment platform built for final year projects and real-world hiring preparation.</p>
+            <h5>Technology Stack</h5>
+            <ul>
+                <li><strong>Backend:</strong> Python 3.12, Flask, SQLAlchemy, JWT</li>
+                <li><strong>Frontend:</strong> HTML5, Bootstrap 5, Chart.js, Jinja2</li>
+                <li><strong>AI:</strong> Google Gemini, OpenCV, MediaPipe, SpeechRecognition</li>
+                <li><strong>Database:</strong> SQLite (dev) / MySQL (production)</li>
+            </ul>
+            <h5>Modules</h5>
+            <ol>
+                <li>Authentication with JWT &amp; Google OAuth</li>
+                <li>Resume PDF parsing &amp; skill extraction</li>
+                <li>AI interview question generation</li>
+                <li>Live interview with webcam &amp; microphone</li>
+                <li>Speech analysis (grammar, pace, fillers)</li>
+                <li>Emotion detection (OpenCV + MediaPipe)</li>
+                <li>AI evaluation &amp; scoring</li>
+                <li>Role-based dashboards</li>
+                <li>PDF report generation</li>
+            </ol>
+        </div>
+    </div>
+</div>
+{% endblock %}

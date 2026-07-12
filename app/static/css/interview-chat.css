@@ -1,0 +1,223 @@
+/* Live conversational interview styles */
+
+.interview-live-layout {
+    max-width: 1400px;
+    margin: 0 auto;
+}
+
+.interview-chat-card {
+    height: calc(100vh - 120px);
+    min-height: 600px;
+    display: flex;
+    flex-direction: column;
+}
+
+.interview-header {
+    background: linear-gradient(135deg, #1a237e 0%, #3949ab 100%);
+    color: #fff;
+    border: none;
+}
+
+.interviewer-avatar {
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.2);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.3rem;
+}
+
+.chat-messages {
+    flex: 1;
+    overflow-y: auto;
+    padding: 1.25rem;
+    background: #f0f2f8;
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+.chat-bubble {
+    max-width: 85%;
+    padding: 0.75rem 1rem;
+    border-radius: 1rem;
+    animation: bubble-in 0.3s ease-out;
+}
+
+@keyframes bubble-in {
+    from { opacity: 0; transform: translateY(8px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+.interviewer-bubble {
+    align-self: flex-start;
+    background: #fff;
+    border: 1px solid #e0e4ef;
+    border-bottom-left-radius: 0.25rem;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
+}
+
+.candidate-bubble {
+    align-self: flex-end;
+    background: #3949ab;
+    color: #fff;
+    border-bottom-right-radius: 0.25rem;
+}
+
+.bubble-label {
+    display: block;
+    font-size: 0.7rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    margin-bottom: 0.25rem;
+    opacity: 0.7;
+}
+
+.chat-bubble p {
+    margin: 0;
+    line-height: 1.5;
+}
+
+.typing-indicator {
+    display: flex;
+    align-items: center;
+    padding: 0.5rem 0;
+}
+
+.typing-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: #9aa5c4;
+    margin-right: 4px;
+    animation: typing-bounce 1.2s infinite;
+}
+
+.typing-dot:nth-child(2) { animation-delay: 0.2s; }
+.typing-dot:nth-child(3) { animation-delay: 0.4s; }
+
+@keyframes typing-bounce {
+    0%, 60%, 100% { transform: translateY(0); }
+    30% { transform: translateY(-6px); }
+}
+
+.interview-controls {
+    background: #fff;
+    border-top: 1px solid #e8ecf4;
+}
+
+.live-transcript {
+    background: #f8f9fc;
+    border-radius: 0.5rem;
+    padding: 0.5rem 0.75rem;
+    min-height: 2rem;
+    font-size: 0.85rem;
+}
+
+.audio-wave {
+    display: flex;
+    align-items: center;
+    gap: 2px;
+    height: 24px;
+}
+
+.audio-wave span {
+    display: block;
+    width: 3px;
+    height: 8px;
+    background: #3949ab;
+    border-radius: 2px;
+    transition: height 0.1s;
+}
+
+.audio-wave.active span {
+    animation: wave-pulse 0.8s ease-in-out infinite;
+}
+
+.audio-wave.active span:nth-child(1) { animation-delay: 0s; }
+.audio-wave.active span:nth-child(2) { animation-delay: 0.1s; }
+.audio-wave.active span:nth-child(3) { animation-delay: 0.2s; }
+.audio-wave.active span:nth-child(4) { animation-delay: 0.3s; }
+.audio-wave.active span:nth-child(5) { animation-delay: 0.4s; }
+
+@keyframes wave-pulse {
+    0%, 100% { height: 8px; }
+    50% { height: 20px; }
+}
+
+.listening-overlay {
+    position: absolute;
+    bottom: 12px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: rgba(57, 73, 171, 0.85);
+    color: #fff;
+    padding: 0.35rem 1rem;
+    border-radius: 2rem;
+    font-size: 0.8rem;
+    display: none;
+    animation: pulse-listen 2s infinite;
+}
+
+.listening-overlay.visible {
+    display: block;
+}
+
+@keyframes pulse-listen {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.7; }
+}
+
+.analysis-panel {
+    background: #f8f9fc;
+    border-radius: 0.5rem;
+    padding: 0.75rem;
+}
+
+.analysis-stat {
+    display: flex;
+    flex-direction: column;
+}
+
+.analysis-stat strong {
+    font-size: 1rem;
+    color: #1a237e;
+}
+
+#webcam {
+    background: #000;
+    min-height: 200px;
+    object-fit: cover;
+}
+
+#session-timer {
+    font-family: monospace;
+    min-width: 55px;
+}
+
+.speaking-highlight {
+    box-shadow: 0 0 0 2px #3949ab;
+}
+
+.cancellation-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.7);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 9999;
+}
+
+.cancellation-card {
+    background: #fff;
+    border-radius: 1rem;
+    padding: 2.5rem;
+    text-align: center;
+    max-width: 420px;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+}
+

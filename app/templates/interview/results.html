@@ -1,0 +1,149 @@
+{% extends "base.html" %}
+{% block title %}Interview Results - {{ app_name }}{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h3>Interview Results: {{ interview.title }}</h3>
+    {% if report %}
+    <a href="{{ url_for('reports.download', interview_id=interview.id) }}" class="btn btn-success">
+        <i class="bi bi-download"></i> Download PDF Report
+    </a>
+    {% else %}
+    <a href="{{ url_for('reports.generate', interview_id=interview.id) }}" class="btn btn-success">
+        <i class="bi bi-file-earmark-pdf"></i> Generate Report
+    </a>
+    {% endif %}
+</div>
+
+{% if score %}
+<div class="row g-4 mb-4">
+    <div class="col-md-3">
+        <div class="card text-center shadow score-card">
+            <div class="card-body">
+                <h2 class="text-primary">{{ "%.1f"|format(score.overall_score) }}</h2>
+                <p class="mb-0">Overall Score</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card text-center shadow score-card">
+            <div class="card-body">
+                <h2>{{ "%.1f"|format(score.technical_score) }}</h2>
+                <p class="mb-0">Technical</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card text-center shadow score-card">
+            <div class="card-body">
+                <h2>{{ "%.1f"|format(score.communication_score) }}</h2>
+                <p class="mb-0">Communication</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card text-center shadow score-card">
+            <div class="card-body">
+                <h2>{{ "%.1f"|format(score.confidence_score) }}</h2>
+                <p class="mb-0">Confidence</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row g-4 mb-4">
+    <div class="col-md-6">
+        <div class="card shadow h-100">
+            <div class="card-header bg-success text-white">Strengths</div>
+            <div class="card-body"><pre class="resume-text">{{ score.strengths }}</pre></div>
+        </div>
+    </div>
+    <div class="col-md-6">
+        <div class="card shadow h-100">
+            <div class="card-header bg-warning">Weaknesses</div>
+            <div class="card-body"><pre class="resume-text">{{ score.weaknesses }}</pre></div>
+        </div>
+    </div>
+</div>
+
+<div class="row g-4 mb-4">
+    <div class="col-md-6">
+        <div class="card shadow">
+            <div class="card-header">Suggestions</div>
+            <div class="card-body"><pre class="resume-text">{{ score.suggestions }}</pre></div>
+        </div>
+    </div>
+    <div class="col-md-6">
+        <div class="card shadow">
+            <div class="card-header">Recommended Courses &amp; Skills</div>
+            <div class="card-body">
+                <h6>Courses</h6><pre class="resume-text">{{ score.recommended_courses }}</pre>
+                <h6>Skills</h6><pre class="resume-text">{{ score.recommended_skills }}</pre>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="card shadow mb-4">
+    <div class="card-header">AI Feedback</div>
+    <div class="card-body"><p>{{ score.ai_feedback }}</p></div>
+</div>
+
+<div class="row mb-4">
+    <div class="col-md-6">
+        <canvas id="scoreChart"></canvas>
+    </div>
+</div>
+{% endif %}
+
+<h4 class="mb-3">Question &amp; Answer Details</h4>
+{% for question in questions %}
+<div class="card shadow mb-3">
+    <div class="card-header"><strong>Q{{ loop.index }}:</strong> {{ question.question_text }}</div>
+    <div class="card-body">
+        {% if question.answer %}
+        <p><strong>Answer:</strong> {{ question.answer.answer_text or 'Audio response' }}</p>
+        {% if question.answer.speech_analysis %}
+        <div class="row small text-muted">
+            <div class="col-md-3">Transcript: {{ question.answer.speech_analysis.transcript[:200] }}...</div>
+            <div class="col-md-2">Grammar: {{ question.answer.speech_analysis.grammar_score }}</div>
+            <div class="col-md-2">Pace: {{ question.answer.speech_analysis.speaking_pace }} wpm</div>
+            <div class="col-md-2">Fillers: {{ question.answer.speech_analysis.filler_word_count }}</div>
+            <div class="col-md-3">Comm Score: {{ question.answer.speech_analysis.communication_score }}</div>
+        </div>
+        {% endif %}
+        {% if question.answer.emotion_analysis %}
+        <div class="row small mt-2">
+            <div class="col-md-3">Emotion: {{ question.answer.emotion_analysis.dominant_emotion }}</div>
+            <div class="col-md-3">Eye Contact: {{ question.answer.emotion_analysis.eye_contact_score }}</div>
+            <div class="col-md-3">Confidence: {{ question.answer.emotion_analysis.confidence_score }}</div>
+            <div class="col-md-3">Attention: {{ question.answer.emotion_analysis.attention_score }}</div>
+        </div>
+        {% endif %}
+        {% else %}
+        <p class="text-muted">No answer recorded.</p>
+        {% endif %}
+    </div>
+</div>
+{% endfor %}
+{% endblock %}
+
+{% block extra_js %}
+{% if score %}
+<script>
+    new Chart(document.getElementById('scoreChart'), {
+        type: 'radar',
+        data: {
+            labels: ['Technical', 'Communication', 'Confidence', 'Professionalism'],
+            datasets: [{
+                label: 'Scores',
+                data: [{{ score.technical_score }}, {{ score.communication_score }}, {{ score.confidence_score }}, {{ score.professionalism_score }}],
+                backgroundColor: 'rgba(26, 35, 126, 0.2)',
+                borderColor: 'rgba(26, 35, 126, 1)',
+            }]
+        },
+        options: { scales: { r: { min: 0, max: 100 } } }
+    });
+</script>
+{% endif %}
+{% endblock %}

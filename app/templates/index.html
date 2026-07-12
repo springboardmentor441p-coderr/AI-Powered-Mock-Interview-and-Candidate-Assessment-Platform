@@ -1,0 +1,61 @@
+{% extends "base.html" %}
+{% block title %}Home - {{ app_name }}{% endblock %}
+{% block main_class %}{% endblock %}
+
+{% block content %}
+<section class="hero-section text-white text-center py-5">
+    <div class="container py-5">
+        <h1 class="display-4 fw-bold mb-3">{{ app_name }}</h1>
+        <p class="lead mb-4">AI-Powered Live Interview &amp; Candidate Assessment Platform</p>
+        <p class="fs-5 mb-5 opacity-75">Practice interviews with real-time speech analysis, emotion detection, and AI-powered feedback.</p>
+        <div class="d-flex gap-3 justify-content-center flex-wrap">
+            <a href="{{ url_for('auth.register') }}" class="btn btn-light btn-lg px-4">Get Started</a>
+            <a href="{{ url_for('auth.login') }}" class="btn btn-outline-light btn-lg px-4">Login</a>
+        </div>
+    </div>
+</section>
+
+<section class="container py-5">
+    <div class="row g-4">
+        <div class="col-md-4">
+            <div class="card h-100 shadow-sm feature-card">
+                <div class="card-body text-center p-4">
+                    <i class="bi bi-file-earmark-pdf display-4 text-primary mb-3"></i>
+                    <h5>Resume Analysis</h5>
+                    <p class="text-muted">Upload PDF resumes, extract skills, and get AI-generated summaries with skill gap analysis.</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card h-100 shadow-sm feature-card">
+                <div class="card-body text-center p-4">
+                    <i class="bi bi-camera-video display-4 text-primary mb-3"></i>
+                    <h5>Live Mock Interviews</h5>
+                    <p class="text-muted">Webcam &amp; microphone enabled sessions with timer, recording, and real-time analysis.</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card h-100 shadow-sm feature-card">
+                <div class="card-body text-center p-4">
+                    <i class="bi bi-graph-up-arrow display-4 text-primary mb-3"></i>
+                    <h5>AI Evaluation</h5>
+                    <p class="text-muted">Gemini-powered scoring with strengths, weaknesses, and personalized recommendations.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<section class="bg-light py-5">
+    <div class="container">
+        <h2 class="text-center mb-5">How It Works</h2>
+        <div class="row text-center">
+            <div class="col-md-3"><div class="step-circle">1</div><h6>Register</h6><p class="text-muted small">Create account as Candidate or Recruiter</p></div>
+            <div class="col-md-3"><div class="step-circle">2</div><h6>Upload Resume</h6><p class="text-muted small">Parse skills and get AI summary</p></div>
+            <div class="col-md-3"><div class="step-circle">3</div><h6>Take Interview</h6><p class="text-muted small">Answer AI-generated questions live</p></div>
+            <div class="col-md-3"><div class="step-circle">4</div><h6>Get Report</h6><p class="text-muted small">Download detailed PDF assessment</p></div>
+        </div>
+    </div>
+</section>
+{% endblock %}

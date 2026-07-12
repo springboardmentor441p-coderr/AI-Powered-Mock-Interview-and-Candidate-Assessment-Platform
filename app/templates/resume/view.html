@@ -1,0 +1,66 @@
+{% extends "base.html" %}
+{% block title %}Resume Details - {{ app_name }}{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h3>Resume Analysis</h3>
+    <div class="d-flex gap-2">
+        <a href="{{ url_for('resume.download', resume_id=resume.id) }}" class="btn btn-success">
+            <i class="bi bi-download"></i> Download PDF
+        </a>
+        <a href="{{ url_for('resume.upload') }}" class="btn btn-outline-primary">Upload Another</a>
+    </div>
+</div>
+
+<div class="row g-4">
+    <div class="col-md-8">
+        <div class="card shadow mb-4">
+            <div class="card-header"><h5 class="mb-0">AI Summary</h5></div>
+            <div class="card-body"><p>{{ resume.summary or 'No summary available.' }}</p></div>
+        </div>
+        <div class="card shadow mb-4">
+            <div class="card-header"><h5 class="mb-0">Experience</h5></div>
+            <div class="card-body"><pre class="resume-text">{{ resume.experience or 'Not extracted.' }}</pre></div>
+        </div>
+        <div class="card shadow mb-4">
+            <div class="card-header"><h5 class="mb-0">Education</h5></div>
+            <div class="card-body"><pre class="resume-text">{{ resume.education or 'Not extracted.' }}</pre></div>
+        </div>
+        <div class="card shadow">
+            <div class="card-header"><h5 class="mb-0">Projects &amp; Certifications</h5></div>
+            <div class="card-body">
+                <h6>Projects</h6>
+                <pre class="resume-text">{{ resume.projects or 'Not extracted.' }}</pre>
+                <h6 class="mt-3">Certifications</h6>
+                <pre class="resume-text">{{ resume.certifications or 'Not extracted.' }}</pre>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card shadow mb-4">
+            <div class="card-header"><h5 class="mb-0">Contact Info</h5></div>
+            <div class="card-body">
+                <p><strong>Name:</strong> {{ resume.name or 'N/A' }}</p>
+                <p><strong>Email:</strong> {{ resume.email or 'N/A' }}</p>
+                <p><strong>Phone:</strong> {{ resume.phone or 'N/A' }}</p>
+            </div>
+        </div>
+        <div class="card shadow mb-4">
+            <div class="card-header"><h5 class="mb-0">Skills ({{ skills|length }})</h5></div>
+            <div class="card-body">
+                {% for skill in skills %}
+                <span class="badge bg-primary me-1 mb-1">{{ skill.name }}</span>
+                {% else %}
+                <p class="text-muted">No skills detected.</p>
+                {% endfor %}
+            </div>
+        </div>
+        <div class="card shadow border-warning">
+            <div class="card-header bg-warning"><h5 class="mb-0">Missing Skills</h5></div>
+            <div class="card-body">
+                <p>{{ resume.missing_skills or 'No gaps identified.' }}</p>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

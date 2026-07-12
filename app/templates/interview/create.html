@@ -1,0 +1,113 @@
+{% extends "base.html" %}
+{% block title %}Create Interview - {{ app_name }}{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-9">
+        <div class="card shadow">
+            <div class="card-header bg-primary text-white">
+                <h4 class="mb-0"><i class="bi bi-camera-video"></i> Start Live AI Interview</h4>
+            </div>
+            <div class="card-body p-4">
+                <p class="text-muted mb-4">
+                    Upload your resume so the AI interviewer can review your background and ask
+                    personalized technical questions. Speak naturally in a real-time video conversation.
+                </p>
+                <form method="POST" enctype="multipart/form-data">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+                    <div class="card bg-light mb-4">
+                        <div class="card-body">
+                            <h5 class="card-title"><i class="bi bi-file-earmark-pdf text-danger"></i> Your Resume</h5>
+                            <p class="small text-muted mb-3">Required — the interviewer uses your resume to ask domain-specific questions.</p>
+
+                            <div class="mb-3">
+                                <label class="form-label">Upload New Resume (PDF)</label>
+                                <input type="file" name="resume_file" class="form-control" accept=".pdf" id="resume-file">
+                            </div>
+
+                            {% if resumes %}
+                            <div class="text-center my-2 text-muted small">— or select an existing resume —</div>
+                            <div class="mb-0">
+                                <label class="form-label">Existing Resume</label>
+                                <select name="resume_id" class="form-select" id="resume-select">
+                                    <option value="">-- Select a resume --</option>
+                                    {% for r in resumes %}
+                                    <option value="{{ r.id }}" {% if r.is_primary %}selected{% endif %}>
+                                        {{ r.file_name }} {% if r.is_primary %}(Primary){% endif %}
+                                        — {{ r.created_at.strftime('%b %d, %Y') }}
+                                    </option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                            {% endif %}
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">Interview Title</label>
+                        <input type="text" name="title" class="form-control" value="Live Interview" required>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Domain</label>
+                            <select name="domain" class="form-select" id="domain-select">
+                                {% for d in domains %}<option value="{{ d }}">{{ d }}</option>{% endfor %}
+                            </select>
+                            <small class="text-muted">Technical questions will be tailored to this domain</small>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Category</label>
+                            <select name="category" class="form-select">
+                                {% for c in categories %}<option value="{{ c }}" {% if c == 'Technical' %}selected{% endif %}>{{ c }}</option>{% endfor %}
+                            </select>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Difficulty</label>
+                            <select name="difficulty" class="form-select">
+                                {% for d in difficulties %}<option value="{{ d }}" {% if d == 'Medium' %}selected{% endif %}>{{ d }}</option>{% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Conversation Depth</label>
+                            <input type="number" name="question_count" class="form-control" value="5" min="3" max="10">
+                            <small class="text-muted">Number of back-and-forth exchanges</small>
+                        </div>
+                    </div>
+
+                    <div class="alert alert-warning small">
+                        <i class="bi bi-exclamation-triangle"></i>
+                        <strong>Professional conduct required.</strong>
+                        Use of inappropriate or sensitive language will result in immediate interview cancellation.
+                    </div>
+
+                    <button type="submit" class="btn btn-primary btn-lg w-100">
+                        <i class="bi bi-camera-video"></i> Join Live Interview
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    document.getElementById('resume-file').addEventListener('change', function () {
+        if (this.files.length > 0) {
+            var select = document.getElementById('resume-select');
+            if (select) select.value = '';
+        }
+    });
+    var resumeSelect = document.getElementById('resume-select');
+    if (resumeSelect) {
+        resumeSelect.addEventListener('change', function () {
+            if (this.value) {
+                document.getElementById('resume-file').value = '';
+            }
+        });
+    }
+</script>
+{% endblock %}

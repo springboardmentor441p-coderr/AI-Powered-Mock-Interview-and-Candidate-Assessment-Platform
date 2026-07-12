@@ -1,0 +1,89 @@
+{% extends "base.html" %}
+{% block title %}Admin Dashboard - {{ app_name }}{% endblock %}
+
+{% block content %}
+<h3 class="mb-4">Admin Dashboard</h3>
+
+<div class="row g-4 mb-4">
+    <div class="col-md-2"><div class="card shadow stat-card text-center p-3"><h3>{{ total_users }}</h3><small>Users</small></div></div>
+    <div class="col-md-2"><div class="card shadow stat-card text-center p-3"><h3>{{ total_candidates }}</h3><small>Candidates</small></div></div>
+    <div class="col-md-2"><div class="card shadow stat-card text-center p-3"><h3>{{ total_recruiters }}</h3><small>Recruiters</small></div></div>
+    <div class="col-md-2"><div class="card shadow stat-card text-center p-3"><h3>{{ total_interviews }}</h3><small>Interviews</small></div></div>
+    <div class="col-md-2"><div class="card shadow stat-card text-center p-3"><h3>{{ completed_interviews }}</h3><small>Completed</small></div></div>
+    <div class="col-md-2"><div class="card shadow stat-card text-center p-3"><h3>{{ average_score }}</h3><small>Avg Score</small></div></div>
+</div>
+
+<div class="row g-4 mb-4">
+    <div class="col-md-8">
+        <div class="card shadow">
+            <div class="card-header">Monthly Interviews</div>
+            <div class="card-body"><canvas id="monthlyChart"></canvas></div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card shadow">
+            <div class="card-header">Platform Stats</div>
+            <div class="card-body">
+                <p>Total Resumes: <strong>{{ total_resumes }}</strong></p>
+                <p>Completion Rate: <strong>{{ "%.0f"|format((completed_interviews / total_interviews * 100) if total_interviews else 0) }}%</strong></p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row g-4">
+    <div class="col-md-7">
+        <div class="card shadow">
+            <div class="card-header">Users</div>
+            <div class="card-body table-responsive">
+                <table class="table table-sm">
+                    <thead><tr><th>Username</th><th>Email</th><th>Role</th><th>Status</th><th>Action</th></tr></thead>
+                    <tbody>
+                        {% for user in users %}
+                        <tr>
+                            <td>{{ user.username }}</td>
+                            <td>{{ user.email }}</td>
+                            <td><span class="badge bg-secondary">{{ user.role.name }}</span></td>
+                            <td>{% if user.is_active %}<span class="text-success">Active</span>{% else %}<span class="text-danger">Inactive</span>{% endif %}</td>
+                            <td>
+                                {% if user.id != current_user.id %}
+                                <form method="POST" action="{{ url_for('admin.toggle_user', user_id=user.id) }}" class="d-inline">
+                                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                    <button class="btn btn-sm btn-outline-warning">{{ 'Deactivate' if user.is_active else 'Activate' }}</button>
+                                </form>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-5">
+        <div class="card shadow">
+            <div class="card-header">System Logs</div>
+            <div class="card-body" style="max-height: 400px; overflow-y: auto;">
+                {% for log in recent_logs %}
+                <div class="small border-bottom py-1">
+                    <strong>{{ log.action }}</strong> - {{ log.details[:80] }}
+                    <br><span class="text-muted">{{ log.created_at.strftime('%Y-%m-%d %H:%M') }}</span>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    new Chart(document.getElementById('monthlyChart'), {
+        type: 'line',
+        data: {
+            labels: {{ monthly_labels|tojson }},
+            datasets: [{ label: 'Interviews', data: {{ monthly_counts|tojson }}, borderColor: '#1a237e', fill: true, backgroundColor: 'rgba(26,35,126,0.1)' }]
+        }
+    });
+</script>
+{% endblock %}

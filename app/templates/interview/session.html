@@ -1,0 +1,197 @@
+{% extends "base.html" %}
+{% block title %}Live Interview - {{ app_name }}{% endblock %}
+{% block main_class %}container-fluid py-3{% endblock %}
+
+{% block extra_css %}
+<link href="{{ url_for('static', filename='css/interview-chat.css') }}" rel="stylesheet">
+{% endblock %}
+
+{% block content %}
+<div class="row g-3 interview-live-layout">
+    <div class="col-lg-8">
+        <div class="card shadow interview-chat-card">
+            <div class="card-header interview-header d-flex justify-content-between align-items-center">
+                <div class="d-flex align-items-center gap-3">
+                    <div class="interviewer-avatar">
+                        <i class="bi bi-person-video3"></i>
+                    </div>
+                    <div>
+                        <div class="fw-semibold">{{ interviewer_name }}</div>
+                        <small class="text-white-50">{{ interviewer_role }} &middot; {{ interview.domain }}</small>
+                    </div>
+                </div>
+                <div class="d-flex align-items-center gap-2">
+                    <span id="session-timer" class="badge bg-dark fs-6">00:00</span>
+                    <span id="live-status" class="badge bg-success">Connecting...</span>
+                </div>
+            </div>
+
+            <div id="chat-messages" class="chat-messages">
+                {% for turn in session_state.conversation %}
+                    {% if turn.has_answer %}
+                    <div class="chat-bubble interviewer-bubble">
+                        <small class="bubble-label">{{ interviewer_name }}</small>
+                        <p>{{ turn.question }}</p>
+                    </div>
+                    <div class="chat-bubble candidate-bubble">
+                        <small class="bubble-label">You</small>
+                        <p>{{ turn.answer }}</p>
+                    </div>
+                    {% else %}
+                    <div class="chat-bubble interviewer-bubble">
+                        <small class="bubble-label">{{ interviewer_name }}</small>
+                        <p>{{ turn.question }}</p>
+                    </div>
+                    {% endif %}
+                {% endfor %}
+                <div id="typing-indicator" class="typing-indicator d-none">
+                    <span class="typing-dot"></span>
+                    <span class="typing-dot"></span>
+                    <span class="typing-dot"></span>
+                    <small class="ms-2 text-muted">{{ interviewer_name }} is thinking...</small>
+                </div>
+            </div>
+
+            <div class="card-footer interview-controls">
+                <div id="live-transcript" class="live-transcript mb-2">
+                    <small class="text-muted">Live transcript:</small>
+                    <span id="transcript-live" class="text-dark">Waiting for you to speak...</span>
+                </div>
+                <div class="d-flex gap-2 align-items-center flex-wrap">
+                    <button id="btn-mute" class="btn btn-outline-secondary btn-sm" title="Toggle microphone">
+                        <i class="bi bi-mic-fill"></i>
+                    </button>
+                    <div id="audio-wave" class="audio-wave">
+                        <span></span><span></span><span></span><span></span><span></span>
+                    </div>
+                    <input type="text" id="answer-text" class="form-control form-control-sm flex-grow-1"
+                           placeholder="Speak or type your response..." autocomplete="off">
+                    <button id="btn-submit" class="btn btn-primary">
+                        <i class="bi bi-send-fill"></i> Done Speaking
+                    </button>
+                    <button id="btn-finish" class="btn btn-success d-none">
+                        <i class="bi bi-check-circle"></i> End Interview
+                    </button>
+                </div>
+                <p id="recording-status" class="small mt-2 mb-0 text-muted">Initializing camera and microphone...</p>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-lg-4">
+        <div class="card shadow mb-3">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <span>Your Video</span>
+                <span id="rec-indicator" class="badge bg-danger d-none"><i class="bi bi-record-circle"></i> REC</span>
+            </div>
+            <div class="card-body p-0 position-relative">
+                <video id="webcam" autoplay playsinline muted class="w-100 rounded-bottom"></video>
+                <canvas id="emotion-canvas" class="d-none"></canvas>
+                <div id="listening-overlay" class="listening-overlay">
+                    <i class="bi bi-mic-fill"></i> Listening
+                </div>
+            </div>
+        </div>
+
+        <div class="card shadow mb-3">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <span><i class="bi bi-file-earmark-person"></i> Your Resume</span>
+                <span class="badge bg-success">Shared with Interviewer</span>
+            </div>
+            <div class="card-body small">
+                {% if resume %}
+                <p class="mb-1"><strong>{{ resume.name or 'Candidate' }}</strong></p>
+                {% if resume.summary %}
+                <p class="text-muted mb-2">{{ resume.summary[:200] }}{% if resume.summary|length > 200 %}...{% endif %}</p>
+                {% endif %}
+                {% if resume_skills %}
+                <div class="mb-0">
+                    {% for skill in resume_skills[:8] %}
+                    <span class="badge bg-light text-dark border me-1 mb-1">{{ skill }}</span>
+                    {% endfor %}
+                    {% if resume_skills|length > 8 %}
+                    <span class="text-muted">+{{ resume_skills|length - 8 }} more</span>
+                    {% endif %}
+                </div>
+                {% endif %}
+                {% else %}
+                <p class="text-muted mb-0">No resume linked.</p>
+                {% endif %}
+            </div>
+        </div>
+
+        <div class="card shadow mb-3">
+            <div class="card-header">Session Progress</div>
+            <div class="card-body">
+                <div class="d-flex justify-content-between small mb-2">
+                    <span>Conversation depth</span>
+                    <span id="turn-counter">{{ session_state.completed_turns }} / {{ session_state.target_turns }}</span>
+                </div>
+                <div class="progress mb-3" style="height: 6px;">
+                    <div id="progress-bar" class="progress-bar bg-primary"
+                         style="width: {{ (session_state.completed_turns / session_state.target_turns * 100) if session_state.target_turns else 0 }}%"></div>
+                </div>
+                <div id="analysis-panel" class="analysis-panel d-none">
+                    <h6 class="small fw-bold text-uppercase text-muted mb-2">Last Response Analysis</h6>
+                    <div class="row g-2 small">
+                        <div class="col-6">
+                            <div class="analysis-stat">
+                                <span class="text-muted">Emotion</span>
+                                <strong id="emotion-display">-</strong>
+                            </div>
+                        </div>
+                        <div class="col-6">
+                            <div class="analysis-stat">
+                                <span class="text-muted">Communication</span>
+                                <strong id="comm-display">-</strong>
+                            </div>
+                        </div>
+                        <div class="col-12">
+                            <div class="analysis-stat">
+                                <span class="text-muted">Confidence</span>
+                                <strong id="confidence-display">-</strong>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="card shadow">
+            <div class="card-header">Tips</div>
+            <div class="card-body small text-muted">
+                <ul class="mb-0 ps-3">
+                    <li>Speak naturally — this is a conversation, not a test</li>
+                    <li>Click <strong>Done Speaking</strong> when you finish your answer</li>
+                    <li>Questions are tailored to your resume and {{ interview.domain }} domain</li>
+                    <li>Keep professional language — inappropriate words cancel the interview</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+</div>
+
+<input type="hidden" id="current-question-id" value="{{ session_state.current_question_id or '' }}">
+
+<div id="cancellation-modal" class="cancellation-overlay d-none">
+    <div class="cancellation-card">
+        <i class="bi bi-x-octagon-fill text-danger display-4"></i>
+        <h4 class="mt-3">Interview Cancelled</h4>
+        <p id="cancellation-reason" class="text-muted"></p>
+        <a href="{{ url_for('interview.history') }}" class="btn btn-primary mt-2">Go to Interview History</a>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    const INTERVIEW_ID = {{ interview.id }};
+    const CSRF_TOKEN = "{{ csrf_token() }}";
+    const INTERVIEWER_NAME = {{ interviewer_name|tojson }};
+    const TARGET_TURNS = {{ session_state.target_turns }};
+    const COMPLETED_TURNS = {{ session_state.completed_turns }};
+    const IS_SESSION_COMPLETE = {{ session_state.is_complete|tojson }};
+    const SILENCE_AUTO_SUBMIT_MS = 4000;
+</script>
+<script src="{{ url_for('static', filename='js/interview.js') }}"></script>
+{% endblock %}

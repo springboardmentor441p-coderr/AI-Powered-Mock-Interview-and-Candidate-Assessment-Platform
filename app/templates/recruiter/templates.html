@@ -1,0 +1,60 @@
+{% extends "base.html" %}
+{% block title %}Interview Templates - {{ app_name }}{% endblock %}
+
+{% block content %}
+<h3 class="mb-4">Interview Templates</h3>
+
+<div class="row">
+    <div class="col-md-5">
+        <div class="card shadow">
+            <div class="card-header">Create Template</div>
+            <div class="card-body">
+                <form method="POST">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <div class="mb-3">
+                        <label class="form-label">Template Name</label>
+                        <input type="text" name="name" class="form-control" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Domain</label>
+                        <select name="domain" class="form-select">{% for d in domains %}<option>{{ d }}</option>{% endfor %}</select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Category</label>
+                        <select name="category" class="form-select">{% for c in categories %}<option>{{ c }}</option>{% endfor %}</select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Difficulty</label>
+                        <select name="difficulty" class="form-select">{% for d in difficulties %}<option>{{ d }}</option>{% endfor %}</select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Questions</label>
+                        <input type="number" name="question_count" class="form-control" value="5" min="3" max="10">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Description</label>
+                        <textarea name="description" class="form-control" rows="2"></textarea>
+                    </div>
+                    <button type="submit" class="btn btn-primary w-100">Save Template</button>
+                </form>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-7">
+        <div class="card shadow">
+            <div class="card-header">Saved Templates</div>
+            <div class="card-body">
+                {% for t in templates %}
+                <div class="border-bottom py-3">
+                    <h6>{{ t.name }}</h6>
+                    <p class="small text-muted mb-0">{{ t.domain }} | {{ t.category }} | {{ t.difficulty }} | {{ t.question_count }} questions</p>
+                    <p class="small">{{ t.description }}</p>
+                </div>
+                {% else %}
+                <p class="text-muted">No templates yet.</p>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

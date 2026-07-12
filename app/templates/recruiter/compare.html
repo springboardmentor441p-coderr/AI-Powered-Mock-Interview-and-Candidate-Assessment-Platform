@@ -1,0 +1,65 @@
+{% extends "base.html" %}
+{% block title %}Compare Candidates - {{ app_name }}{% endblock %}
+
+{% block content %}
+<h3 class="mb-4">Candidate Comparison</h3>
+
+<form method="POST" class="card shadow p-4 mb-4">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <label class="form-label">Select Candidates to Compare</label>
+    <div class="row">
+        {% for r in rankings %}
+        <div class="col-md-4 mb-2">
+            <div class="form-check">
+                <input class="form-check-input" type="checkbox" name="candidate_ids" value="{{ r.id }}" id="c{{ r.id }}">
+                <label class="form-check-label" for="c{{ r.id }}">{{ r.name }} ({{ r.average_score }})</label>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    <button type="submit" class="btn btn-primary mt-3">Compare</button>
+</form>
+
+{% if comparison %}
+<div class="card shadow">
+    <div class="card-body">
+        <canvas id="compareChart" height="100"></canvas>
+    </div>
+</div>
+<table class="table table-bordered mt-4">
+    <thead class="table-primary">
+        <tr><th>Name</th><th>Domain</th><th>Overall</th><th>Technical</th><th>Communication</th><th>Confidence</th></tr>
+    </thead>
+    <tbody>
+        {% for c in comparison %}
+        <tr>
+            <td>{{ c.name }}</td>
+            <td>{{ c.domain }}</td>
+            <td>{{ c.overall }}</td>
+            <td>{{ c.technical }}</td>
+            <td>{{ c.communication }}</td>
+            <td>{{ c.confidence }}</td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+{% endif %}
+{% endblock %}
+
+{% block extra_js %}
+{% if comparison %}
+<script>
+    new Chart(document.getElementById('compareChart'), {
+        type: 'bar',
+        data: {
+            labels: {{ comparison|map(attribute='name')|list|tojson }},
+            datasets: [
+                { label: 'Overall', data: {{ comparison|map(attribute='overall')|list|tojson }}, backgroundColor: '#1a237e' },
+                { label: 'Technical', data: {{ comparison|map(attribute='technical')|list|tojson }}, backgroundColor: '#3949ab' },
+                { label: 'Communication', data: {{ comparison|map(attribute='communication')|list|tojson }}, backgroundColor: '#5c6bc0' }
+            ]
+        }
+    });
+</script>
+{% endif %}
+{% endblock %}

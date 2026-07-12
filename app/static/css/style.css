@@ -1,0 +1,108 @@
+/* SmartHire AI - Main Stylesheet */
+
+:root {
+    --primary-color: #1a237e;
+    --primary-light: #3949ab;
+    --accent-color: #ff6f00;
+}
+
+body {
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    background-color: #f5f7fa;
+}
+
+main {
+    flex: 1;
+}
+
+.hero-section {
+    background: linear-gradient(135deg, var(--primary-color) 0%, var(--primary-light) 100%);
+    min-height: 60vh;
+    display: flex;
+    align-items: center;
+}
+
+.feature-card {
+    transition: transform 0.2s, box-shadow 0.2s;
+    border: none;
+}
+
+.feature-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.1) !important;
+}
+
+.step-circle {
+    width: 50px;
+    height: 50px;
+    border-radius: 50%;
+    background: var(--primary-color);
+    color: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: bold;
+    font-size: 1.2rem;
+    margin: 0 auto 15px;
+}
+
+.stat-card {
+    border: none;
+    border-left: 4px solid var(--primary-color);
+}
+
+.score-card {
+    border-top: 3px solid var(--primary-color);
+}
+
+.resume-text {
+    white-space: pre-wrap;
+    font-family: inherit;
+    font-size: 0.9rem;
+    background: transparent;
+    border: none;
+    margin: 0;
+}
+
+#webcam {
+    background: #000;
+    min-height: 240px;
+    object-fit: cover;
+}
+
+#timer {
+    font-family: monospace;
+    min-width: 70px;
+}
+
+.navbar-brand i {
+    margin-right: 5px;
+}
+
+.card {
+    border: none;
+}
+
+.table th {
+    font-weight: 600;
+}
+
+.progress {
+    height: 8px;
+}
+
+.recording-pulse {
+    animation: pulse-recording 1.2s infinite;
+}
+
+@keyframes pulse-recording {
+    0% { box-shadow: 0 0 0 0 rgba(220, 53, 69, 0.7); }
+    70% { box-shadow: 0 0 0 10px rgba(220, 53, 69, 0); }
+    100% { box-shadow: 0 0 0 0 rgba(220, 53, 69, 0); }
+}
+
+#recording-status {
+    min-height: 1.25rem;
+}

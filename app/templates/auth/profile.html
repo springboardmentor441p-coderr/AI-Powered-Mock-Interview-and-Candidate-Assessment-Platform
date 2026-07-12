@@ -1,0 +1,22 @@
+{% extends "base.html" %}
+{% block title %}Profile - {{ app_name }}{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-md-8 mx-auto">
+        <div class="card shadow">
+            <div class="card-body p-4">
+                <h3 class="mb-4">My Profile</h3>
+                <table class="table">
+                    <tr><th>Full Name</th><td>{{ user.full_name or 'N/A' }}</td></tr>
+                    <tr><th>Username</th><td>{{ user.username }}</td></tr>
+                    <tr><th>Email</th><td>{{ user.email }}</td></tr>
+                    <tr><th>Role</th><td><span class="badge bg-primary">{{ user.role.name|title }}</span></td></tr>
+                    <tr><th>Member Since</th><td>{{ user.created_at.strftime('%Y-%m-%d') }}</td></tr>
+                    <tr><th>Last Login</th><td>{{ user.last_login.strftime('%Y-%m-%d %H:%M') if user.last_login else 'N/A' }}</td></tr>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
