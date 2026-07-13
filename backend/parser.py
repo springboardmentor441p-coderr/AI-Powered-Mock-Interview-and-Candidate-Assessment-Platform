@@ -8,6 +8,7 @@ def extract_section(text, start_heading, end_headings):
     """
 
     text_lower = text.lower()
+
     start = text_lower.find(start_heading.lower())
 
     if start == -1:
@@ -23,23 +24,32 @@ def extract_section(text, start_heading, end_headings):
         if pos != -1 and pos < end:
             end = pos
 
-    return text[start:end].strip()
+    section = text[start:end].strip()
+
+    return section if section else "Not Found"
+
 
 
 def extract_resume_details(pdf_path):
 
-    # Open PDF
+    # ---------------------------
+    # Open PDF and extract text
+    # ---------------------------
+
     doc = fitz.open(pdf_path)
 
-    # Extract text
     text = ""
 
     for page in doc:
         text += page.get_text()
 
+    doc.close()
+
+
     # ---------------------------
     # Name
     # ---------------------------
+
     name = "Not Found"
 
     for line in text.split("\n"):
@@ -50,37 +60,71 @@ def extract_resume_details(pdf_path):
             line
             and "@" not in line
             and "phone" not in line.lower()
+            and "resume" not in line.lower()
             and len(line.split()) >= 2
             and len(line) < 40
         ):
             name = line
             break
 
+
+
     # ---------------------------
     # Email
     # ---------------------------
-    email = re.findall(r'[\w\.-]+@[\w\.-]+\.\w+', text)
+
+    email = re.findall(
+        r'[\w\.-]+@[\w\.-]+\.\w+',
+        text
+    )
+
+
 
     # ---------------------------
     # Phone
     # ---------------------------
-    phone = re.findall(r'(\+?\d[\d\s\-]{8,15})', text)
+
+    phone = re.findall(
+        r'(\+?\d[\d\s\-]{8,15})',
+        text
+    )
+
+
 
     # ---------------------------
     # Skills
     # ---------------------------
-    with open("skills.txt", "r") as f:
-        skills = [skill.strip() for skill in f.readlines()]
 
     extracted_skills = []
 
-    for skill in skills:
-        if skill.lower() in text.lower():
-            extracted_skills.append(skill)
+    try:
+
+        with open("skills.txt", "r") as f:
+
+            skills = [
+                skill.strip()
+                for skill in f.readlines()
+                if skill.strip()
+            ]
+
+
+        for skill in skills:
+
+            if skill.lower() in text.lower():
+
+                extracted_skills.append(skill)
+
+
+    except FileNotFoundError:
+
+        extracted_skills = []
+
+
 
     # ---------------------------
     # Education
     # ---------------------------
+
     education = extract_section(
         text,
         "Education",
@@ -96,9 +140,12 @@ def extract_resume_details(pdf_path):
         ]
     )
 
+
+
     # ---------------------------
     # Projects
     # ---------------------------
+
     projects = extract_section(
         text,
         "Projects",
@@ -111,9 +158,12 @@ def extract_resume_details(pdf_path):
         ]
     )
 
+
+
     # ---------------------------
     # Experience / Internship
     # ---------------------------
+
     experience = extract_section(
         text,
         "Internship",
@@ -123,6 +173,7 @@ def extract_resume_details(pdf_path):
             "Languages"
         ]
     )
+
 
     if experience == "Not Found":
 
@@ -137,39 +188,84 @@ def extract_resume_details(pdf_path):
             ]
         )
 
+
+
     # ---------------------------
     # Certifications
     # ---------------------------
+
     certifications = extract_section(
         text,
         "Certifications",
         [
             "Achievements",
-            "Languages"
+            "Languages",
+            "Projects",
+            "Experience"
         ]
     )
+
+
+    if certifications == "Not Found":
+
+        certifications = extract_section(
+            text,
+            "Certificates",
+            [
+                "Achievements",
+                "Languages",
+                "Projects",
+                "Experience"
+            ]
+        )
+
+
 
     # ---------------------------
     # Languages
     # ---------------------------
+
     languages = extract_section(
         text,
         "Languages",
-        []
+        [
+            "Skills",
+            "Projects",
+            "Experience",
+            "Certifications"
+        ]
     )
+
+
 
     # ---------------------------
     # Return JSON
     # ---------------------------
+
     return {
-    "name": name,
-    "email": email[0] if email else "Not Found",
-    "phone": phone[0].strip() if phone else "Not Found",
-    "education": education,
-    "experience": experience if experience != "Not Found" else "Fresher",
-    "projects": projects,
-    "certifications": certifications,
-    "languages": languages,
-    "skills": extracted_skills,
-    "resume_text": text
-   }
+
+        "name": name,
+
+        "email": email[0] if email else "Not Found",
+
+        "phone": phone[0].strip() if phone else "Not Found",
+
+        "education": education,
+
+        "experience": (
+            experience
+            if experience != "Not Found"
+            else "Fresher"
+        ),
+
+        "projects": projects,
+
+        "certifications": certifications,
+
+        "languages": languages,
+
+        "skills": extracted_skills,
+
+        "resume_text": text
+
+    }
