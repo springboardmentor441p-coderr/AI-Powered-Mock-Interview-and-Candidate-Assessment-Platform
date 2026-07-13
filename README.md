@@ -1,166 +1,232 @@
-# AI-Powered-Mock-Interview-and-Candidate-Assessment-Platform
-# SmartHire AI
+# SmartHire AI – AI-Powered Mock Interview & Candidate Assessment Platform
 
+SmartHire AI is a full-stack recruitment platform that streamlines the hiring process by combining resume parsing, candidate management, and AI-powered mock interviews. It enables candidates to upload resumes, practice interviews, and receive automated evaluations, while providing recruiters with a centralized dashboard to review applicants.
 
+---
 
-SmartHire AI is an AI-based recruitment platform designed to help candidates practice interviews and receive automated assessment feedback. The platform allows candidates to upload their resumes, extracts resume information, and provides an intelligent mock interview experience.
+## Features
 
-## Project Overview
+### Candidate Features
+- Upload resume (PDF)
+- Automatic resume parsing
+- Candidate dashboard with extracted profile details
+- AI-powered mock interview
+- Voice-to-text answer recording
+- Interview timer and progress tracking
+- Interview evaluation and feedback
+- Interview results dashboard
 
-The goal of SmartHire AI is to simulate a real interview environment using Artificial Intelligence.
+### Recruiter Features
+- Recruiter dashboard
+- View all candidates
+- Resume insights
+- Candidate profile details
+- Interview results overview
 
-The platform will:
+### Backend Features
+- RESTful APIs using Flask
+- Resume parsing
+- Duplicate resume detection
+- SQLite database integration
+- Interview answer storage
+- Candidate management APIs
 
-* Accept candidate resumes in PDF format
-* Extract resume content
-* Conduct AI-powered mock interviews
-* Evaluate candidate responses
-* Generate interview performance feedback
+---
 
-## Current Implementation
-
-### Resume Management Module
-
-Implemented features:
-
-* Resume PDF upload
-* Resume text extraction using PyMuPDF
-* Resume storage using SQLite database
-* Resume details display in the web interface
-* Upload and interview workflow
-
-## Upcoming Features
-
-### AI Voice Interview Agent
-
-Planned features:
-
-* AI interviewer that communicates through voice
-* Speech-to-Text for candidate responses
-* Text-to-Speech for AI-generated questions
-* Dynamic interview questions using LLMs
-* Candidate answer evaluation
-* Final interview performance report
-
-## Technology Stack
-
-### Backend
-
-* Python
-* Flask
-* SQLite
-* PyMuPDF
+## Tech Stack
 
 ### Frontend
+- React
+- React Router
+- Tailwind CSS
+- Vite
 
-* HTML
-* CSS
-* JavaScript
+### Backend
+- Flask
+- Flask-CORS
+- SQLite3
+- Python
 
-### AI Components (Planned)
+### AI & NLP
+- Resume Parsing
+- Speech Recognition (Web Speech API)
+- Rule-based Interview Evaluation
 
-* Large Language Model (LLM)
-* Speech-to-Text
-* Text-to-Speech
+---
 
 ## Project Structure
 
 ```
-SmartHire-AI/
+AI-Powered-Mock-Interview-and-Candidate-Assessment-Platform/
+
 │
-├── app.py                  # Flask application
-├── database.py             # SQLite database connection
-├── parser.py               # Resume text extraction
-├── smarthire.db            # SQLite database
+├── backend/
+│   ├── app.py
+│   ├── database.py
+│   ├── parser.py
+│   ├── evaluator.py
+│   ├── requirements.txt
+│   ├── uploads/
+│   └── static/
 │
-├── templates/
-│   ├── index.html          # Resume upload page
-│   └── interview.html      # Interview interface
-│
-├── static/
-│   ├── css/
-│   │   └── style.css
+├── frontend/
+│   ├── src/
+│   │   ├── components/
+│   │   ├── pages/
+│   │   ├── assets/
+│   │   ├── App.jsx
+│   │   └── main.jsx
 │   │
-│   └── js/
-│       ├── script.js       # Resume upload logic
-│       └── interview.js    # Interview workflow
+│   ├── package.json
+│   └── vite.config.js
 │
-├── uploads/                # Uploaded resumes
-│
-└── requirements.txt
+└── README.md
 ```
 
-## How to Run Locally
+---
 
-### 1. Clone the repository
+## Current Workflow
+
+1. Candidate uploads a resume.
+2. Flask backend parses the resume.
+3. Resume information is stored in SQLite.
+4. Candidate dashboard displays extracted details.
+5. Candidate starts an AI mock interview.
+6. Voice answers are converted into text.
+7. Interview responses are saved.
+8. Interview evaluation generates scores and feedback.
+9. Recruiters can view candidate information through the recruiter dashboard.
+
+---
+
+## API Endpoints
+
+| Method | Endpoint | Description |
+|---------|----------|-------------|
+| POST | `/upload` | Upload and parse resume |
+| GET | `/candidate` | Get latest candidate |
+| GET | `/candidates` | Get all candidates |
+| POST | `/save-interview` | Save interview responses |
+| GET | `/interview-results` | Get latest interview result |
+
+---
+
+## Installation
+
+### Clone Repository
 
 ```bash
 git clone <repository-url>
+cd AI-Powered-Mock-Interview-and-Candidate-Assessment-Platform
 ```
 
-### 2. Create virtual environment
+---
+
+### Backend Setup
 
 ```bash
+cd backend
+
 python -m venv venv
-```
 
-Activate:
-
-Windows:
-
-```bash
+# Windows
 venv\Scripts\activate
-```
 
-### 3. Install dependencies
-
-```bash
 pip install -r requirements.txt
-```
 
-### 4. Run the application
-
-```bash
 python app.py
 ```
 
-Open in browser:
+Backend runs on:
 
 ```
 http://127.0.0.1:5000
 ```
 
-## Current Workflow
+---
+
+### Frontend Setup
+
+```bash
+cd frontend
+
+npm install
+
+npm run dev
+```
+
+Frontend runs on:
 
 ```
-Resume Upload
-      ↓
-PDF Text Extraction
-      ↓
-Store Resume Data
-      ↓
-Start Mock Interview
+http://localhost:5173
 ```
 
-## Future Workflow
+---
 
-```
-Resume Upload
-      ↓
-AI Voice Interview Agent
-      ↓
-LLM-Based Question Generation
-      ↓
-Candidate Voice Responses
-      ↓
-Answer Evaluation
-      ↓
-Interview Report
-```
+## Database
+
+SQLite database includes:
+
+### resumes
+- Name
+- Email
+- Phone
+- Skills
+- Education
+- Experience
+- Projects
+- Certifications
+- Languages
+- Resume Path
+
+### interview_results
+- Candidate Email
+- Interview Answers
+- Overall Score
+- Technical Score
+- Communication Score
+- Feedback
+- Timestamp
+
+---
+
+## Screens
+
+- Home Page
+- Resume Upload
+- Candidate Dashboard
+- Recruiter Dashboard
+- AI Mock Interview
+- Interview Results
+
+---
+
+## Future Enhancements
+
+- LLM-powered interview question generation
+- Resume-based dynamic interview questions
+- Deepgram speech-to-text integration
+- Text-to-speech AI interviewer
+- AI-powered answer evaluation using LLMs
+- JWT Authentication
+- Recruiter login and candidate authentication
+- Resume ranking and ATS scoring
+- Interview analytics dashboard
+- Email notifications
+- Cloud database deployment
+
+---
 
 ## Author
 
-Deepthi Priya
+**Kavali Deepthi Priya**
 
-```
-```
+B.Tech Computer Science Engineering (2025)
+
+GitHub: https://github.com/Deepthi0511
+
+---
+
+## License
+
+This project is developed for educational and portfolio purposes.
