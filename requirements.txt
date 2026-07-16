@@ -1,0 +1,31 @@
+# Web Framework
+fastapi==0.111.0
+uvicorn==0.29.0
+python-multipart==0.0.9
+
+# Database
+sqlalchemy==2.0.30
+
+# Authentication
+python-jose[cryptography]==3.3.0
+passlib[bcrypt]==1.7.4
+
+# PDF Parsing
+docling
+
+# JD Matching
+sentence-transformers==3.0.1
+
+# Environment Variables
+python-dotenv==1.0.1
+
+# Speech 
+# deepgram-sdk==3.2.7
+
+# Vision/Emotion 
+# opencv-python==4.9.0.80
+# mediapipe==0.10.14
+# deepface==0.0.93
+
+# Feedback 
+# ollama==0.2.1
