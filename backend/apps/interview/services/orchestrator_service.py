@@ -29,41 +29,16 @@ from core.exceptions import BusinessRuleViolation, NotFoundError
 from core.services import BaseService
 
 from apps.ai.providers.realtime_voice.interfaces import IRealtimeVoiceProvider
-from apps.interview.models import ConversationTurn, InterviewSession, Question, RealtimeEventLog
+from apps.interview.models import ConversationTurn, InterviewSession, Question, RealtimeEventLog, ThreadEvaluation
 
-# Built-in Ultravox tool - lets the model end the call itself once the
-# interview is naturally wrapping up, instead of us guessing when to hang up.
 _HANG_UP_TOOL = {"toolName": "hangUp"}
 
-# Time-budget thresholds for handle_ask_next_question's pacing decisions.
-# Deliberately read from the provider-agnostic INTERVIEW_* settings, not
-# from ULTRAVOX_MAX_CALL_SECONDS - pacing is a domain concern (how long
-# *this interview* should run), not a detail of which realtime voice
-# vendor is plugged in. The vendor's own hard cap (e.g. Ultravox's
-# `maxDuration`) is configured off the same INTERVIEW_MAX_DURATION_SECONDS
-# value, so both stay in sync without the orchestrator knowing which
-# vendor is active.
 _MAX_DURATION_SECONDS = getattr(settings, "INTERVIEW_MAX_DURATION_SECONDS", 2700)
 _SOFT_WRAPUP_RATIO = getattr(settings, "INTERVIEW_SOFT_WRAPUP_PERCENT", 80) / 100
 _HARD_WRAPUP_BUFFER_SECONDS = getattr(settings, "INTERVIEW_HARD_WRAPUP_BUFFER_SECONDS", 90)
 
 
 def _ask_next_question_tool(webhook_url: str, tool_secret: str) -> dict:
-    """
-    Custom HTTP tool: the model calls this whenever it wants to move to
-    a new topic. Our handler picks the next unused seed topic (if any)
-    and returns instructions the model should say next, which keeps
-    the conversation grounded in the candidate's actual resume/domain
-    instead of drifting.
-
-    `tool_secret` is sent as a *static* parameter bound to the
-    `X-Tool-Secret` header (see
-    https://docs.ultravox.ai/tools/custom/parameters) - static params
-    are set once here and are never exposed to or settable by the
-    model, unlike `dynamicParameters`. This is what
-    `SessionRealtimeToolAskNextQuestionView` checks; without it every
-    real call from Ultravox would be rejected with 401.
-    """
     return {
         "temporaryTool": {
             "modelToolName": "ask_next_question",
@@ -115,14 +90,14 @@ class InterviewOrchestrator(BaseService):
             )
 
         base_url = settings.BACKEND_PUBLIC_URL.rstrip("/")
-        tool_webhook_url = f"{base_url}/api/interview/realtime/sessions/{session.id}/tools/ask-next-question/"
+        tool_webhook_url = f"{base_url}/api/v1/interviews/realtime/sessions/{session.id}/tools/ask-next-question/"
         tool_secret = settings.ULTRAVOX_TOOL_SHARED_SECRET
 
         handle = self._provider.create_call(
             system_prompt=self._build_system_prompt(session),
             first_message=self._opening_line(session),
             tools=[_ask_next_question_tool(tool_webhook_url, tool_secret), _HANG_UP_TOOL],
-            webhook_url=f"{base_url}/api/interview/realtime/webhooks/ultravox/",
+            webhook_url=f"{base_url}/api/v1/interviews/realtime/webhooks/ultravox/",
             metadata={"session_id": str(session.id)},
         )
 
@@ -143,20 +118,9 @@ class InterviewOrchestrator(BaseService):
 
     @transaction.atomic
     def handle_ask_next_question(self, *, session: InterviewSession, arguments: dict) -> str:
-        """
-        Returns the instruction text Ultravox should speak/act on next.
-        Marks the previously-asked seed topic covered and hands back
-        the next one, if any are left; otherwise tells the model to
-        wrap up naturally.
+        # Import at method top so Pylance can resolve the Celery task types.
+        from apps.interview.tasks.evaluation_tasks import evaluate_topic_thread  # noqa: PLC0415
 
-        Time-aware: seed topics are a *plan*, not a contract - if the
-        call is close to its hard time limit, we override the plan and
-        tell the model to wrap up even if PENDING topics remain, so the
-        candidate gets a natural close instead of being cut off
-        mid-sentence when the vendor forcibly ends the call. See the
-        module-level `_MAX_DURATION_SECONDS` / `_SOFT_WRAPUP_RATIO` /
-        `_HARD_WRAPUP_BUFFER_SECONDS` constants.
-        """
         if arguments.get("previous_topic_covered"):
             asked = session.seed_topics.filter(status=Question.Status.ASKED).order_by("-order").first()  # type: ignore[attr-defined]
             if asked:
@@ -167,9 +131,6 @@ class InterviewOrchestrator(BaseService):
 
         remaining_seconds = self._time_remaining_seconds(session)
 
-        # Hard cutoff: even if topics remain, there isn't enough runway
-        # left for a full question-and-answer exchange - force a close
-        # instead of risking the call being cut mid-question.
         if remaining_seconds is not None and remaining_seconds <= _HARD_WRAPUP_BUFFER_SECONDS:
             return (
                 "You're almost out of time for this interview. Skip any remaining planned topics: "
@@ -187,14 +148,34 @@ class InterviewOrchestrator(BaseService):
         next_topic.status = Question.Status.ASKED
         next_topic.save(update_fields=["status"])
 
+        # The previous topic is now done — evaluate its full thread.
+        # Full thread is only available once AI moves to the next topic.
+        asked_topic = (
+            session.seed_topics  # type: ignore[attr-defined]
+            .filter(status=Question.Status.ASKED)
+            .exclude(pk=next_topic.pk)
+            .order_by("-order")
+            .first()
+        )
+        if asked_topic is not None:
+            self.logger.info(
+                "handle_ask_next_question: queuing evaluate_topic_thread for topic %s (session %s)",
+                asked_topic.id, session.id,
+            )
+            transaction.on_commit(
+                lambda topic_id=str(asked_topic.id): evaluate_topic_thread.delay(str(session.id), topic_id)  # pyright: ignore[reportCallIssue]
+            )
+        else:
+            self.logger.info(
+                "handle_ask_next_question: no prior ASKED topic yet — nothing to evaluate (session %s)",
+                session.id,
+            )
+
         ConversationTurn.objects.create(
             session=session, speaker=ConversationTurn.Speaker.AI, turn_type=ConversationTurn.TurnType.QUESTION,
             text=next_topic.text, seed_topic=next_topic, order=session.turns.count(),  # type: ignore[attr-defined]
         )
 
-        # Build the instruction Ultravox will act on. Include what concepts
-        # a good answer should cover so the AI knows when to probe deeper
-        # vs when to accept the answer and move on.
         instruction = f"Ask the candidate, in your own natural words: {next_topic.text}"
         if next_topic.expected_topics:
             concepts = ", ".join(next_topic.expected_topics)
@@ -204,9 +185,6 @@ class InterviewOrchestrator(BaseService):
                 "ask a targeted follow-up before calling ask_next_question again."
             )
 
-        # Soft warning zone: still ask the topic, but nudge the model to
-        # keep things moving and start converging on a close, rather than
-        # opening up a long new tangent this late in the call.
         if remaining_seconds is not None and remaining_seconds <= _MAX_DURATION_SECONDS * (1 - _SOFT_WRAPUP_RATIO):
             instruction += (
                 "\n\nNote: time is running short for this interview. Keep this topic and any "
@@ -216,12 +194,6 @@ class InterviewOrchestrator(BaseService):
         return instruction
 
     def _time_remaining_seconds(self, session: InterviewSession) -> float | None:
-        """
-        Seconds left before the interview's time budget runs out, or
-        None if we have no basis to estimate it (session hasn't
-        actually started yet). Budgeted against `started_at`, the same
-        anchor `_complete_session` uses for `duration_seconds`.
-        """
         if not session.started_at:
             return None
         elapsed = (timezone.now() - session.started_at).total_seconds()
@@ -241,6 +213,10 @@ class InterviewOrchestrator(BaseService):
             self._complete_session(session)
 
     def _complete_session(self, session: InterviewSession) -> None:
+        # Import at method top so Pylance can resolve the Celery task types.
+        from apps.assessment.tasks.scoring_tasks import run_assessment_pipeline  # noqa: PLC0415
+        from apps.interview.tasks.evaluation_tasks import evaluate_topic_thread, generate_interview_brief  # noqa: PLC0415
+
         if session.status != InterviewSession.Status.IN_PROGRESS:
             return
         session.status = InterviewSession.Status.COMPLETED
@@ -251,10 +227,31 @@ class InterviewOrchestrator(BaseService):
             session.duration_seconds = int((completed_at - started_at).total_seconds())
         session.save(update_fields=["status", "completed_at", "duration_seconds"])
 
-        from apps.assessment.tasks.scoring_tasks import run_assessment_pipeline
+        # Evaluate the last topic thread — ask_next_question never fires for
+        # the final topic (the model calls hangUp instead), so we trigger it
+        # here at session close.
+        last_asked = (
+            session.seed_topics  # type: ignore[attr-defined]
+            .filter(status=Question.Status.ASKED)
+            .order_by("-order")
+            .first()
+        )
+        if last_asked is not None and not ThreadEvaluation.objects.filter(seed_topic=last_asked).exists():
+            transaction.on_commit(
+                lambda topic_id=str(last_asked.id): evaluate_topic_thread.delay(str(session.id), topic_id)  # pyright: ignore[reportCallIssue]
+            )
 
-        run_assessment_pipeline.delay(str(session.id))  # type: ignore[union-attr]
-        self.logger.info("Realtime session %s completed; assessment pipeline queued.", session.id)
+        # 60s countdown gives evaluate_topic_thread time to finish before
+        # the brief tries to read all ThreadEvaluation rows.
+        transaction.on_commit(
+            lambda: generate_interview_brief.apply_async(  # pyright: ignore[reportCallIssue]
+                args=[str(session.id)],
+                countdown=60,
+            )
+        )
+
+        transaction.on_commit(lambda: run_assessment_pipeline.delay(str(session.id)))  # type: ignore[union-attr]
+        self.logger.info("Realtime session %s completed; evaluation and assessment pipelines queued.", session.id)
 
     # ------------------------------------------------------------------
     # Frontend-reported transcript turns (captured via the Ultravox client SDK)
@@ -294,7 +291,6 @@ class InterviewOrchestrator(BaseService):
         resume = session.resume
         skills = ", ".join(resume.skills) if resume and resume.skills else "not specified"
 
-        # Experience block
         experience_lines = []
         if resume and resume.experience:
             for exp in resume.experience:
@@ -302,7 +298,6 @@ class InterviewOrchestrator(BaseService):
                 experience_lines.append(line)
         experience_block = "\n".join(experience_lines) if experience_lines else "  - not specified"
 
-        # Projects block
         project_lines = []
         if resume and resume.projects:
             for proj in resume.projects:
@@ -336,8 +331,15 @@ class InterviewOrchestrator(BaseService):
             finish your sentence. Respond to what they actually said.
             - Ask natural, specific follow-up questions based on their answers before moving on - don't just \
             march down a checklist.
-            - When you're out of natural follow-ups on the current topic, call the ask_next_question tool to \
-            get the next topic; don't invent a topic switch yourself.
+            - The ask_next_question tool is the ONLY way to move to a new topic. This applies even when \
+            the candidate is the one who asks to move on - e.g. "can we skip this", "next question please", \
+            "can you ask something else". In every one of these cases, call ask_next_question and use the \
+            topic it gives you. NEVER invent, pick, or improvise the next topic yourself, and never respond \
+            to a skip request by jumping straight into a topic you already have in mind - always go through \
+            the tool first, then ask about whatever it returns.
+            - The only two ways this interview ever moves off the current topic are: (1) you call \
+            ask_next_question and ask about the topic it returns, or (2) the candidate asks to end the call \
+            entirely, in which case you call hangUp instead.
             - Keep a warm, encouraging, professional tone throughout.
             - When ask_next_question tells you all topics are covered, thank the candidate, ask if they have \
             any questions for you, and then call the hangUp tool to end the interview."""

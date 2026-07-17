@@ -147,8 +147,16 @@ SPECTACULAR_SETTINGS = {
     "SERVE_INCLUDE_SCHEMA": False,
 }
 
-CORS_ALLOWED_ORIGINS = env_list(env, "CORS_ALLOWED_ORIGINS", default=["http://localhost:3000"])
+CORS_ALLOWED_ORIGINS = env_list(env, "CORS_ALLOWED_ORIGINS", default=["http://localhost:3000", "http://localhost:5173","https://disperser-earflap-arena.ngrok-free.dev",])
 CORS_ALLOW_CREDENTIALS = True
+CORS_ALLOW_HEADERS = [
+    "accept",
+    "authorization",
+    "content-type",
+    "origin",
+    "x-requested-with",
+    "x-tool-secret",   # required for transcript webhook relay from frontend
+]
 
 CELERY_BROKER_URL = env_str(env, "CELERY_BROKER_URL", default="redis://localhost:6379/0")
 CELERY_RESULT_BACKEND = env_str(env, "CELERY_RESULT_BACKEND", default="redis://localhost:6379/1")

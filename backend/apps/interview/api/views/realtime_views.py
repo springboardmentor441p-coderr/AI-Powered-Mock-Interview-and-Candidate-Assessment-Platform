@@ -21,7 +21,7 @@ from apps.interview.selectors.session_selector import get_owned_session_or_404
 
 class SessionRealtimeCreateView(APIView):
     """
-    POST /api/interview/realtime/sessions/create/
+    POST /api/v1/interviews/realtime/sessions/create/
 
     Creates a realtime interview session and immediately queues a Celery
     task (generate_seed_topics_task) to generate resume-aware seed topics
@@ -76,7 +76,7 @@ class SessionRealtimeCreateView(APIView):
 
 class SessionRealtimeStartView(APIView):
     """
-    POST /api/interview/realtime/sessions/<session_id>/start/
+    POST /api/v1/interviews/realtime/sessions/<session_id>/start/
 
     Creates the Ultravox call and hands back `call_join_url` for the
     frontend to join directly with the Ultravox client SDK - no audio
@@ -95,7 +95,7 @@ class SessionRealtimeStartView(APIView):
 
 class SessionRealtimeToolAskNextQuestionView(APIView):
     """
-    POST /api/interview/realtime/sessions/<session_id>/tools/ask-next-question/
+    POST /api/v1/interviews/realtime/sessions/<session_id>/tools/ask-next-question/
 
     Called *by Ultravox*, mid-call, whenever the model invokes the
     `ask_next_question` custom tool - not by the frontend or the
@@ -121,7 +121,7 @@ class SessionRealtimeToolAskNextQuestionView(APIView):
 
 class SessionRealtimeAccountWebhookView(APIView):
     """
-    POST /api/interview/realtime/webhooks/ultravox/
+    POST /api/v1/interviews/realtime/webhooks/ultravox/
 
     Single shared endpoint for Ultravox's account-level lifecycle
     webhooks (call.started / call.joined / call.ended). Routes to a
@@ -160,8 +160,8 @@ class SessionRealtimeAccountWebhookView(APIView):
 
 class SessionRealtimeTranscriptView(APIView):
     """
-    GET  /api/interview/realtime/sessions/<session_id>/transcript/  - poll turns so far
-    POST /api/interview/realtime/sessions/<session_id>/transcript/  - append a turn observed
+    GET  /api/v1/interviews/realtime/sessions/<session_id>/transcript/  - poll turns so far
+    POST /api/v1/interviews/realtime/sessions/<session_id>/transcript/  - append a turn observed
          client-side via the Ultravox SDK (including barge-in detection)
     """
 

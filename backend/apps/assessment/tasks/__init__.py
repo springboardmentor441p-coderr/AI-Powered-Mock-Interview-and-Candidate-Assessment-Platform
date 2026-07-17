@@ -1,0 +1,1 @@
+from apps.assessment.tasks.scoring_tasks import run_assessment_pipeline  # noqa: F401

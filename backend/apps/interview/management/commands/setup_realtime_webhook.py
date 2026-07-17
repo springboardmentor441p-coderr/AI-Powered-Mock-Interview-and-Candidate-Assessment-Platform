@@ -28,7 +28,7 @@ class Command(BaseCommand):
 
     def handle(self, *args, **options):
         base_url = settings.BACKEND_PUBLIC_URL.rstrip("/")
-        webhook_url = f"{base_url}/api/interview/realtime/webhooks/ultravox/"
+        webhook_url = f"{base_url}/api/v1/interviews/realtime/webhooks/ultravox/"
 
         provider = container.ai_factory().realtime_voice()
         self.stdout.write(f"Registering account webhook for {type(provider).__name__} -> {webhook_url}")

@@ -2,6 +2,11 @@ import logging
 
 from celery import shared_task
 
+from apps.interview.tasks.evaluation_tasks import (  # noqa: F401
+    evaluate_topic_thread,
+    generate_interview_brief,
+)
+
 logger = logging.getLogger("smarthire")
 
 
