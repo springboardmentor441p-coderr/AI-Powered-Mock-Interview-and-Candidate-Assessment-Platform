@@ -35,6 +35,19 @@ class Settings:
     OLLAMA_TIMEOUT_SECONDS: int = int(os.getenv("OLLAMA_TIMEOUT_SECONDS", "120"))
 
     # ==========================================================
+    # Deepgram Voice AI Configuration
+    # ==========================================================
+
+    DEEPGRAM_API_KEY: str | None = os.getenv("DEEPGRAM_API_KEY")
+    DEEPGRAM_STT_MODEL: str = os.getenv("DEEPGRAM_STT_MODEL", "nova-3")
+    DEEPGRAM_LIVE_MODEL: str = os.getenv("DEEPGRAM_LIVE_MODEL", "nova-3")
+    DEEPGRAM_TTS_MODEL: str = os.getenv("DEEPGRAM_TTS_MODEL", "aura-2-thalia-en")
+    DEEPGRAM_LANGUAGE: str = os.getenv("DEEPGRAM_LANGUAGE", "en")
+    DEEPGRAM_MAX_AUDIO_BYTES: int = (
+        int(os.getenv("DEEPGRAM_MAX_AUDIO_MB", "25")) * 1024 * 1024
+    )
+
+    # ==========================================================
     # Interview Engine Configuration
     # ==========================================================
 

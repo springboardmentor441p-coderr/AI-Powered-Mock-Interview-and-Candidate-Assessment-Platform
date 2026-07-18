@@ -10,6 +10,7 @@ import logging
 from fastapi import FastAPI
 from app.routers import interview
 from app.routers import resume
+from app.routers import voice
 
 logging.basicConfig(
     level=logging.INFO,
@@ -24,6 +25,7 @@ app = FastAPI(
 
 app.include_router(resume.router)
 app.include_router(interview.router)
+app.include_router(voice.router)
 
 @app.get("/health", tags=["Health"])
 async def health_check() -> dict:
