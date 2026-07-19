@@ -1,7 +1,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from backend.database import engine, Base
-from backend.routers import auth, resume, matching
+from backend.routers import auth, resume, questions, interview
 
 # Create all tables in SQLite on startup
 Base.metadata.create_all(bind=engine)
@@ -23,7 +23,8 @@ app.add_middleware(
 # Register routers
 app.include_router(auth.router)
 app.include_router(resume.router)
-app.include_router(matching.router)
+app.include_router(questions.router)
+app.include_router(interview.router)
 
 
 @app.get("/")

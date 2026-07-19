@@ -9,9 +9,11 @@ sqlalchemy==2.0.30
 # Authentication
 python-jose[cryptography]==3.3.0
 passlib[bcrypt]==1.7.4
+bcrypt==4.0.1
 
 # PDF Parsing
-docling
+# docling==1.16.0  # temporarily disabled due to Application Control Policy issue
+pymupdf==1.28.0
 
 # JD Matching
 sentence-transformers==3.0.1
@@ -20,7 +22,7 @@ sentence-transformers==3.0.1
 python-dotenv==1.0.1
 
 # Speech 
-# deepgram-sdk==3.2.7
+deepgram-sdk==3.2.7
 
 # Vision/Emotion 
 # opencv-python==4.9.0.80
