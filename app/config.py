@@ -46,6 +46,19 @@ class Settings:
     DEEPGRAM_MAX_AUDIO_BYTES: int = (
         int(os.getenv("DEEPGRAM_MAX_AUDIO_MB", "25")) * 1024 * 1024
     )
+    DEEPGRAM_ALLOWED_AUDIO_EXTENSIONS = {
+        ".aac",
+        ".flac",
+        ".m4a",
+        ".mp3",
+        ".mp4",
+        ".mpeg",
+        ".ogg",
+        ".opus",
+        ".wav",
+        ".webm",
+    }
+    GENERATED_AUDIO_DIR: str = os.getenv("GENERATED_AUDIO_DIR", "generated_audio")
 
     # ==========================================================
     # Interview Engine Configuration
