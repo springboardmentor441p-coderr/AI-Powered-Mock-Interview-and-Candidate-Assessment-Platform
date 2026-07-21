@@ -70,6 +70,8 @@ class InterviewSession(Base):
     professionalism_score = Column(Float, nullable=True)
     
     feedback = Column(JSON, nullable=True)  # {strengths: [...], weaknesses: [...], recommendations: [...], resources: [...]}
+    resume_text = Column(Text, nullable=True)
+    job_description = Column(Text, nullable=True)
     created_at = Column(DateTime, default=datetime.datetime.utcnow)
 
     # Relationships

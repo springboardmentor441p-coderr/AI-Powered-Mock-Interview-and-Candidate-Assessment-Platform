@@ -9,6 +9,31 @@ from .config import settings
 # Initialize database schemas
 Base.metadata.create_all(bind=engine)
 
+# Run SQLite migrations for missing columns in interview_sessions table
+from sqlalchemy import text
+with engine.connect() as conn:
+    # Migrate resume_text column
+    try:
+        conn.execute(text("SELECT resume_text FROM interview_sessions LIMIT 1"))
+    except Exception:
+        try:
+            conn.execute(text("ALTER TABLE interview_sessions ADD COLUMN resume_text TEXT"))
+            conn.commit()
+            print("Successfully migrated: Added resume_text column to interview_sessions table.")
+        except Exception as e:
+            print(f"Migration error for resume_text: {e}")
+            
+    # Migrate job_description column
+    try:
+        conn.execute(text("SELECT job_description FROM interview_sessions LIMIT 1"))
+    except Exception:
+        try:
+            conn.execute(text("ALTER TABLE interview_sessions ADD COLUMN job_description TEXT"))
+            conn.commit()
+            print("Successfully migrated: Added job_description column to interview_sessions table.")
+        except Exception as e:
+            print(f"Migration error for job_description: {e}")
+
 app = FastAPI(
     title=settings.PROJECT_NAME,
     description="Backend API services for SmartHire AI Candidate Mock Assessment",

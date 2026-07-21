@@ -1,0 +1,97 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --font-sans: 'Outfit', 'Inter', system-ui, -apple-system, sans-serif;
+  }
+  
+  body {
+    @apply bg-[#0b0c10] text-gray-100 min-h-screen overflow-x-hidden antialiased;
+    font-family: var(--font-sans);
+  }
+}
+
+/* Premium Dark Glassmorphic Theme Layout */
+.glass-card {
+  @apply bg-white/5 border border-white/10 backdrop-blur-md rounded-2xl shadow-xl transition-all duration-300;
+}
+
+.glass-card-hover {
+  @apply hover:bg-white/10 hover:border-white/20 hover:shadow-cyan-500/10 hover:shadow-lg hover:-translate-y-0.5;
+}
+
+.glass-panel {
+  @apply bg-black/40 border-r border-white/5 backdrop-blur-lg;
+}
+
+.glass-input {
+  @apply bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-cyan-500/50 focus:border-cyan-500 transition-all duration-200;
+}
+
+.btn-primary {
+  @apply bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-white font-medium px-5 py-3 rounded-xl shadow-lg hover:shadow-cyan-500/20 transition-all duration-200 hover:-translate-y-0.5 active:translate-y-0;
+}
+
+.btn-secondary {
+  @apply bg-white/10 hover:bg-white/15 border border-white/10 text-white font-medium px-5 py-3 rounded-xl transition-all duration-200 hover:-translate-y-0.5 active:translate-y-0;
+}
+
+.btn-danger {
+  @apply bg-gradient-to-r from-rose-500 to-red-600 hover:from-rose-400 hover:to-red-500 text-white font-medium px-5 py-3 rounded-xl shadow-lg transition-all duration-200 hover:-translate-y-0.5 active:translate-y-0;
+}
+
+/* Background animated mesh gradients */
+.bg-mesh-grid {
+  background-image: 
+    radial-gradient(at 0% 0%, rgba(6, 182, 212, 0.15) 0px, transparent 50%),
+    radial-gradient(at 100% 0%, rgba(59, 130, 246, 0.15) 0px, transparent 50%),
+    radial-gradient(at 50% 100%, rgba(139, 92, 246, 0.1) 0px, transparent 50%);
+}
+
+/* Custom Scrollbars */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: rgba(0, 0, 0, 0.2);
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.2);
+}
+
+/* Sound Wave Recording Animation */
+@keyframes wave-bounce {
+  0%, 100% { transform: scaleY(0.3); }
+  50% { transform: scaleY(1); }
+}
+
+.soundwave-bar {
+  @apply w-1 bg-cyan-400 rounded-full origin-center;
+  animation: wave-bounce 1.2s ease-in-out infinite;
+}
+
+.soundwave-bar:nth-child(2) { animation-delay: 0.15s; }
+.soundwave-bar:nth-child(3) { animation-delay: 0.3s; }
+.soundwave-bar:nth-child(4) { animation-delay: 0.45s; }
+.soundwave-bar:nth-child(5) { animation-delay: 0.6s; }
+
+/* Camera Tracking Box HUD pulse */
+@keyframes hud-glow {
+  0%, 100% { border-color: rgba(6, 182, 212, 0.4); box-shadow: 0 0 8px rgba(6, 182, 212, 0.1); }
+  50% { border-color: rgba(6, 182, 212, 0.9); box-shadow: 0 0 16px rgba(6, 182, 212, 0.3); }
+}
+
+.hud-box {
+  border: 2px solid rgba(6, 182, 212, 0.5);
+  animation: hud-glow 2s infinite ease-in-out;
+}

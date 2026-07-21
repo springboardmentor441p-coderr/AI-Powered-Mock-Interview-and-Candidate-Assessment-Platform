@@ -1,7 +1,9 @@
-from fastapi import APIRouter, Depends, HTTPException, Request, status, UploadFile, File
+from fastapi import APIRouter, Depends, HTTPException, Request, status, UploadFile, File, Form
 from sqlalchemy.orm import Session
 from typing import List, Optional
 import os
+import io
+from pypdf import PdfReader
 from ..database import get_db
 from .. import models, schemas, auth
 from ..services.ai_service import AIService
@@ -12,58 +14,117 @@ router = APIRouter(prefix="/api/interviews", tags=["interviews"])
 # --- Candidate Routes ---
 
 @router.post("/session", response_model=schemas.InterviewSessionDetail)
-def create_session(
+async def create_session(
     request: Request,
-    session_in: schemas.InterviewSessionCreate,
+    domain: str = Form(...),
+    difficulty: str = Form(...),
+    template_id: Optional[int] = Form(None),
+    resume_file: Optional[UploadFile] = File(None),
+    jd_file: Optional[UploadFile] = File(None),
+    jd_text: Optional[str] = Form(None),
     current_user: models.User = Depends(auth.check_role(["candidate"])),
     db: Session = Depends(get_db)
 ):
     """
     Starts a new interview session. Generates 5 questions.
     """
-    # 1. Fetch template or generate from scratch
+    # 1. Parse Resume if provided
+    resume_text = None
+    if resume_file:
+        try:
+            contents = await resume_file.read()
+            pdf_file = io.BytesIO(contents)
+            reader = PdfReader(pdf_file)
+            resume_text = ""
+            for page in reader.pages:
+                text = page.extract_text()
+                if text:
+                    resume_text += text + "\n"
+        except Exception as e:
+            print(f"Error parsing resume PDF: {e}")
+            
+    # Fallback to candidate profile if no resume uploaded in session
+    profile = db.query(models.Profile).filter(models.Profile.user_id == current_user.id).first()
+    skills = profile.parsed_skills if profile and profile.parsed_skills else []
+    if not resume_text and profile:
+        # Reconstruct simple resume text from profile details
+        resume_text = profile.summary or ""
+        if profile.parsed_skills:
+            resume_text += f"\nSkills: {', '.join(profile.parsed_skills)}"
+
+    # 2. Parse Job Description if provided
+    extracted_jd = jd_text or ""
+    if jd_file:
+        try:
+            contents = await jd_file.read()
+            if jd_file.filename.endswith(".pdf"):
+                pdf_file = io.BytesIO(contents)
+                reader = PdfReader(pdf_file)
+                jd_pdf_text = ""
+                for page in reader.pages:
+                    text = page.extract_text()
+                    if text:
+                        jd_pdf_text += text + "\n"
+                extracted_jd = jd_pdf_text
+            else:
+                extracted_jd = contents.decode("utf-8", errors="ignore")
+        except Exception as e:
+            print(f"Error parsing JD file: {e}")
+
+    # Enforce compulsory Resume and Job Description for all interviews
+    if not resume_text or not resume_text.strip():
+        raise HTTPException(
+            status_code=400, 
+            detail="Candidate Resume is required to create a dynamic interview session. Please upload a resume PDF or update your profile."
+        )
+    if not extracted_jd or not extracted_jd.strip():
+        raise HTTPException(
+            status_code=400, 
+            detail="Job Description (JD) is required to create a dynamic interview session. Please provide a JD document or text."
+        )
+
     questions_list = []
     template = None
     
-    if session_in.template_id:
-        template = db.query(models.InterviewTemplate).filter(models.InterviewTemplate.id == session_in.template_id).first()
+    if template_id:
+        template = db.query(models.InterviewTemplate).filter(models.InterviewTemplate.id == template_id).first()
         if not template:
             raise HTTPException(status_code=404, detail="Template not found")
         domain = template.domain
         difficulty = template.difficulty
-        for q_text in template.questions:
-            questions_list.append({"text": q_text, "category": "technical"})
-    else:
-        domain = session_in.domain
-        difficulty = session_in.difficulty
-        
-        # Pull candidate's profile to extract skills and customize questions
-        profile = db.query(models.Profile).filter(models.Profile.user_id == current_user.id).first()
-        skills = profile.parsed_skills if profile and profile.parsed_skills else []
-        
-        # Get optional API keys from headers
-        api_keys = {
-            "gemini_api_key": request.headers.get("x-gemini-key"),
-            "openai_api_key": request.headers.get("x-openai-key")
-        }
-        
-        # Call AI question generator (Start with just 1 question for conversational loop)
-        full_qs = AIService.generate_questions(domain, difficulty, skills, api_keys)
-        questions_list = [full_qs[0]] if full_qs else [{"text": "Can you introduce yourself and outline your technical background?", "category": "hr"}]
 
-    # 2. Create Interview Session
+    # Get optional API keys from headers
+    api_keys = {
+        "gemini_api_key": request.headers.get("x-gemini-key"),
+        "openai_api_key": request.headers.get("x-openai-key")
+    }
+    
+    # Always call AI question generator for dynamic personalized questions based on Resume + JD
+    full_qs = AIService.generate_questions(
+        domain=domain,
+        difficulty=difficulty,
+        parsed_skills=skills,
+        resume_text=resume_text,
+        job_description=extracted_jd,
+        api_keys=api_keys
+    )
+    questions_list = [full_qs[0]] if full_qs else [{"text": "Can you introduce yourself and outline how your background matches the Job Description requirements?", "category": "hr"}]
+
+    # 3. Create Interview Session
     session = models.InterviewSession(
         candidate_id=current_user.id,
         template_id=template.id if template else None,
         domain=domain,
         difficulty=difficulty,
-        status="in_progress"
+        status="in_progress",
+        resume_text=resume_text,
+        job_description=extracted_jd if extracted_jd else None
     )
     db.add(session)
     db.commit()
     db.refresh(session)
 
-    # 3. Create Interview Questions
+    # 4. Create Interview Questions
     db_questions = []
     for idx, q in enumerate(questions_list):
         db_q = models.InterviewQuestion(
@@ -166,20 +227,32 @@ def submit_answer(
         
         num_completed = len(completed_answers)
         if num_completed < 8:
-            # Gather conversation history so far
+            # Gather conversation history so far with score & feedback context
             history = []
             for ans in completed_answers[:-1]:
                 q_desc = db.query(models.InterviewQuestion).filter(models.InterviewQuestion.id == ans.question_id).first()
-                history.append({"question": q_desc.question_text, "answer": ans.answer_text})
+                history.append({
+                    "question": q_desc.question_text, 
+                    "answer": ans.answer_text,
+                    "score": ans.score,
+                    "feedback": ans.feedback_text
+                })
             
             # Add the current answer to the history
-            history.append({"question": question.question_text, "answer": answer_in.answer_text})
+            history.append({
+                "question": question.question_text, 
+                "answer": answer_in.answer_text,
+                "score": score,
+                "feedback": feedback_text
+            })
             
-            # Generate next question dynamically holding context
+            # Generate next question dynamically holding context and checking answer quality
             next_q = AIService.generate_next_question(
                 domain=session.domain,
                 difficulty=session.difficulty,
                 history=history,
+                resume_text=session.resume_text,
+                job_description=session.job_description,
                 api_keys=api_keys
             )
             

@@ -134,6 +134,8 @@ class InterviewSessionResponse(BaseModel):
     technical_score: Optional[float] = None
     professionalism_score: Optional[float] = None
     feedback: Optional[Dict[str, Any]] = None
+    resume_text: Optional[str] = None
+    job_description: Optional[str] = None
     created_at: datetime
 
     class Config:

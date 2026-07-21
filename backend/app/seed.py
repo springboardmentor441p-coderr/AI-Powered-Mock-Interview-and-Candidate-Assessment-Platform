@@ -74,28 +74,18 @@ def seed_database():
         # 3. Create Recruiter Interview Templates
         template_se = InterviewTemplate(
             title="Software Engineer Mock Session",
-            description="Core coding and engineering interview featuring React DOM, database scales, and behavioral resolution.",
+            description="Core coding and engineering interview dynamically phrased around Candidate Resume and Job Description.",
             domain="Software Engineering",
             difficulty="Medium",
-            questions=[
-                "Explain what the virtual DOM is in React and how the reconciliation process works.",
-                "What are the key differences between SQL and NoSQL databases, and when would you use one over the other?",
-                "Tell me about a time you had to work with a team member who had a different opinion. How did you resolve it?",
-                "How do you handle tight deadlines or stressful situations in a sprint?",
-                "If five machines take 5 minutes to make 5 widgets, how long would it take 100 machines to make 100 widgets?"
-            ],
+            questions=[],
             created_by_id=recruiter.id
         )
         template_pm = InterviewTemplate(
             title="Product Manager Evaluation",
-            description="General PM prompt covering prioritization frameworks and EV charging sizing estimates.",
+            description="Product Management prompt dynamically phrased around Candidate Resume and Job Description.",
             domain="Product Management",
             difficulty="Hard",
-            questions=[
-                "How would you design a product roadmap for a mobile banking app targeting Gen-Z?",
-                "Tell me about a time a product you owned failed. What went wrong, how did you handle it, and what did you learn?",
-                "Estimate the annual market size for electric vehicle charging stations in the US by 2030."
-            ],
+            questions=[],
             created_by_id=recruiter.id
         )
         db.add_all([template_se, template_pm])

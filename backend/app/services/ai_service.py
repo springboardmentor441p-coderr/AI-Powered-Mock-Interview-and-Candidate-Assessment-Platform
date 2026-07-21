@@ -1,99 +1,80 @@
 import json
 import re
 import random
+import os
 from typing import List, Dict, Any, Optional
 
-# Pre-defined library of questions for Mock fallback
-MOCK_QUESTION_DATABASE = {
-    "Software Engineering": {
-        "Easy": [
-            {"text": "Explain the difference between 'let', 'const', and 'var' in JavaScript.", "category": "technical"},
-            {"text": "What is the purpose of an index in a database, and how does it speed up queries?", "category": "technical"},
-            {"text": "Tell me about a time you had to work with a team member who had a different opinion. How did you resolve it?", "category": "behavioral"},
-            {"text": "Why do you want to join our company as a software developer?", "category": "hr"},
-            {"text": "A car travels at 60 mph for 2 hours. If it stops for 30 minutes, what is its average speed over the entire 2.5-hour duration?", "category": "aptitude"}
-        ],
-        "Medium": [
-            {"text": "Explain what the virtual DOM is in React and how the reconciliation process works.", "category": "technical"},
-            {"text": "What are the key differences between SQL and NoSQL databases, and when would you use one over the other?", "category": "technical"},
-            {"text": "Describe a challenging technical bug you encountered. How did you debug and resolve it?", "category": "behavioral"},
-            {"text": "How do you handle tight deadlines or stressful situations in a sprint?", "category": "hr"},
-            {"text": "If five machines take 5 minutes to make 5 widgets, how long would it take 100 machines to make 100 widgets?", "category": "aptitude"}
-        ],
-        "Hard": [
-            {"text": "Describe how you would design a highly scalable, real-time chat application. What technologies and protocols would you use?", "category": "technical"},
-            {"text": "Explain the concept of microservices architecture, its advantages, and how you handle distributed transactions or consistency.", "category": "technical"},
-            {"text": "Tell me about a project that failed or fell behind schedule under your leadership. What did you learn and do differently next time?", "category": "behavioral"},
-            {"text": "Where do you see yourself in five years? How does this role align with your long-term career goals?", "category": "hr"},
-            {"text": "There are three boxes, one with apples, one with oranges, and one with both. All boxes are mislabeled. You can pull one fruit from one box. How do you label them all correctly?", "category": "aptitude"}
-        ]
-    },
-    "Data Science": {
-        "Easy": [
-            {"text": "What is the difference between supervised and unsupervised learning?", "category": "technical"},
-            {"text": "Explain the concept of overfitting and one way to prevent it.", "category": "technical"},
-            {"text": "Describe a data project you worked on. What was your role and what did you achieve?", "category": "behavioral"},
-            {"text": "Why are you interested in data science, and how do you stay updated with industry trends?", "category": "hr"},
-            {"text": "A box contains 5 red balls and 5 blue balls. If you draw two balls at random without replacement, what is the probability that both are red?", "category": "aptitude"}
-        ],
-        "Medium": [
-            {"text": "How does a Random Forest classifier work, and how does it differ from a simple Decision Tree?", "category": "technical"},
-            {"text": "Explain the bias-variance tradeoff in machine learning and how it affects model selection.", "category": "technical"},
-            {"text": "Tell me about a time you had to explain a complex data insight to a non-technical stakeholder. How did you approach it?", "category": "behavioral"},
-            {"text": "How do you handle missing or noisy data in a dataset before modeling?", "category": "hr"},
-            {"text": "What is the relation between Mean, Median, and Mode in a standard right-skewed distribution?", "category": "aptitude"}
-        ],
-        "Hard": [
-            {"text": "Explain the mathematical formulation of gradient descent. What is the difference between Batch, Mini-batch, and Stochastic gradient descent?", "category": "technical"},
-            {"text": "How do transformers and self-attention mechanisms work in modern LLMs?", "category": "technical"},
-            {"text": "Describe a situation where your machine learning model performed poorly in production. How did you diagnose the issue and fix it?", "category": "behavioral"},
-            {"text": "What are the ethical implications of AI systems, particularly concerning bias and fairness, and how do you mitigate them?", "category": "hr"},
-            {"text": "Suppose you run a test for a rare disease that is 99% accurate (true positive rate of 99%, false positive rate of 1%). If 0.1% of the population has this disease, what is the probability that a person who tests positive actually has it?", "category": "aptitude"}
-        ]
-    },
-    "Product Management": {
-        "Easy": [
-            {"text": "What is a product lifecycle, and how do you manage different stages?", "category": "technical"},
-            {"text": "How do you define key performance indicators (KPIs) for a new feature launch?", "category": "technical"},
-            {"text": "Tell me about a time you had to prioritize features with limited resources. What framework did you use?", "category": "behavioral"},
-            {"text": "What makes a great product manager in your opinion?", "category": "hr"},
-            {"text": "Estimate the number of windows in a city like New York. Walk me through your estimation process.", "category": "aptitude"}
-        ],
-        "Medium": [
-            {"text": "How would you design a product roadmap for a mobile banking app targeting Gen-Z?", "category": "technical"},
-            {"text": "How do you handle feature requests from sales or major clients that conflict with your long-term product vision?", "category": "technical"},
-            {"text": "Describe a conflict you had with an engineering team regarding product requirements. How did you align everyone?", "category": "behavioral"},
-            {"text": "How do you define success, and how do you handle failure in a product launch?", "category": "hr"},
-            {"text": "If a user acquisition cost is $15 and the customer lifetime value is $50, but user churn rate is 20% per month, is this a viable product model?", "category": "aptitude"}
-        ],
-        "Hard": [
-            {"text": "How would you design a monetization strategy for a popular free-to-play educational mobile app?", "category": "technical"},
-            {"text": "Walk me through how you would decide whether to build, partner, or buy a critical search service for an e-commerce platform.", "category": "technical"},
-            {"text": "Tell me about a time a product you owned failed. What went wrong, how did you handle it, and what did you learn?", "category": "behavioral"},
-            {"text": "How do you manage pressure from executive leadership when a key release is delayed?", "category": "hr"},
-            {"text": "Estimate the annual market size for electric vehicle charging stations in the US by 2030.", "category": "aptitude"}
-        ]
-    }
-}
+# Helper to detect if a candidate explicitly says they don't know or pass on a topic
+def is_dont_know_answer(text: str) -> bool:
+    if not text:
+        return False
+    clean = re.sub(r'[^\w\s]', '', text.lower()).strip()
+    dont_know_patterns = [
+        r"\bdont know\b", r"\bdo not know\b", r"\bno idea\b",
+        r"\bnot sure\b", r"\bnot familiar\b", r"\bhavent used\b", r"\bhave not used\b",
+        r"\bhavent worked\b", r"\bhave not worked\b", r"\bno experience\b",
+        r"\bpass\b", r"\bskip\b", r"\bnever used\b", r"\bcant recall\b", r"\bcannot recall\b",
+        r"\bidk\b", r"\bdunno\b", r"\bnot aware\b", r"\bno knowledge\b", r"\bno background\b"
+    ]
+    for pattern in dont_know_patterns:
+        if re.search(pattern, clean):
+            return True
+    return False
 
-# Add default general pool for other domains
-MOCK_QUESTION_DATABASE["General"] = MOCK_QUESTION_DATABASE["Software Engineering"]
+# Helper to extract key terms from Resume and Job Description for fallback dynamic generation
+def extract_key_context(resume_text: Optional[str], job_description: Optional[str]) -> Dict[str, Any]:
+    resume = resume_text or ""
+    jd = job_description or ""
+    
+    # Common tech/skills pool to search in text
+    tech_pool = [
+        "Python", "JavaScript", "TypeScript", "React", "Vue", "Angular", "HTML", "CSS", "Tailwind",
+        "Node.js", "Express", "FastAPI", "Django", "Flask", "SQL", "PostgreSQL", "MySQL", "SQLite",
+        "MongoDB", "Redis", "Docker", "Kubernetes", "AWS", "Azure", "GCP", "Git", "GitHub",
+        "Machine Learning", "Deep Learning", "NLP", "TensorFlow", "PyTorch", "Data Analysis",
+        "Microservices", "REST API", "GraphQL", "System Design", "Agile", "CI/CD"
+    ]
+    
+    found_resume_skills = [s for s in tech_pool if re.search(r'\b' + re.escape(s) + r'\b', resume, re.IGNORECASE)]
+    found_jd_skills = [s for s in tech_pool if re.search(r'\b' + re.escape(s) + r'\b', jd, re.IGNORECASE)]
+    
+    # Extract lines/duties from JD
+    jd_lines = [line.strip() for line in jd.split('\n') if len(line.strip()) > 15]
+    jd_summary = random.choice(jd_lines) if jd_lines else "the position's core requirements"
+    
+    # Extract company or role from resume
+    companies = re.findall(r'([A-Za-z0-9\s,\.\-&]+)\s+at\s+([A-Za-z0-9\s,\.\-&]+)', resume)
+    company_name = companies[0][1].strip() if companies else "your past engineering projects"
+    
+    return {
+        "resume_skills": found_resume_skills or ["software architecture", "problem solving"],
+        "jd_skills": found_jd_skills or ["scalable development", "system performance"],
+        "jd_summary": jd_summary,
+        "company_name": company_name
+    }
 
 
 class AIService:
+    @staticmethod
+    def get_api_keys(api_keys: Optional[Dict[str, str]] = None) -> Dict[str, Optional[str]]:
+        gemini_key = (api_keys.get("gemini_api_key") if api_keys else None) or os.environ.get("GEMINI_API_KEY")
+        openai_key = (api_keys.get("openai_api_key") if api_keys else None) or os.environ.get("OPENAI_API_KEY")
+        return {"gemini_api_key": gemini_key, "openai_api_key": openai_key}
+
     @staticmethod
     def parse_resume(resume_text: str, api_keys: Optional[Dict[str, str]] = None) -> Dict[str, Any]:
         """
         Parses resume text. Uses real LLM if API Key is configured, otherwise fallback to smart regex analysis.
         """
-        gemini_key = api_keys.get("gemini_api_key") if api_keys else None
-        openai_key = api_keys.get("openai_api_key") if api_keys else None
+        keys = AIService.get_api_keys(api_keys)
+        gemini_key = keys["gemini_api_key"]
+        openai_key = keys["openai_api_key"]
         
         if gemini_key:
             try:
                 import google.generativeai as genai
                 genai.configure(api_key=gemini_key)
-                model = genai.GenerativeModel('gemini-2.5-flash') # or gemini-2.5-pro
+                model = genai.GenerativeModel('gemini-2.5-flash')
                 prompt = f"""
                 You are an expert ATS (Applicant Tracking System) parser. Analyze the following resume text and extract the details as structured JSON.
                 Return ONLY a JSON object with this exact structure:
@@ -127,8 +108,6 @@ class AIService:
                 from openai import OpenAI
                 client = OpenAI(api_key=openai_key)
                 prompt = f"Extract skills, experience, education, and professional summary from this resume in JSON format:\n\n{resume_text}"
-                # Similar implementation for OpenAI...
-                # For brevity, let's fall through if it fails, or implement a simple ChatGPT call
                 response = client.chat.completions.create(
                     model="gpt-3.5-turbo",
                     messages=[
@@ -203,12 +182,20 @@ class AIService:
         }
 
     @staticmethod
-    def generate_questions(domain: str, difficulty: str, parsed_skills: List[str], api_keys: Optional[Dict[str, str]] = None) -> List[Dict[str, str]]:
+    def generate_questions(
+        domain: str,
+        difficulty: str,
+        parsed_skills: List[str],
+        resume_text: Optional[str] = None,
+        job_description: Optional[str] = None,
+        api_keys: Optional[Dict[str, str]] = None
+    ) -> List[Dict[str, str]]:
         """
-        Generates 5 questions.
+        Generates 5 personalized questions phrased strictly around Candidate Resume and Job Description.
         """
-        gemini_key = api_keys.get("gemini_api_key") if api_keys else None
-        openai_key = api_keys.get("openai_api_key") if api_keys else None
+        keys = AIService.get_api_keys(api_keys)
+        gemini_key = keys["gemini_api_key"]
+        openai_key = keys["openai_api_key"]
         
         if gemini_key:
             try:
@@ -218,10 +205,21 @@ class AIService:
                 skills_str = ", ".join(parsed_skills) if parsed_skills else "General technical skills"
                 prompt = f"""
                 You are an expert AI interviewer. Generate exactly 5 interview questions for a candidate applying in the '{domain}' domain with '{difficulty}' difficulty.
-                Tailor some of the technical questions to the candidate's skills: {skills_str}.
+                
+                Mandatory Context:
+                Job Description:
+                {job_description or "General position requirements"}
+
+                Candidate Resume / Profile:
+                {resume_text or f"Skills: {skills_str}"}
+
+                CRITICAL INSTRUCTIONS:
+                - Do NOT use generic static questions. Every question MUST directly reference specific skills, past projects, past roles, or experience from the Candidate Resume and match them against requirements from the Job Description.
+                - Phrase each question clearly around the candidate's specific background and the target job duties.
+
                 Return a JSON array of exactly 5 elements, each element having this structure:
                 {{
-                    "text": "The interview question text.",
+                    "text": "The interview question text referencing candidate resume details & JD requirements.",
                     "category": "One of: 'technical', 'hr', 'behavioral', 'aptitude'"
                 }}
                 Ensure there is at least:
@@ -239,50 +237,81 @@ class AIService:
                     response_text = response_text.split("```")[1].split("```")[0].strip()
                 return json.loads(response_text)
             except Exception as e:
-                print(f"Gemini question generation failed: {e}. Using mock database.")
+                print(f"Gemini question generation failed: {e}. Using dynamic context fallback.")
                 
         elif openai_key:
             try:
                 from openai import OpenAI
                 client = OpenAI(api_key=openai_key)
-                skills_str = ", ".join(parsed_skills) if parsed_skills else "General technical skills"
+                user_msg = f"Generate 5 interview questions specifically phrased around the candidate's Resume and Job Description for domain: {domain}, difficulty: {difficulty}.\nJob Description: {job_description}\nCandidate Resume: {resume_text}"
                 response = client.chat.completions.create(
                     model="gpt-3.5-turbo",
                     messages=[
-                        {"role": "system", "content": "You are a professional AI interviewer that returns a JSON list of questions."},
-                        {"role": "user", "content": f"Generate 5 questions for domain: {domain}, difficulty: {difficulty}, with skills: {skills_str}."}
+                        {"role": "system", "content": "You are a professional AI interviewer that returns a JSON list of questions phrased around the candidate's resume and job description."},
+                        {"role": "user", "content": user_msg}
                     ],
                     response_format={"type": "json_object"}
                 )
                 data = json.loads(response.choices[0].message.content)
-                # handle formats if nested in a key
                 if isinstance(data, dict):
                     for k, v in data.items():
                         if isinstance(v, list) and len(v) == 5:
                             return v
                 return data
             except Exception as e:
-                print(f"OpenAI question generation failed: {e}. Using mock database.")
+                print(f"OpenAI question generation failed: {e}. Using dynamic context fallback.")
 
-        # Fallback to Mock Database
-        db = MOCK_QUESTION_DATABASE.get(domain, MOCK_QUESTION_DATABASE["General"])
-        questions = db.get(difficulty, db["Medium"])
+        # Dynamic Fallback Question Generator (No static questions, randomized from context)
+        ctx = extract_key_context(resume_text, job_description)
+        r_skills = ctx["resume_skills"]
+        jd_skills = ctx["jd_skills"]
         
-        # Inject skills in first question to make it customized if domain is Software Engineering
-        if domain == "Software Engineering" and parsed_skills:
-            custom_tech_q = f"Since your resume lists {parsed_skills[0]}, can you explain how you've used it in a recent project and what challenges you faced?"
-            questions = questions.copy()
-            questions[0] = {"text": custom_tech_q, "category": "technical"}
-            
-        return questions
+        r_skill1 = random.choice(r_skills) if r_skills else "software architecture"
+        r_skill2 = random.choice(r_skills) if len(r_skills) > 1 else "data processing"
+        jd_skill = random.choice(jd_skills) if jd_skills else "system performance"
+        company = ctx["company_name"]
+
+        dynamic_qs = [
+            {
+                "text": f"Your resume highlights experience with {r_skill1}, while the job description emphasizes {jd_skill}. How have you applied {r_skill1} in your work at {company} to meet similar requirements?",
+                "category": "technical"
+            },
+            {
+                "text": f"Considering the requirement for {jd_skill} in this role, can you walk me through an architecture or project where you implemented {r_skill2} under tight constraints?",
+                "category": "technical"
+            },
+            {
+                "text": f"Looking at your background at {company}, describe a situation where you had a disagreement with your team over technical implementation decisions for {r_skill1}. How did you resolve it?",
+                "category": "behavioral"
+            },
+            {
+                "text": f"Given the responsibilities outlined in the job description ({ctx['jd_summary'][:80]}...) and your skills in {r_skill1}, why do you feel this position aligns with your career goals?",
+                "category": "hr"
+            },
+            {
+                "text": f"Suppose a service in production handling {jd_skill} suddenly experiences a 5x spike in latency. Based on your hands-on experience with {r_skill1}, how would you systematically diagnose and resolve the bottleneck?",
+                "category": "aptitude"
+            }
+        ]
+        random.shuffle(dynamic_qs)
+        return dynamic_qs
 
     @staticmethod
     def evaluate_answer(question: str, answer: str, api_keys: Optional[Dict[str, str]] = None) -> Dict[str, Any]:
         """
-        Evaluates a single answer. Returns score (out of 100) and feedback_text.
+        Evaluates a single answer. Returns score (out of 100), feedback_text, and is_satisfactory.
         """
-        gemini_key = api_keys.get("gemini_api_key") if api_keys else None
-        openai_key = api_keys.get("openai_api_key") if api_keys else None
+        if is_dont_know_answer(answer):
+            return {
+                "score": 30.0,
+                "is_satisfactory": False,
+                "is_dont_know": True,
+                "feedback_text": "Candidate indicated they are unfamiliar with or passing on this question. Moving to next topic."
+            }
+
+        keys = AIService.get_api_keys(api_keys)
+        gemini_key = keys["gemini_api_key"]
+        openai_key = keys["openai_api_key"]
         
         if gemini_key:
             try:
@@ -295,11 +324,13 @@ class AIService:
                 Question: {question}
                 Candidate's Answer: {answer}
                 
-                Evaluate based on technical accuracy, completeness, and clarity.
+                Evaluate based on technical accuracy, completeness, depth, and clarity.
+                Determine whether the answer is satisfactory ("up to marks").
                 Return ONLY a JSON object with this exact structure:
                 {{
                     "score": 85, // Integer between 0 and 100
-                    "feedback_text": "Constructive critique highlighting what was good and how to improve the explanation."
+                    "is_satisfactory": true, // boolean: false if answer is vague, incomplete, or below standard (score < 60)
+                    "feedback_text": "Constructive critique highlighting what was good and what key details were missing."
                 }}
                 """
                 response = model.generate_content(prompt)
@@ -308,7 +339,10 @@ class AIService:
                     response_text = response_text.split("```json")[1].split("```")[0].strip()
                 elif "```" in response_text:
                     response_text = response_text.split("```")[1].split("```")[0].strip()
-                return json.loads(response_text)
+                res = json.loads(response_text)
+                if "is_satisfactory" not in res:
+                    res["is_satisfactory"] = res.get("score", 70) >= 60
+                return res
             except Exception as e:
                 print(f"Gemini answer evaluation failed: {e}. Using mock analyzer.")
                 
@@ -319,39 +353,44 @@ class AIService:
                 response = client.chat.completions.create(
                     model="gpt-3.5-turbo",
                     messages=[
-                        {"role": "system", "content": "You are a professional technical recruiter. Evaluate the answer and return a JSON object containing score (0-100) and feedback_text."},
+                        {"role": "system", "content": "You are a professional technical recruiter. Evaluate the answer and return a JSON object containing score (0-100), is_satisfactory (boolean), and feedback_text."},
                         {"role": "user", "content": f"Question: {question}\nAnswer: {answer}"}
                     ],
                     response_format={"type": "json_object"}
                 )
-                return json.loads(response.choices[0].message.content)
+                res = json.loads(response.choices[0].message.content)
+                if "is_satisfactory" not in res:
+                    res["is_satisfactory"] = res.get("score", 70) >= 60
+                return res
             except Exception as e:
                 print(f"OpenAI answer evaluation failed: {e}. Using mock analyzer.")
 
-        # Fallback Mock scoring based on heuristics
+        # Fallback scoring based on word count & completeness
         word_count = len(answer.split())
         
-        # Simple heuristic scoring
-        if word_count < 10:
-            score = float(random.randint(20, 45))
-            feedback_text = "The response was extremely brief. In an interview, you should expand on your answers, explaining the context, your approach, and technical justifications. Try using the STAR method."
+        if word_count < 15:
+            score = float(random.randint(25, 45))
+            is_satisfactory = False
+            feedback_text = "The response was extremely brief and incomplete. Key technical details and explanations were missing."
         elif word_count < 30:
-            score = float(random.randint(50, 68))
-            feedback_text = "You touched on some basic concepts but missed deeper explanations or implementation details. Try giving concrete examples or explaining the mechanics of your solution."
+            score = float(random.randint(48, 59))
+            is_satisfactory = False
+            feedback_text = "You touched on some basic points, but the response lacked depth and specific examples required for proper evaluation."
         else:
-            # Check for keyword matches in question
             score = float(random.randint(70, 95))
-            feedback_text = "Solid explanation. You explained the concepts clearly, demonstrated good domain vocabulary, and structured your explanation logical. To hit a higher mark, reference specific architectural impacts or real-world performance trade-offs."
+            is_satisfactory = True
+            feedback_text = "Solid explanation. You explained the concepts clearly with appropriate domain vocabulary."
             
-        return {"score": score, "feedback_text": feedback_text}
+        return {"score": score, "is_satisfactory": is_satisfactory, "feedback_text": feedback_text}
 
     @staticmethod
     def generate_session_feedback(questions_and_answers: List[Dict[str, Any]], api_keys: Optional[Dict[str, str]] = None) -> Dict[str, Any]:
         """
         Generates overall assessment: strengths, weaknesses, recommendations, and learning resources.
         """
-        gemini_key = api_keys.get("gemini_api_key") if api_keys else None
-        openai_key = api_keys.get("openai_api_key") if api_keys else None
+        keys = AIService.get_api_keys(api_keys)
+        gemini_key = keys["gemini_api_key"]
+        openai_key = keys["openai_api_key"]
         
         if gemini_key:
             try:
@@ -383,29 +422,27 @@ class AIService:
                 if "```json" in response_text:
                     response_text = response_text.split("```json")[1].split("```")[0].strip()
                 elif "```" in response_text:
-                    response_text = response_text.split("```")[1].split("```")[0].strip()
+                    response_text = response_text.split("```json")[1].split("```")[0].strip()
                 return json.loads(response_text)
             except Exception as e:
                 print(f"Gemini session feedback failed: {e}. Using mock generator.")
                 
-        # Mock Fallback Feedback
         return {
             "strengths": [
-                "Demonstrated good domain knowledge and terminology definitions.",
-                "Structure of communication is coherent with logical flow."
+                "Demonstrated relevant technical background alignment with the job description.",
+                "Good clarity when explaining core project responsibilities."
             ],
             "weaknesses": [
-                "Technical deep-dives sometimes lacked architectural considerations.",
-                "Pacing could be smoother—avoid brief responses for complex conceptual prompts."
+                "Some initial answers were brief and required follow-up probing to assess depth.",
+                "Could expand more on edge-case handling and system metrics."
             ],
             "recommendations": [
-                "Practice structural frameworks like the STAR method (Situation, Task, Action, Result) for behavioral questions.",
-                "Dedicate additional study to distributed system architectures and low-level data flows."
+                "Use the STAR framework (Situation, Task, Action, Result) to structure initial responses with quantitative details.",
+                "Practice deep-diving into architectural trade-offs mentioned in the job description."
             ],
             "resources": [
-                {"title": "Designing Data-Intensive Applications", "type": "Book", "url": "Highly recommended for distributed backend systems study."},
-                {"title": "Tech Interview Handbook", "type": "Website", "url": "Comprehensive study guides for core DSA and System Design topics."},
-                {"title": "System Design Primer", "type": "GitHub Repo", "url": "Open source repository containing diagrams and deep-dives."}
+                {"title": "Designing Data-Intensive Applications", "type": "Book", "url": "Focus on distributed system patterns."},
+                {"title": "Tech Interview Handbook", "type": "Website", "url": "Comprehensive guidelines for behavioral and technical interviews."}
             ]
         }
 
@@ -414,40 +451,67 @@ class AIService:
         domain: str, 
         difficulty: str, 
         history: List[Dict[str, str]], 
+        resume_text: Optional[str] = None,
+        job_description: Optional[str] = None,
         api_keys: Optional[Dict[str, str]] = None
     ) -> Dict[str, str]:
         """
-        Generates the next question dynamically, holding the context of previous questions and answers.
+        Generates the next question dynamically holding context.
+        If candidate says 'don't know' / passes OR was already probed, bypass probing and move to next topic.
         """
-        gemini_key = api_keys.get("gemini_api_key") if api_keys else None
-        openai_key = api_keys.get("openai_api_key") if api_keys else None
+        keys = AIService.get_api_keys(api_keys)
+        gemini_key = keys["gemini_api_key"]
+        openai_key = keys["openai_api_key"]
         
+        last_item = history[-1] if history else {}
+        last_q = last_item.get("question", "")
+        last_a = last_item.get("answer", "")
+        last_score = last_item.get("score", 70)
+        last_feedback = last_item.get("feedback", "")
+        
+        is_dk = is_dont_know_answer(last_a)
+        probing_phrases = ["elaborate", "lacked technical", "somewhat brief", "missed core implementation", "step-by-step example", "follow-up probing", "probing"]
+        already_probed = any(phrase in last_q.lower() for phrase in probing_phrases)
+
+        needs_probing = (not is_dk) and (not already_probed) and (
+            (last_score is not None and last_score < 60) or "brief" in last_feedback.lower() or "incomplete" in last_feedback.lower()
+        )
+
         if gemini_key:
             try:
                 import google.generativeai as genai
                 genai.configure(api_key=gemini_key)
                 model = genai.GenerativeModel('gemini-2.5-flash')
                 
-                # Format conversation history
                 history_str = ""
                 for idx, qa in enumerate(history):
-                    history_str += f"Question {idx+1}: {qa['question']}\nAnswer {idx+1}: {qa['answer']}\n\n"
+                    history_str += f"Question {idx+1}: {qa['question']}\nAnswer {idx+1}: {qa['answer']}\nScore: {qa.get('score')}\nFeedback: {qa.get('feedback')}\n\n"
                 
+                if is_dk:
+                    instruction = "The candidate explicitly stated they don't know, have no experience with, or passed on the topic. DO NOT ask any follow-up or probing questions on this topic! Immediately move to a NEW question topic from their Resume or Job Description."
+                elif already_probed:
+                    instruction = "The candidate was ALREADY asked a probing follow-up question on this topic. Move on to a NEW topic from their Resume or Job Description regardless of score."
+                elif needs_probing:
+                    instruction = f"The candidate's response was incomplete/brief (score: {last_score}). DO NOT change the topic! Ask a single follow-up/probing question on the EXACT SAME topic, pointing out what was vague, so their knowledge can be properly evaluated."
+                else:
+                    instruction = "The candidate's response was satisfactory. Ask the next logical dynamic question phrasing it around their resume experience and JD requirements."
+
                 prompt = f"""
-                You are a senior technical mock interviewer in the '{domain}' domain.
-                You are holding a conversational, dynamic technical assessment session. The difficulty is '{difficulty}'.
-                
-                Below is the transcript of the interview so far (questions asked and candidate answers):
+                You are a senior technical interviewer in the '{domain}' domain evaluating a candidate for the position.
+                Job Description:
+                {job_description or "N/A"}
+                Candidate Resume:
+                {resume_text or "N/A"}
+
+                Interview History:
                 {history_str}
-                
-                Generate the NEXT logical follow-up question.
-                - It must hold context of their previous answers.
-                - It should either drill deeper into a technical concept they mentioned, challenge a statement they made, or ask a related follow-up to check their depth.
-                - Keep the question concise (1-2 sentences).
-                
-                Return ONLY a JSON object with this exact structure:
+
+                CRITICAL INSTRUCTION:
+                {instruction}
+
+                Return ONLY a JSON object:
                 {{
-                    "text": "The next follow-up question.",
+                    "text": "The next question text.",
                     "category": "technical" // or "behavioral", "hr", "aptitude"
                 }}
                 """
@@ -459,65 +523,50 @@ class AIService:
                     response_text = response_text.split("```")[1].split("```")[0].strip()
                 return json.loads(response_text)
             except Exception as e:
-                print(f"Gemini conversational question failed: {e}. Using mock rules.")
+                print(f"Gemini conversational question failed: {e}. Using dynamic fallback.")
                 
-        # Mock Rule-based follow-ups
+        # Dynamic Fallback Question Generator for follow-ups
         if not history:
-            return {"text": "Can you start by introducing yourself and outlining your technical background?", "category": "hr"}
+            return {
+                "text": "To begin, please introduce yourself and summarize how your background aligns with the Job Description requirements.",
+                "category": "hr"
+            }
             
-        last_item = history[-1]
-        last_q = last_item.get("question", "").lower()
-        last_a = last_item.get("answer", "").lower()
-        
-        # Software Engineering followups
-        if domain == "Software Engineering":
-            if "let" in last_q or "const" in last_q:
-                return {"text": "That makes sense. Follow-up: how does JavaScript handle asynchronous operations? Explain the event loop, callback queue, and microtasks.", "category": "technical"}
-            if "index" in last_q or "database" in last_q:
-                return {"text": "Good explanation of indices. How do you handle database normalization, and in what scenarios would you intentionally denormalize a schema?", "category": "technical"}
-            if "virtual dom" in last_q or "react" in last_q:
-                return {"text": "Excellent details on diffing. Follow-up: explain the difference between state and props, and how you manage global shared state in a React app.", "category": "technical"}
-            if "sql" in last_q or "nosql" in last_q:
-                return {"text": "Interesting comparison. How would you handle database scaling for a platform expecting millions of concurrent writes? Discuss sharding vs replication.", "category": "technical"}
-            if "microservices" in last_q or "scalable" in last_q:
-                return {"text": "Since we are talking about large scales, how do you secure API microservices? Explain JWT validation and OAuth2 authorization code flows.", "category": "technical"}
-            if "bug" in last_q or "challenging" in last_q:
-                return {"text": "Interesting scenario. How do you handle code reviews when a teammate submits code that doesn't follow style guides or architectural patterns?", "category": "behavioral"}
-            if "deadline" in last_q or "stressful" in last_q:
-                return {"text": "Good prioritization. Tell me about a time you had to pivot a feature mid-sprint because of changing user requirements. How did you react?", "category": "behavioral"}
-            if "widgets" in last_q:
-                return {"text": "Correct. Let's do another problem-solving prompt: A user complains that a page loads slowly. Walk me through your step-by-step troubleshooting checklist.", "category": "technical"}
-                
-        # Data Science followups
-        elif domain == "Data Science":
-            if "supervised" in last_q:
-                return {"text": "Understood. Can you explain the difference between K-Means clustering and KNN classification?", "category": "technical"}
-            if "overfitting" in last_q:
-                return {"text": "You mentioned regularization. Explain L1 (Lasso) vs L2 (Ridge) regression and how they affect model weights.", "category": "technical"}
-            if "random forest" in last_q:
-                return {"text": "Great details. How do you evaluate a model's performance on highly imbalanced classification datasets? Discuss ROC-AUC and F1-score.", "category": "technical"}
-            if "bias-variance" in last_q:
-                return {"text": "Good. If your training error is extremely low but validation error is very high, is the model suffering from high bias or high variance? How do you fix it?", "category": "technical"}
-                
-        # Product Management followups
-        elif domain == "Product Management":
-            if "lifecycle" in last_q:
-                return {"text": "Follow-up: How do you decide whether to retire or sunset a legacy product that still has active, paying users?", "category": "technical"}
-            if "roadmap" in last_q:
-                return {"text": "Good structure. What is the difference between RICE and MoSCoW prioritization frameworks, and which do you prefer in a fast-moving startup?", "category": "technical"}
-                
-        # General follow-up pool
-        default_followups = [
-            {"text": "Can you expand on how you would test the solution you just described to ensure high quality?", "category": "technical"},
-            {"text": "How do you keep up with new frameworks, tools, or changes in this domain?", "category": "hr"},
-            {"text": "Tell me about a time you made a technical mistake. How did you identify it, and how did you communicate it to your team?", "category": "behavioral"},
-            {"text": "If you had infinite time and resources, how would you rebuild or optimize the last project you worked on?", "category": "technical"}
-        ]
-        
-        # Pick one that isn't already in history
-        asked_questions = [h["question"].lower() for h in history]
-        for f in default_followups:
-            if f["text"].lower() not in asked_questions:
-                return f
-                
-        return default_followups[0]
+        ctx = extract_key_context(resume_text, job_description)
+        r_skills = ctx["resume_skills"]
+        jd_skills = ctx["jd_skills"]
+        r_skill = random.choice(r_skills) if r_skills else "this skill"
+        jd_skill = random.choice(jd_skills) if jd_skills else "system architecture"
+
+        if needs_probing:
+            probing_templates = [
+                f"Your response regarding '{last_q[:55]}...' was somewhat brief. Could you elaborate specifically on how you handled this in practice using {r_skill} so we can properly evaluate your response?",
+                f"You touched on basic concepts for '{last_q[:55]}...', but missed core implementation details. What specific architecture or trade-offs did you consider?",
+                f"To properly evaluate your answer to '{last_q[:55]}...', can you provide a concrete step-by-step example from your experience with {r_skill}?"
+            ]
+            return {
+                "text": random.choice(probing_templates),
+                "category": "technical"
+            }
+        else:
+            followup_templates = [
+                {
+                    "text": f"Great. Moving forward, the job description requires strong competency in {jd_skill}. Looking at your experience at {ctx['company_name']}, how have you managed production deployment or testing for this?",
+                    "category": "technical"
+                },
+                {
+                    "text": f"Can you share an instance from your work with {r_skill} where a technical constraint forced you to change your architectural approach mid-project?",
+                    "category": "behavioral"
+                },
+                {
+                    "text": f"In terms of team dynamics and project deliverables, how do you handle unexpected shifts in priority from product management while maintaining code quality for {jd_skill}?",
+                    "category": "hr"
+                },
+                {
+                    "text": f"If you were tasked with building a feature described in {ctx['jd_summary'][:60]}, walk me through your step-by-step design from database schema to API layer.",
+                    "category": "technical"
+                }
+            ]
+            asked_texts = [h["question"].lower() for h in history]
+            available = [f for f in followup_templates if f["text"].lower() not in asked_texts]
+            return random.choice(available) if available else random.choice(followup_templates)
