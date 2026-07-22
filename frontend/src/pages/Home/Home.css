@@ -1,0 +1,24 @@
+.home {
+  align-items: center;
+  display: grid;
+  min-height: calc(100vh - 82px);
+}
+
+.home__content {
+  max-width: 760px;
+}
+
+.home h1 {
+  color: var(--color-text);
+  font-size: clamp(2.4rem, 7vw, 5.5rem);
+  line-height: 1;
+  margin: 0;
+}
+
+.home__description {
+  color: var(--color-muted);
+  font-size: 1.15rem;
+  line-height: 1.8;
+  margin: 24px 0 32px;
+  max-width: 680px;
+}

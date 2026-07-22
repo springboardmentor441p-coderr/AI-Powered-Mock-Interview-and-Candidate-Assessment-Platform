@@ -1,0 +1,39 @@
+.audio-recorder {
+  display: grid;
+  gap: 18px;
+}
+
+.audio-recorder__status {
+  align-items: center;
+  color: var(--color-muted);
+  display: flex;
+  font-weight: 700;
+  gap: 10px;
+}
+
+.audio-recorder__dot {
+  background: var(--color-border-strong);
+  border-radius: 999px;
+  height: 10px;
+  width: 10px;
+}
+
+.audio-recorder__dot.is-recording {
+  background: var(--color-danger);
+}
+
+.audio-recorder__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.audio-recorder__player {
+  width: 100%;
+}
+
+.audio-recorder__error {
+  color: var(--color-danger);
+  font-weight: 700;
+  margin: 0;
+}

@@ -1,0 +1,67 @@
+{
+  "Backend Java Developer": {
+    "domain": "Backend Engineering",
+    "seniority": "Entry",
+    "company_context": "A fast-growing SaaS company building reliable APIs for business workflows.",
+    "key_skills": [
+      "Java",
+      "Spring Boot",
+      "REST API",
+      "MySQL"
+    ],
+    "nice_to_have": [
+      "Docker",
+      "Redis"
+    ],
+    "responsibilities": [
+      "Develop REST APIs",
+      "Optimize SQL queries",
+      "Write unit tests",
+      "Collaborate with frontend and QA teams"
+    ]
+  },
+  "Backend Developer": {
+    "domain": "Backend Engineering",
+    "seniority": "Entry",
+    "company_context": "A product-focused engineering team building scalable backend services.",
+    "key_skills": [
+      "Python",
+      "FastAPI",
+      "REST API",
+      "SQL"
+    ],
+    "nice_to_have": [
+      "Docker",
+      "Redis",
+      "Cloud deployment"
+    ],
+    "responsibilities": [
+      "Build and maintain backend APIs",
+      "Design clean service-layer logic",
+      "Integrate third-party APIs",
+      "Write tests for critical workflows"
+    ]
+  },
+  "Frontend Developer": {
+    "domain": "Frontend Engineering",
+    "seniority": "Entry",
+    "company_context": "A user-focused product company building responsive web applications.",
+    "key_skills": [
+      "React",
+      "JavaScript",
+      "State Management",
+      "CSS"
+    ],
+    "nice_to_have": [
+      "Vite",
+      "TypeScript",
+      "Accessibility"
+    ],
+    "responsibilities": [
+      "Build reusable UI components",
+      "Implement responsive layouts",
+      "Manage client-side state",
+      "Collaborate with backend engineers on API contracts"
+    ]
+  }
+}

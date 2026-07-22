@@ -1,0 +1,63 @@
+.interview-layout {
+  display: grid;
+  gap: 22px;
+  grid-template-columns: minmax(0, 1fr) minmax(320px, 420px);
+}
+
+.question-panel,
+.recorder-panel {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  box-shadow: var(--shadow-soft);
+  padding: 28px;
+}
+
+.question-panel__label {
+  color: var(--color-primary);
+  font-size: 0.78rem;
+  font-weight: 900;
+  letter-spacing: 0;
+  margin: 0 0 12px;
+  text-transform: uppercase;
+}
+
+.question-panel h2 {
+  color: var(--color-text);
+  font-size: clamp(1.45rem, 3vw, 2.35rem);
+  line-height: 1.2;
+  margin: 0;
+}
+
+.interview-meta {
+  border-bottom: 1px solid var(--color-border);
+  display: grid;
+  gap: 18px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  margin-bottom: 24px;
+  padding-bottom: 22px;
+}
+
+.interview-meta strong {
+  color: var(--color-text);
+  display: block;
+  font-size: 1rem;
+}
+
+.question-panel__session {
+  color: var(--color-muted);
+  font-size: 0.88rem;
+  font-weight: 700;
+  margin: 18px 0 0;
+  overflow-wrap: anywhere;
+}
+
+@media (max-width: 860px) {
+  .interview-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .interview-meta {
+    grid-template-columns: 1fr;
+  }
+}

@@ -1,0 +1,73 @@
+# ===========================
+# Python
+# ===========================
+
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.so
+*.egg-info/
+
+# Virtual Environments
+venv/
+backend/venv/
+.env
+backend/.env
+
+# Python cache
+.pytest_cache/
+.mypy_cache/
+
+# ===========================
+# FastAPI Uploads
+# ===========================
+
+backend/generated_audio/
+backend/uploads/
+backend/temp/
+backend/logs/
+
+# ===========================
+# Node / React
+# ===========================
+
+frontend/node_modules/
+frontend/dist/
+
+# npm/yarn logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# ===========================
+# VS Code
+# ===========================
+
+.vscode/
+
+# ===========================
+# OS Files
+# ===========================
+
+.DS_Store
+Thumbs.db
+
+# ===========================
+# IDE
+# ===========================
+
+.idea/
+
+# ===========================
+# Environment Files
+# ===========================
+
+.env.*
+!.env.example
+
+# ===========================
+# Misc
+# ===========================
+
+*.log
