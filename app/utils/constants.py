@@ -83,12 +83,87 @@ DEFAULT_QUESTION_COUNT = 5
 
 # Conversational interview settings
 INTERVIEW_MODE_CONVERSATIONAL = "conversational"
-INTERVIEWER_NAME = "Alex"
-INTERVIEWER_ROLE = "Senior Technical Interviewer"
+INTERVIEWER_NAME = "Sarah Chen"
+INTERVIEWER_ROLE = "Senior Technical Hiring Manager"
 MIN_CONVERSATION_TURNS = 3
 MAX_CONVERSATION_TURNS = 10
 SILENCE_AUTO_SUBMIT_MS = 4000
 SESSION_DURATION_MULTIPLIER = 3
+INTERVIEW_TARGET_MINUTES = 10
+
+# Map interview difficulty to seniority label used in the interviewer persona
+DIFFICULTY_TO_SENIORITY: dict[str, str] = {
+    "Easy": "Junior",
+    "Medium": "Mid",
+    "Hard": "Senior",
+}
+
+# Default company / role context per domain for the Sarah Chen interviewer
+DOMAIN_ROLE_CONTEXT: dict[str, dict[str, str]] = {
+    "Python": {
+        "job_title": "Python Developer",
+        "company_context": "a product engineering team building scalable backend services",
+        "key_skills": "Python, APIs, databases, testing, and clean code",
+        "nice_to_have": "Flask/Django, async programming, cloud deployment",
+        "responsibilities": "design and ship backend features, write reliable services, collaborate with product and QA",
+    },
+    "Java": {
+        "job_title": "Java Developer",
+        "company_context": "an enterprise engineering organization focused on reliable distributed systems",
+        "key_skills": "Java, OOP, Spring Boot, REST APIs, and concurrency",
+        "nice_to_have": "microservices, messaging, cloud-native patterns",
+        "responsibilities": "build and maintain Java services, design APIs, improve system reliability",
+    },
+    "C++": {
+        "job_title": "C++ Software Engineer",
+        "company_context": "a performance-critical systems team",
+        "key_skills": "C++, memory management, data structures, and performance optimization",
+        "nice_to_have": "multithreading, modern C++17/20, tooling and profiling",
+        "responsibilities": "implement high-performance components, profile bottlenecks, ensure memory safety",
+    },
+    "AI": {
+        "job_title": "AI Engineer",
+        "company_context": "an applied AI team shipping intelligent product features",
+        "key_skills": "machine learning fundamentals, model evaluation, Python, and applied AI systems",
+        "nice_to_have": "LLMs, MLOps, vector search, prompt engineering",
+        "responsibilities": "prototype and productionize AI features, evaluate models, partner with product teams",
+    },
+    "Machine Learning": {
+        "job_title": "Machine Learning Engineer",
+        "company_context": "a data-driven product company focused on predictive systems",
+        "key_skills": "supervised learning, feature engineering, model evaluation, and Python ML stack",
+        "nice_to_have": "deep learning, MLOps, experiment tracking",
+        "responsibilities": "train and deploy models, improve feature pipelines, monitor model quality",
+    },
+    "Data Science": {
+        "job_title": "Data Scientist",
+        "company_context": "an analytics-driven organization turning data into product decisions",
+        "key_skills": "EDA, statistics, SQL, Python, and storytelling with data",
+        "nice_to_have": "A/B testing, dashboards, ML prototypes",
+        "responsibilities": "analyze complex datasets, communicate insights, partner with stakeholders on decisions",
+    },
+    "MERN": {
+        "job_title": "Full-Stack MERN Developer",
+        "company_context": "a product team shipping customer-facing web applications",
+        "key_skills": "MongoDB, Express, React, Node.js, and REST APIs",
+        "nice_to_have": "TypeScript, state management, CI/CD, cloud hosting",
+        "responsibilities": "build end-to-end features, design APIs, improve UI performance and reliability",
+    },
+    "Cyber Security": {
+        "job_title": "Cybersecurity Analyst",
+        "company_context": "a security team protecting applications and infrastructure",
+        "key_skills": "threat detection, vulnerability assessment, networking fundamentals, and secure coding awareness",
+        "nice_to_have": "penetration testing, SIEM, cloud security",
+        "responsibilities": "assess risks, investigate incidents, harden systems, advise engineering on secure practices",
+    },
+    "Cloud": {
+        "job_title": "Cloud Engineer",
+        "company_context": "a platform team running cloud-native infrastructure",
+        "key_skills": "AWS/Azure, containers, CI/CD, networking, and infrastructure as code",
+        "nice_to_have": "Kubernetes, observability, cost optimization",
+        "responsibilities": "design resilient cloud architectures, automate deployments, improve reliability and cost",
+    },
+}
 
 # Interviewer response types
 RESPONSE_TYPE_OPENING = "opening"

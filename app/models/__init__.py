@@ -199,6 +199,7 @@ class Interview(db.Model):
     duration_minutes = db.Column(db.Integer, default=30)
     started_at = db.Column(db.DateTime)
     completed_at = db.Column(db.DateTime)
+    cancellation_reason = db.Column(db.Text)
     video_path = db.Column(db.String(500))
     audio_path = db.Column(db.String(500))
     created_at = db.Column(db.DateTime, default=datetime.utcnow)

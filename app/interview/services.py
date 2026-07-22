@@ -137,6 +137,7 @@ class InterviewService:
             difficulty=difficulty,
             resume_context=resume_context,
             candidate_name=candidate_name,
+            job_title=title,
         )
 
         greeting = opening_data.get("greeting", "Hello!")
@@ -260,6 +261,7 @@ class InterviewService:
         interview = Interview.query.get_or_404(interview_id)
         interview.status = INTERVIEW_CANCELLED
         interview.completed_at = datetime.utcnow()
+        interview.cancellation_reason = reason or MODERATION_CANCELLATION_MESSAGE
         db.session.commit()
         current_app.logger.warning(
             f"Interview {interview_id} cancelled. Reason: {reason or 'Not specified'}"
@@ -317,6 +319,7 @@ class InterviewService:
             audio_file=audio_file,
             duration_seconds=duration_seconds,
             frame_data=frame_data,
+            fast=True,
         )
 
         question = Question.query.get_or_404(question_id)
@@ -328,12 +331,17 @@ class InterviewService:
         resume_context = ""
         if interview.resume:
             resume_context = InterviewService.build_resume_context(interview.resume)
+            # Keep resume context short for faster Gemini calls.
+            if len(resume_context) > 700:
+                resume_context = resume_context[:700] + "..."
 
         qa_history = [
             {"question": turn["question"], "answer": turn["answer"]}
             for turn in history
             if turn["has_answer"]
         ]
+        # Only send the most recent turns to Gemini for lower latency.
+        qa_history = qa_history[-4:]
 
         interviewer_response = GeminiService.generate_interviewer_response(
             conversation_history=qa_history,
@@ -343,6 +351,7 @@ class InterviewService:
             current_turn=answered_count,
             max_turns=target_turns,
             resume_context=resume_context,
+            job_title=interview.title or "",
         )
 
         speech = answer.speech_analysis
@@ -416,6 +425,7 @@ class InterviewService:
         audio_file=None,
         duration_seconds: int = 60,
         frame_data: Optional[list] = None,
+        fast: bool = False,
     ) -> Answer:
         """
         Save candidate answer with speech and emotion analysis.
@@ -426,13 +436,15 @@ class InterviewService:
             audio_file: Optional audio upload.
             duration_seconds: Answer duration.
             frame_data: Webcam frame analysis data.
+            fast: Skip slow analysis steps during live conversation turns.
 
         Returns:
             Answer record.
         """
         question = Question.query.get_or_404(question_id)
         audio_path = None
-        if audio_file:
+        # Skip heavy audio uploads during live turns — text transcript is enough for follow-ups.
+        if audio_file and not fast:
             audio_path = save_upload_file(audio_file, subfolder="audio")
 
         existing = Answer.query.filter_by(question_id=question_id).first()
@@ -458,9 +470,11 @@ class InterviewService:
             audio_path=audio_path,
             answer_text=answer_text,
             duration_seconds=duration_seconds,
+            fast=fast,
         )
 
         if frame_data:
+            # Client already computed per-frame metrics; aggregation is cheap.
             emotion_results = EmotionDetectionService.analyze_video_frames(frame_data)
             EmotionDetectionService.save_analysis(answer.id, emotion_results)
 
@@ -579,6 +593,91 @@ class InterviewService:
         )
 
     @staticmethod
+    def get_all_interviews(limit: int = 100) -> list:
+        """
+        Get recent interviews across all candidates for recruiters.
+
+        Args:
+            limit: Maximum number of interviews to return.
+
+        Returns:
+            List of Interview instances.
+        """
+        return (
+            Interview.query.order_by(Interview.created_at.desc())
+            .limit(limit)
+            .all()
+        )
+
+    @staticmethod
     def get_interview_detail(interview_id: int) -> Optional[Interview]:
         """Get interview with all related data."""
         return Interview.query.get(interview_id)
+
+    @staticmethod
+    def build_interview_record(interview: Interview) -> dict:
+        """
+        Build a single consolidated interview record for candidate and recruiter views.
+
+        Args:
+            interview: Interview model instance.
+
+        Returns:
+            Dictionary containing all interview details in one place.
+        """
+        questions = interview.questions.order_by(Question.order_index).all()
+        turns = []
+        for index, question in enumerate(questions, start=1):
+            answer = question.answer
+            speech = answer.speech_analysis if answer else None
+            emotion = answer.emotion_analysis if answer else None
+            turns.append(
+                {
+                    "turn_number": index,
+                    "question_id": question.id,
+                    "question_text": question.question_text,
+                    "category": question.category,
+                    "difficulty": question.difficulty,
+                    "answer_text": answer.answer_text if answer else "",
+                    "duration_seconds": answer.duration_seconds if answer else 0,
+                    "has_answer": answer is not None,
+                    "transcript": speech.transcript if speech else "",
+                    "grammar_score": speech.grammar_score if speech else None,
+                    "speaking_pace": speech.speaking_pace if speech else None,
+                    "filler_word_count": speech.filler_word_count if speech else None,
+                    "communication_score": speech.communication_score if speech else None,
+                    "dominant_emotion": emotion.dominant_emotion if emotion else None,
+                    "eye_contact_score": emotion.eye_contact_score if emotion else None,
+                    "confidence_score": emotion.confidence_score if emotion else None,
+                    "attention_score": emotion.attention_score if emotion else None,
+                }
+            )
+
+        candidate = interview.candidate
+        resume = interview.resume
+        resume_skills = []
+        if resume:
+            resume_skills = [skill.name for skill in resume.skills.all()]
+
+        score = interview.score
+        report = interview.report
+
+        return {
+            "interview": interview,
+            "candidate_name": (
+                (candidate.full_name or candidate.username) if candidate else "Unknown"
+            ),
+            "candidate_email": candidate.email if candidate else "",
+            "resume": resume,
+            "resume_skills": resume_skills,
+            "score": score,
+            "report": report,
+            "questions": questions,
+            "turns": turns,
+            "conversation_history": InterviewService.get_conversation_history(interview.id),
+            "status": interview.status,
+            "cancellation_reason": interview.cancellation_reason or "",
+            "started_at": interview.started_at,
+            "completed_at": interview.completed_at,
+            "created_at": interview.created_at,
+        }

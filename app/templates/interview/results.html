@@ -1,19 +1,102 @@
 {% extends "base.html" %}
-{% block title %}Interview Results - {{ app_name }}{% endblock %}
+{% block title %}Interview Record - {{ interview.title }} - {{ app_name }}{% endblock %}
 
 {% block content %}
-<div class="d-flex justify-content-between align-items-center mb-4">
-    <h3>Interview Results: {{ interview.title }}</h3>
-    {% if report %}
-    <a href="{{ url_for('reports.download', interview_id=interview.id) }}" class="btn btn-success">
-        <i class="bi bi-download"></i> Download PDF Report
-    </a>
-    {% else %}
-    <a href="{{ url_for('reports.generate', interview_id=interview.id) }}" class="btn btn-success">
-        <i class="bi bi-file-earmark-pdf"></i> Generate Report
-    </a>
-    {% endif %}
+<div class="d-flex flex-wrap justify-content-between align-items-start gap-3 mb-4">
+    <div>
+        <h3 class="mb-1">Interview Record</h3>
+        <p class="text-muted mb-0">All interview details stored in one place for revisit anytime.</p>
+    </div>
+    <div class="d-flex flex-wrap gap-2">
+        {% if is_recruiter_view %}
+        <a href="{{ url_for('recruiter.interviews') }}" class="btn btn-outline-secondary">
+            <i class="bi bi-arrow-left"></i> All Interviews
+        </a>
+        {% else %}
+        <a href="{{ url_for('interview.history') }}" class="btn btn-outline-secondary">
+            <i class="bi bi-arrow-left"></i> History
+        </a>
+        {% endif %}
+        {% if report %}
+        <a href="{{ url_for('reports.download', interview_id=interview.id) }}" class="btn btn-success">
+            <i class="bi bi-download"></i> Download PDF
+        </a>
+        {% elif interview.status == 'completed' %}
+        <a href="{{ url_for('reports.generate', interview_id=interview.id) }}" class="btn btn-success">
+            <i class="bi bi-file-earmark-pdf"></i> Generate Report
+        </a>
+        {% endif %}
+    </div>
 </div>
+
+<div class="card shadow mb-4">
+    <div class="card-body">
+        <div class="row g-3">
+            <div class="col-md-6">
+                <h4 class="mb-2">{{ interview.title }}</h4>
+                <p class="mb-1"><strong>Candidate:</strong> {{ candidate_name }}
+                    {% if candidate_email %}<span class="text-muted">({{ candidate_email }})</span>{% endif %}
+                </p>
+                <p class="mb-1"><strong>Interviewer:</strong> {{ interviewer_name }} · {{ interviewer_role }}</p>
+                <p class="mb-0"><strong>Domain:</strong> {{ interview.domain }} · {{ interview.category }} ·
+                    <span class="badge bg-secondary">{{ interview.difficulty }}</span>
+                </p>
+            </div>
+            <div class="col-md-6">
+                <p class="mb-1"><strong>Status:</strong>
+                    {% if interview.status == 'completed' %}
+                    <span class="badge bg-success">Completed</span>
+                    {% elif interview.status == 'cancelled' %}
+                    <span class="badge bg-danger">Cancelled</span>
+                    {% elif interview.status == 'in_progress' %}
+                    <span class="badge bg-warning text-dark">In Progress</span>
+                    {% else %}
+                    <span class="badge bg-info">{{ interview.status }}</span>
+                    {% endif %}
+                </p>
+                <p class="mb-1"><strong>Created:</strong>
+                    {{ interview.created_at.strftime('%Y-%m-%d %H:%M') if interview.created_at else '-' }}
+                </p>
+                <p class="mb-1"><strong>Started:</strong>
+                    {{ interview.started_at.strftime('%Y-%m-%d %H:%M') if interview.started_at else '-' }}
+                </p>
+                <p class="mb-0"><strong>Ended:</strong>
+                    {{ interview.completed_at.strftime('%Y-%m-%d %H:%M') if interview.completed_at else '-' }}
+                </p>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% if interview.status == 'cancelled' %}
+<div class="alert alert-danger">
+    <strong>Interview cancelled.</strong>
+    {{ cancellation_reason or 'This interview was cancelled due to a policy violation.' }}
+</div>
+{% endif %}
+
+{% if resume %}
+<div class="card shadow mb-4">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <span>Linked Resume</span>
+        <div class="d-flex gap-2">
+            <a href="{{ url_for('resume.view', resume_id=resume.id) }}" class="btn btn-sm btn-outline-primary">View</a>
+            <a href="{{ url_for('resume.download', resume_id=resume.id) }}" class="btn btn-sm btn-outline-success">Download PDF</a>
+        </div>
+    </div>
+    <div class="card-body">
+        <p class="mb-2"><strong>{{ resume.name or resume.file_name }}</strong></p>
+        <p class="mb-2">{{ resume.summary or 'No summary available.' }}</p>
+        {% if resume_skills %}
+        <div class="d-flex flex-wrap gap-1">
+            {% for skill in resume_skills %}
+            <span class="badge bg-light text-dark border">{{ skill }}</span>
+            {% endfor %}
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endif %}
 
 {% if score %}
 <div class="row g-4 mb-4">
@@ -94,38 +177,70 @@
         <canvas id="scoreChart"></canvas>
     </div>
 </div>
+{% elif interview.status == 'completed' %}
+<div class="alert alert-info">Scores are not available for this interview yet.</div>
 {% endif %}
 
-<h4 class="mb-3">Question &amp; Answer Details</h4>
-{% for question in questions %}
+<h4 class="mb-3">Full Conversation Record</h4>
+{% if turns %}
+{% for turn in turns %}
 <div class="card shadow mb-3">
-    <div class="card-header"><strong>Q{{ loop.index }}:</strong> {{ question.question_text }}</div>
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <span><strong>Turn {{ turn.turn_number }}</strong>
+            {% if turn.category %}<span class="badge bg-light text-dark border ms-2">{{ turn.category }}</span>{% endif %}
+        </span>
+        {% if turn.duration_seconds %}
+        <small class="text-muted">{{ turn.duration_seconds }}s</small>
+        {% endif %}
+    </div>
     <div class="card-body">
-        {% if question.answer %}
-        <p><strong>Answer:</strong> {{ question.answer.answer_text or 'Audio response' }}</p>
-        {% if question.answer.speech_analysis %}
-        <div class="row small text-muted">
-            <div class="col-md-3">Transcript: {{ question.answer.speech_analysis.transcript[:200] }}...</div>
-            <div class="col-md-2">Grammar: {{ question.answer.speech_analysis.grammar_score }}</div>
-            <div class="col-md-2">Pace: {{ question.answer.speech_analysis.speaking_pace }} wpm</div>
-            <div class="col-md-2">Fillers: {{ question.answer.speech_analysis.filler_word_count }}</div>
-            <div class="col-md-3">Comm Score: {{ question.answer.speech_analysis.communication_score }}</div>
+        <div class="mb-3">
+            <div class="small text-primary fw-semibold mb-1">{{ interviewer_name }}</div>
+            <p class="mb-0">{{ turn.question_text }}</p>
         </div>
-        {% endif %}
-        {% if question.answer.emotion_analysis %}
-        <div class="row small mt-2">
-            <div class="col-md-3">Emotion: {{ question.answer.emotion_analysis.dominant_emotion }}</div>
-            <div class="col-md-3">Eye Contact: {{ question.answer.emotion_analysis.eye_contact_score }}</div>
-            <div class="col-md-3">Confidence: {{ question.answer.emotion_analysis.confidence_score }}</div>
-            <div class="col-md-3">Attention: {{ question.answer.emotion_analysis.attention_score }}</div>
+        <div class="border-top pt-3">
+            <div class="small text-success fw-semibold mb-1">Candidate</div>
+            {% if turn.has_answer %}
+            <p class="mb-2">{{ turn.answer_text or 'Audio response recorded.' }}</p>
+            {% if turn.transcript and turn.transcript != turn.answer_text %}
+            <p class="small text-muted mb-2"><strong>Transcript:</strong> {{ turn.transcript }}</p>
+            {% endif %}
+            <div class="row small text-muted g-2">
+                {% if turn.grammar_score is not none %}
+                <div class="col-md-3">Grammar: {{ turn.grammar_score }}</div>
+                {% endif %}
+                {% if turn.speaking_pace is not none %}
+                <div class="col-md-3">Pace: {{ turn.speaking_pace }} wpm</div>
+                {% endif %}
+                {% if turn.filler_word_count is not none %}
+                <div class="col-md-3">Fillers: {{ turn.filler_word_count }}</div>
+                {% endif %}
+                {% if turn.communication_score is not none %}
+                <div class="col-md-3">Comm: {{ turn.communication_score }}</div>
+                {% endif %}
+                {% if turn.dominant_emotion %}
+                <div class="col-md-3">Emotion: {{ turn.dominant_emotion }}</div>
+                {% endif %}
+                {% if turn.eye_contact_score is not none %}
+                <div class="col-md-3">Eye Contact: {{ turn.eye_contact_score }}</div>
+                {% endif %}
+                {% if turn.confidence_score is not none %}
+                <div class="col-md-3">Confidence: {{ turn.confidence_score }}</div>
+                {% endif %}
+                {% if turn.attention_score is not none %}
+                <div class="col-md-3">Attention: {{ turn.attention_score }}</div>
+                {% endif %}
+            </div>
+            {% else %}
+            <p class="text-muted mb-0">No answer recorded for this turn.</p>
+            {% endif %}
         </div>
-        {% endif %}
-        {% else %}
-        <p class="text-muted">No answer recorded.</p>
-        {% endif %}
     </div>
 </div>
 {% endfor %}
+{% else %}
+<div class="alert alert-info">No conversation turns have been stored for this interview yet.</div>
+{% endif %}
 {% endblock %}
 
 {% block extra_js %}

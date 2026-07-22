@@ -78,9 +78,10 @@ class AnalyticsService:
         for candidate in candidates:
             completed = Interview.query.filter_by(
                 candidate_id=candidate.id, status=INTERVIEW_COMPLETED
-            ).all()
+            ).order_by(Interview.created_at.desc()).all()
             scores = [i.score.overall_score for i in completed if i.score]
             avg = round(sum(scores) / len(scores), 1) if scores else 0
+            latest = completed[0] if completed else None
             rankings.append(
                 {
                     "id": candidate.id,
@@ -88,6 +89,7 @@ class AnalyticsService:
                     "email": candidate.email,
                     "interview_count": len(completed),
                     "average_score": avg,
+                    "latest_interview_id": latest.id if latest else None,
                 }
             )
 
@@ -183,7 +185,7 @@ class AnalyticsService:
             ).all()
             if not interviews:
                 continue
-            latest = interviews[-1]
+            latest = max(interviews, key=lambda item: item.created_at or item.id)
             score = latest.score
             results.append(
                 {
@@ -193,6 +195,7 @@ class AnalyticsService:
                     "technical": score.technical_score if score else 0,
                     "communication": score.communication_score if score else 0,
                     "confidence": score.confidence_score if score else 0,
+                    "interview_id": latest.id,
                 }
             )
         return results

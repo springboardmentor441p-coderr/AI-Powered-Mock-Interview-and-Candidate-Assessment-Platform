@@ -84,6 +84,7 @@ def create_app(config_name: str = None) -> Flask:
 
     with app.app_context():
         db.create_all()
+        _ensure_interview_schema()
         AuthService.seed_roles()
         AuthService.seed_admin()
 
@@ -92,3 +93,20 @@ def create_app(config_name: str = None) -> Flask:
         return {"app_name": app.config.get("APP_NAME", "InterviewIQ")}
 
     return app
+
+
+def _ensure_interview_schema() -> None:
+    """
+    Ensure newer Interview columns exist on existing SQLite databases.
+    """
+    from sqlalchemy import inspect, text
+
+    inspector = inspect(db.engine)
+    if "interviews" not in inspector.get_table_names():
+        return
+    columns = {col["name"] for col in inspector.get_columns("interviews")}
+    if "cancellation_reason" not in columns:
+        with db.engine.begin() as connection:
+            connection.execute(
+                text("ALTER TABLE interviews ADD COLUMN cancellation_reason TEXT")
+            )

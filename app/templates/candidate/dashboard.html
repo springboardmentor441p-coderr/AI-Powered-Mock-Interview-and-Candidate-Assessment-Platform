@@ -72,10 +72,15 @@
     <div class="card-body">
         {% for interview in interviews %}
         <div class="d-flex justify-content-between border-bottom py-2">
-            <span>{{ interview.title }} ({{ interview.domain }})</span>
+            <span>{{ interview.title }} ({{ interview.domain }})
+                <span class="badge bg-light text-dark border">{{ interview.status }}</span>
+            </span>
             <span>
                 {% if interview.score %}{{ "%.1f"|format(interview.score.overall_score) }}{% else %}-{% endif %}
-                <a href="{{ url_for('interview.results', interview_id=interview.id) if interview.status == 'completed' else url_for('interview.session', interview_id=interview.id) }}" class="btn btn-sm btn-link">View</a>
+                <a href="{{ url_for('interview.results', interview_id=interview.id) }}" class="btn btn-sm btn-link">View Record</a>
+                {% if interview.status == 'in_progress' or interview.status == 'scheduled' %}
+                <a href="{{ url_for('interview.session', interview_id=interview.id) }}" class="btn btn-sm btn-link">Continue</a>
+                {% endif %}
             </span>
         </div>
         {% else %}

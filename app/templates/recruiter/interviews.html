@@ -1,0 +1,68 @@
+{% extends "base.html" %}
+{% block title %}Interview Records - {{ app_name }}{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <h3 class="mb-1">Interview Records</h3>
+        <p class="text-muted mb-0">Revisit every stored interview detail for any candidate.</p>
+    </div>
+    <a href="{{ url_for('recruiter.dashboard') }}" class="btn btn-outline-secondary">Dashboard</a>
+</div>
+
+{% if candidate_id %}
+<div class="alert alert-info">
+    Showing interviews for candidate #{{ candidate_id }}.
+    <a href="{{ url_for('recruiter.interviews') }}">View all interviews</a>
+</div>
+{% endif %}
+
+{% if interviews %}
+<div class="table-responsive">
+    <table class="table table-hover shadow-sm bg-white rounded">
+        <thead class="table-primary">
+            <tr>
+                <th>Candidate</th>
+                <th>Title</th>
+                <th>Domain</th>
+                <th>Status</th>
+                <th>Score</th>
+                <th>Date</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for interview in interviews %}
+            <tr>
+                <td>
+                    {{ interview.candidate.full_name or interview.candidate.username if interview.candidate else 'Unknown' }}
+                </td>
+                <td>{{ interview.title }}</td>
+                <td>{{ interview.domain }}</td>
+                <td>
+                    {% if interview.status == 'completed' %}
+                    <span class="badge bg-success">Completed</span>
+                    {% elif interview.status == 'cancelled' %}
+                    <span class="badge bg-danger">Cancelled</span>
+                    {% elif interview.status == 'in_progress' %}
+                    <span class="badge bg-warning text-dark">In Progress</span>
+                    {% else %}
+                    <span class="badge bg-info">{{ interview.status }}</span>
+                    {% endif %}
+                </td>
+                <td>{{ "%.1f"|format(interview.score.overall_score) if interview.score else '-' }}</td>
+                <td>{{ interview.created_at.strftime('%Y-%m-%d') if interview.created_at else '-' }}</td>
+                <td>
+                    <a href="{{ url_for('interview.results', interview_id=interview.id) }}" class="btn btn-sm btn-outline-primary">
+                        View Record
+                    </a>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% else %}
+<div class="alert alert-info">No interview records found yet.</div>
+{% endif %}
+{% endblock %}

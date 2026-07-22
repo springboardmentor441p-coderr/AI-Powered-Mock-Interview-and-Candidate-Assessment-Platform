@@ -108,11 +108,10 @@ def session(interview_id: int):
 
     if interview.status == INTERVIEW_CANCELLED:
         flash(
-            "This interview was cancelled due to inappropriate language. "
-            "Please maintain professional conduct in future sessions.",
-            "danger",
+            "This interview was cancelled. You can review the full stored record below.",
+            "warning",
         )
-        return redirect(url_for("interview.history"))
+        return redirect(url_for("interview.results", interview_id=interview.id))
 
     if interview.status == "scheduled":
         InterviewService.start_interview(interview_id)
@@ -182,7 +181,9 @@ def submit_response():
     )
 
     if result.get("is_cancelled"):
-        result["redirect_url"] = url_for("interview.history")
+        result["redirect_url"] = url_for(
+            "interview.results", interview_id=interview.id
+        )
 
     return jsonify(result)
 
@@ -257,23 +258,37 @@ def complete(interview_id: int):
 @interview_bp.route("/results/<int:interview_id>")
 @login_required_web
 def results(interview_id: int):
-    """View interview results and analysis."""
+    """View full stored interview record (shared by candidate and recruiter)."""
     interview = InterviewService.get_interview_detail(interview_id)
     if not interview:
         flash("Interview not found.", "danger")
         return redirect(url_for("main.dashboard"))
 
-    if interview.candidate_id != current_user.id and not current_user.is_recruiter and not current_user.is_admin:
+    if (
+        interview.candidate_id != current_user.id
+        and not current_user.is_recruiter
+        and not current_user.is_admin
+    ):
         flash("Access denied.", "danger")
         return redirect(url_for("main.dashboard"))
 
-    questions = interview.questions.order_by("order_index").all()
+    record = InterviewService.build_interview_record(interview)
     return render_template(
         "interview/results.html",
         interview=interview,
-        questions=questions,
-        score=interview.score,
-        report=interview.report,
+        record=record,
+        questions=record["questions"],
+        turns=record["turns"],
+        score=record["score"],
+        report=record["report"],
+        resume=record["resume"],
+        resume_skills=record["resume_skills"],
+        candidate_name=record["candidate_name"],
+        candidate_email=record["candidate_email"],
+        cancellation_reason=record["cancellation_reason"],
+        interviewer_name=INTERVIEWER_NAME,
+        interviewer_role=INTERVIEWER_ROLE,
+        is_recruiter_view=current_user.is_recruiter or current_user.is_admin,
     )
 
 

@@ -41,9 +41,8 @@
                 <td>{{ "%.1f"|format(interview.score.overall_score) if interview.score else '-' }}</td>
                 <td>{{ interview.created_at.strftime('%Y-%m-%d') }}</td>
                 <td>
-                    {% if interview.status == 'completed' %}
-                    <a href="{{ url_for('interview.results', interview_id=interview.id) }}" class="btn btn-sm btn-outline-primary">Results</a>
-                    {% elif interview.status == 'in_progress' %}
+                    <a href="{{ url_for('interview.results', interview_id=interview.id) }}" class="btn btn-sm btn-outline-primary">View Record</a>
+                    {% if interview.status == 'in_progress' or interview.status == 'scheduled' %}
                     <a href="{{ url_for('interview.session', interview_id=interview.id) }}" class="btn btn-sm btn-warning">Continue</a>
                     {% endif %}
                 </td>

@@ -495,15 +495,9 @@
       formData.append('question_id', currentQuestionId);
       formData.append('answer_text', responseText);
       formData.append('duration_seconds', durationSeconds);
-      formData.append('frame_data', JSON.stringify(frameDataList));
+      // Send only recent frames to keep the request small/fast.
+      formData.append('frame_data', JSON.stringify(frameDataList.slice(-8)));
       formData.append('csrf_token', CSRF_TOKEN);
-
-      if (audioChunks.length > 0) {
-        var mimeType = (mediaRecorder && mediaRecorder.mimeType) ? mediaRecorder.mimeType : 'audio/webm';
-        var extension = mimeType.indexOf('ogg') !== -1 ? 'ogg' : 'webm';
-        var audioBlob = new Blob(audioChunks, { type: mimeType });
-        formData.append('audio_file', audioBlob, 'response.' + extension);
-      }
 
       var response = await fetch('/interview/api/submit-response', {
         method: 'POST',
@@ -518,7 +512,7 @@
       var data = await response.json();
 
       if (data.is_cancelled) {
-        showCancellationModal(data.cancellation_reason);
+        showCancellationModal(data.cancellation_reason, data.redirect_url);
         return;
       }
 
@@ -569,7 +563,7 @@
   /**
    * Show interview cancellation modal and stop session.
    */
-  function showCancellationModal(reason) {
+  function showCancellationModal(reason, redirectUrl) {
     isInterviewComplete = true;
     isProcessing = true;
 
@@ -585,8 +579,13 @@
 
     var modal = document.getElementById('cancellation-modal');
     var reasonEl = document.getElementById('cancellation-reason');
+    var recordLink = document.getElementById('cancellation-record-link');
+    var targetUrl = redirectUrl || ('/interview/results/' + INTERVIEW_ID);
     if (reasonEl) {
       reasonEl.textContent = reason || 'Interview cancelled due to policy violation.';
+    }
+    if (recordLink) {
+      recordLink.href = targetUrl;
     }
     if (modal) {
       modal.classList.remove('d-none');
@@ -595,10 +594,10 @@
     btnSubmit.disabled = true;
     btnFinish.classList.add('d-none');
     setLiveStatus('Cancelled', 'bg-danger');
-    setRecordingStatus('Interview cancelled. Redirecting to history...');
+    setRecordingStatus('Interview cancelled. Opening the stored interview record...');
 
     setTimeout(function () {
-      window.location.href = '/interview/history';
+      window.location.href = targetUrl;
     }, 5000);
   }
 

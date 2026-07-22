@@ -17,6 +17,8 @@ from app.utils.constants import FILLER_WORDS
 class SpeechAnalysisService:
     """Analyze speech from audio recordings."""
 
+    _language_tool = None
+
     @staticmethod
     def transcribe_audio(audio_path: str) -> str:
         """
@@ -93,12 +95,13 @@ class SpeechAnalysisService:
         return round(word_count / minutes, 1) if minutes > 0 else 0.0
 
     @staticmethod
-    def check_grammar(text: str) -> tuple[float, int]:
+    def check_grammar(text: str, fast: bool = False) -> tuple[float, int]:
         """
         Check grammar and return score.
 
         Args:
             text: Text to analyze.
+            fast: When True, use a lightweight heuristic (for live interview turns).
 
         Returns:
             Tuple of (grammar_score, error_count).
@@ -106,18 +109,56 @@ class SpeechAnalysisService:
         if not text.strip():
             return 0.0, 0
 
+        if fast:
+            return SpeechAnalysisService._fast_grammar_score(text)
+
         try:
-            tool = LanguageTool("en-US")
+            tool = SpeechAnalysisService._get_language_tool()
             matches = tool.check(text)
             error_count = len(matches)
             word_count = max(len(text.split()), 1)
             error_rate = error_count / word_count
             score = max(0, min(100, 100 - (error_rate * 200)))
-            tool.close()
             return round(score, 1), error_count
         except Exception as exc:
             current_app.logger.warning(f"Grammar check fallback: {exc}")
-            return 75.0, 0
+            return SpeechAnalysisService._fast_grammar_score(text)
+
+    @staticmethod
+    def _fast_grammar_score(text: str) -> tuple[float, int]:
+        """
+        Estimate grammar quality without starting LanguageTool.
+
+        Args:
+            text: Text to analyze.
+
+        Returns:
+            Tuple of (grammar_score, estimated_error_count).
+        """
+        words = text.split()
+        word_count = max(len(words), 1)
+        issues = 0
+        if text and text[0].islower():
+            issues += 1
+        if not re.search(r"[.!?]$", text.strip()):
+            issues += 1
+        repeated = re.findall(r"\b(\w+)\s+\1\b", text.lower())
+        issues += len(repeated)
+        error_rate = issues / word_count
+        score = max(55.0, min(95.0, 100 - (error_rate * 180)))
+        return round(score, 1), issues
+
+    @staticmethod
+    def _get_language_tool():
+        """
+        Reuse a single LanguageTool instance (startup is expensive).
+
+        Returns:
+            Shared LanguageTool instance.
+        """
+        if SpeechAnalysisService._language_tool is None:
+            SpeechAnalysisService._language_tool = LanguageTool("en-US")
+        return SpeechAnalysisService._language_tool
 
     @staticmethod
     def calculate_communication_score(
@@ -185,6 +226,7 @@ class SpeechAnalysisService:
         audio_path: Optional[str],
         answer_text: str = "",
         duration_seconds: int = 60,
+        fast: bool = False,
     ) -> SpeechAnalysis:
         """
         Perform full speech analysis on an answer.
@@ -194,18 +236,19 @@ class SpeechAnalysisService:
             audio_path: Path to audio recording.
             answer_text: Pre-provided text (optional).
             duration_seconds: Recording duration.
+            fast: Skip slow LanguageTool / transcription when text already exists.
 
         Returns:
             SpeechAnalysis record.
         """
         transcript = answer_text
-        if audio_path and not transcript:
+        if audio_path and not transcript and not fast:
             transcript = SpeechAnalysisService.transcribe_audio(audio_path)
 
         word_count = len(transcript.split())
         filler_count, filler_words = SpeechAnalysisService.count_filler_words(transcript)
         pace = SpeechAnalysisService.calculate_speaking_pace(transcript, duration_seconds)
-        grammar_score, _ = SpeechAnalysisService.check_grammar(transcript)
+        grammar_score, _ = SpeechAnalysisService.check_grammar(transcript, fast=fast)
         comm_score = SpeechAnalysisService.calculate_communication_score(
             grammar_score, pace, filler_count, word_count
         )

@@ -19,8 +19,29 @@
     </div>
     <div class="col-md-4">
         <div class="card shadow stat-card text-center p-3">
-            <a href="{{ url_for('recruiter.compare') }}" class="btn btn-primary">Compare Candidates</a>
+            <a href="{{ url_for('recruiter.interviews') }}" class="btn btn-primary mb-2 w-100">Interview Records</a>
+            <a href="{{ url_for('recruiter.compare') }}" class="btn btn-outline-primary w-100">Compare Candidates</a>
         </div>
+    </div>
+</div>
+
+<div class="card shadow mb-4">
+    <div class="card-header d-flex justify-content-between">
+        <span>Recent Interview Records</span>
+        <a href="{{ url_for('recruiter.interviews') }}" class="btn btn-sm btn-outline-primary">View All</a>
+    </div>
+    <div class="card-body">
+        {% for interview in recent_interviews %}
+        <div class="d-flex justify-content-between border-bottom py-2">
+            <span>
+                {{ interview.candidate.full_name or interview.candidate.username if interview.candidate else 'Candidate' }}
+                — {{ interview.title }} ({{ interview.domain }})
+            </span>
+            <a href="{{ url_for('interview.results', interview_id=interview.id) }}" class="btn btn-sm btn-link">View Record</a>
+        </div>
+        {% else %}
+        <p class="text-muted mb-0">No interviews stored yet.</p>
+        {% endfor %}
     </div>
 </div>
 
@@ -30,7 +51,7 @@
             <div class="card-header">Performance Ranking</div>
             <div class="card-body table-responsive">
                 <table class="table table-sm">
-                    <thead><tr><th>#</th><th>Candidate</th><th>Interviews</th><th>Avg Score</th></tr></thead>
+                    <thead><tr><th>#</th><th>Candidate</th><th>Interviews</th><th>Avg Score</th><th></th></tr></thead>
                     <tbody>
                         {% for r in rankings %}
                         <tr>
@@ -38,6 +59,12 @@
                             <td>{{ r.name }}</td>
                             <td>{{ r.interview_count }}</td>
                             <td><span class="badge bg-primary">{{ r.average_score }}</span></td>
+                            <td class="text-end">
+                                <a href="{{ url_for('recruiter.interviews', candidate_id=r.id) }}" class="btn btn-sm btn-outline-primary">Records</a>
+                                {% if r.latest_interview_id %}
+                                <a href="{{ url_for('interview.results', interview_id=r.latest_interview_id) }}" class="btn btn-sm btn-link">Latest</a>
+                                {% endif %}
+                            </td>
                         </tr>
                         {% endfor %}
                     </tbody>

@@ -7,6 +7,7 @@ from flask_login import current_user
 from app.analytics.services import AnalyticsService
 from app.auth.decorators import login_required_web, recruiter_required
 from app.extensions import db
+from app.interview.services import InterviewService
 from app.models import InterviewTemplate, Recruiter
 from app.utils.constants import DIFFICULTY_LEVELS, DOMAINS, QUESTION_CATEGORIES
 
@@ -26,7 +27,24 @@ def dashboard():
             InterviewTemplate.created_at.desc()
         ).limit(10).all()
     data["templates"] = templates
+    data["recent_interviews"] = InterviewService.get_all_interviews(limit=8)
     return render_template("recruiter/dashboard.html", **data)
+
+
+@recruiter_bp.route("/interviews")
+@login_required_web
+@recruiter_required
+def interviews():
+    """Recruiter view of all stored interview records."""
+    interview_list = InterviewService.get_all_interviews(limit=200)
+    candidate_id = request.args.get("candidate_id", type=int)
+    if candidate_id:
+        interview_list = InterviewService.get_candidate_interviews(candidate_id)
+    return render_template(
+        "recruiter/interviews.html",
+        interviews=interview_list,
+        candidate_id=candidate_id,
+    )
 
 
 @recruiter_bp.route("/compare", methods=["GET", "POST"])

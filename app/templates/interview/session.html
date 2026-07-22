@@ -178,7 +178,7 @@
         <i class="bi bi-x-octagon-fill text-danger display-4"></i>
         <h4 class="mt-3">Interview Cancelled</h4>
         <p id="cancellation-reason" class="text-muted"></p>
-        <a href="{{ url_for('interview.history') }}" class="btn btn-primary mt-2">Go to Interview History</a>
+        <a id="cancellation-record-link" href="{{ url_for('interview.results', interview_id=interview.id) }}" class="btn btn-primary mt-2">View Interview Record</a>
     </div>
 </div>
 {% endblock %}
