@@ -2,9 +2,17 @@ import { useState, useRef, useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import EyeCalibration from './EyeCalibration';
 import InterviewSession from './InterviewSession';
+import ProctoringMonitor from './ProctoringMonitor';
 
 const MAX_VIOLATIONS = 3;
 const RETURN_TIME_LIMIT = 5;
+
+const VIOLATION_MESSAGES = {
+  multiple_faces: '⚠️ Multiple faces detected. Please ensure you are alone.',
+  no_face: '⚠️ Face not detected. Please stay in view of the camera.',
+  looking_away: '⚠️ Please keep your eyes on the screen.',
+  object_detected: '⚠️ Unauthorized device detected. Please remove it from view.',
+};
 
 function InterviewRoom() {
   const location = useLocation();
@@ -16,13 +24,16 @@ function InterviewRoom() {
   const [error, setError] = useState('');
   const [isFullscreen, setIsFullscreen] = useState(false);
 
-  // Stage tracking: 'setup' -> 'calibration' -> 'interview'
   const [stage, setStage] = useState('setup');
 
   const [violationCount, setViolationCount] = useState(0);
   const [showWarning, setShowWarning] = useState(false);
   const [countdown, setCountdown] = useState(RETURN_TIME_LIMIT);
   const countdownRef = useRef(null);
+
+  const [calibrationBaseline, setCalibrationBaseline] = useState(null);
+  const [proctorViolations, setProctorViolations] = useState([]);
+  const [proctorWarning, setProctorWarning] = useState(null);
 
   useEffect(() => {
     async function requestMediaAccess() {
@@ -48,6 +59,7 @@ function InterviewRoom() {
       }
     };
   }, []);
+
   useEffect(() => {
     if (videoRef.current && stream) {
       videoRef.current.srcObject = stream;
@@ -116,8 +128,17 @@ function InterviewRoom() {
     setStage('calibration');
   };
 
-  const handleCalibrationComplete = () => {
+  const handleCalibrationComplete = (baseline) => {
+    setCalibrationBaseline(baseline);
     setStage('interview');
+  };
+
+  const handleProctorViolation = (type, details) => {
+    console.log('Proctoring violation:', type, details);
+    setProctorViolations((prev) => [...prev, { type, details, timestamp: Date.now() }]);
+
+    setProctorWarning(VIOLATION_MESSAGES[type] || '⚠️ Suspicious activity detected.');
+    setTimeout(() => setProctorWarning(null), 4000);
   };
 
   if (!questions.length) {
@@ -129,9 +150,8 @@ function InterviewRoom() {
     );
   }
 
-  // Calibration stage — full screen takeover
   if (stage === 'calibration') {
-    return <EyeCalibration onComplete={handleCalibrationComplete} />;
+    return <EyeCalibration videoElement={videoRef.current} onComplete={handleCalibrationComplete} />;
   }
 
   return (
@@ -159,6 +179,15 @@ function InterviewRoom() {
         </div>
       )}
 
+      {proctorWarning && (
+        <div style={{
+          backgroundColor: '#ff4444', color: 'white', padding: '10px',
+          borderRadius: '6px', marginBottom: '10px', fontWeight: 'bold'
+        }}>
+          {proctorWarning}
+        </div>
+      )}
+
       <video
         ref={videoRef}
         autoPlay
@@ -177,14 +206,21 @@ function InterviewRoom() {
       )}
 
       {stage === 'interview' && (
-  <InterviewSession
-    questions={questions}
-    onInterviewEnd={(history) => {
-      console.log('Interview ended', history);
-      alert('Interview completed! Thank you.');
-    }}
-  />
-)}
+        <>
+          <ProctoringMonitor
+            videoElement={videoRef.current}
+            calibrationBaseline={calibrationBaseline}
+            onViolation={handleProctorViolation}
+          />
+          <InterviewSession
+            questions={questions}
+            onInterviewEnd={(history) => {
+              console.log('Interview ended', history);
+              alert('Interview completed! Thank you.');
+            }}
+          />
+        </>
+      )}
     </div>
   );
 }

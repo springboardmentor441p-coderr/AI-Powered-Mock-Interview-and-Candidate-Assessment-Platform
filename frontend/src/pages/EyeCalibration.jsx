@@ -1,27 +1,62 @@
 import { useState, useEffect, useRef } from 'react';
+import { initFaceTracking, detectFace, closeFaceTracking } from '../services/faceTracking';
 
-// Calibration points the dot will visit, in order (percentage-based positions)
 const CALIBRATION_POINTS = [
-  { x: 50, y: 50 },   // center
-  { x: 10, y: 10 },   // top-left
-  { x: 90, y: 10 },   // top-right
-  { x: 90, y: 90 },   // bottom-right
-  { x: 10, y: 90 },   // bottom-left
-  { x: 50, y: 50 },   // back to center
+  { x: 50, y: 50 },
+  { x: 10, y: 10 },
+  { x: 90, y: 10 },
+  { x: 90, y: 90 },
+  { x: 10, y: 90 },
+  { x: 50, y: 50 },
 ];
 
-const TIME_PER_POINT = 1500; // milliseconds the dot stays at each point
+const TIME_PER_POINT = 1500;
 
-function EyeCalibration({ onComplete }) {
+function EyeCalibration({ videoElement, onComplete }) {
   const [currentPointIndex, setCurrentPointIndex] = useState(0);
   const [isComplete, setIsComplete] = useState(false);
+  const [isReady, setIsReady] = useState(false);
+
+  const gazeReadingsRef = useRef([]); // collected during calibration
+  const trackingIntervalRef = useRef(null);
+
+  // Load MediaPipe model once
+  useEffect(() => {
+    let cancelled = false;
+    initFaceTracking().then(() => {
+      if (!cancelled) setIsReady(true);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  // Sample gaze continuously while calibration runs
+  useEffect(() => {
+    if (!isReady || !videoElement || isComplete) return;
+
+    trackingIntervalRef.current = setInterval(() => {
+      const result = detectFace(videoElement, performance.now());
+      if (result.faceDetected) {
+        gazeReadingsRef.current.push({
+          point: CALIBRATION_POINTS[currentPointIndex],
+          gaze: result.eyeGaze,
+        });
+      }
+    }, 200);
+
+    return () => clearInterval(trackingIntervalRef.current);
+  }, [isReady, currentPointIndex, isComplete, videoElement]);
 
   useEffect(() => {
+    if (!isReady) return;
+
     if (currentPointIndex >= CALIBRATION_POINTS.length) {
       setIsComplete(true);
-      // Give a short pause before moving to the interview
       const timer = setTimeout(() => {
-        onComplete();
+        // Build a simple baseline: the most common gaze reading is treated as "center/normal"
+        const baseline = buildBaseline(gazeReadingsRef.current);
+        onComplete(baseline);
       }, 1000);
       return () => clearTimeout(timer);
     }
@@ -31,7 +66,7 @@ function EyeCalibration({ onComplete }) {
     }, TIME_PER_POINT);
 
     return () => clearTimeout(timer);
-  }, [currentPointIndex]);
+  }, [currentPointIndex, isReady]);
 
   const currentPoint = CALIBRATION_POINTS[currentPointIndex] || CALIBRATION_POINTS[CALIBRATION_POINTS.length - 1];
 
@@ -41,7 +76,9 @@ function EyeCalibration({ onComplete }) {
       backgroundColor: '#000', display: 'flex', flexDirection: 'column',
       alignItems: 'center', justifyContent: 'center', zIndex: 2000
     }}>
-      {!isComplete ? (
+      {!isReady ? (
+        <p style={{ color: 'white', fontSize: '18px' }}>Loading eye tracking...</p>
+      ) : !isComplete ? (
         <>
           <p style={{ color: 'white', fontSize: '20px', marginBottom: '40px' }}>
             Follow the dot with your eyes only. Keep your head still.
@@ -68,6 +105,25 @@ function EyeCalibration({ onComplete }) {
       )}
     </div>
   );
+}
+
+function buildBaseline(readings) {
+  const counts = {};
+  readings.forEach(({ gaze }) => {
+    if (gaze) counts[gaze] = (counts[gaze] || 0) + 1;
+  });
+
+  // The most frequently detected gaze direction becomes our "normal/center" reference
+  let mostCommon = 'center';
+  let maxCount = 0;
+  for (const [gaze, count] of Object.entries(counts)) {
+    if (count > maxCount) {
+      maxCount = count;
+      mostCommon = gaze;
+    }
+  }
+
+  return { normalGaze: mostCommon, sampleCount: readings.length };
 }
 
 export default EyeCalibration;
