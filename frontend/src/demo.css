@@ -1,0 +1,46 @@
+:root{
+  --bg:#0d1015; --bg-2:#141821; --surface:#1a1f28; --surface-2:#212834;
+  --border:#293040; --border-2:#39435580;
+  --text:#eef0f3; --text-dim:#9aa3b2; --text-faint:#5b6472;
+  --amber:#ffb020; --amber-dim:#3a2f18;
+  --teal:#3ecf8e; --teal-dim:#123626;
+  --coral:#ff6b5e; --coral-dim:#3a1f1c;
+  --radius:10px;
+  --f-display:'Space Grotesk',sans-serif;
+  --f-body:'Inter',sans-serif;
+  --f-mono:'IBM Plex Mono',monospace;
+}
+*{box-sizing:border-box;margin:0;padding:0;font-family:var(--f-body)}
+body{background:var(--bg);color:var(--text);-webkit-font-smoothing:antialiased}
+.demo-bar{position:fixed;top:0;left:0;right:0;height:44px;background:#05070a;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;padding:0 20px;z-index:999;overflow-x:auto;white-space:nowrap}
+.demo-label{font-family:var(--f-mono);font-size:10px;letter-spacing:.08em;color:var(--text-faint);text-transform:uppercase;flex-shrink:0;margin-right:16px}
+.demo-pills{display:flex;gap:4px}
+.demo-pill{background:transparent;border:1px solid var(--border);color:var(--text-dim);font-family:var(--f-mono);font-size:10.5px;letter-spacing:.03em;padding:5px 10px;border-radius:6px;transition:all .15s}
+.demo-pill.active{background:var(--amber-dim);border-color:var(--amber);color:var(--amber)}
+.page{display:none}
+.page.active{display:block}
+.wrap{max-width:1120px;margin:0 auto;padding:0 32px}
+.btn{display:inline-flex;align-items:center;gap:8px;padding:11px 20px;border-radius:8px;font-size:14px;font-weight:500;border:1px solid transparent;transition:all .15s}
+.btn-amber{background:var(--amber);color:#1a1305}
+.btn-amber:hover{background:#ffc247}
+.btn-ghost{background:transparent;color:var(--text);border-color:var(--border-2)}
+.logo{font-family:var(--f-display);font-weight:700;font-size:17px;display:flex;align-items:center;gap:8px}
+.logo .dot{background:var(--amber);width:8px;height:8px;border-radius:50%}
+.l-nav{display:flex;align-items:center;justify-content:space-between;padding:22px 0}
+.hero{display:grid;grid-template-columns:1.15fr 1fr;gap:56px;align-items:center;padding:64px 0 88px}
+.hero h1{font-size:44px;line-height:1.08;margin-bottom:18px}
+.hero p{color:var(--text-dim);font-size:16px;line-height:1.6;max-width:440px;margin-bottom:28px}
+.vitals-card{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:22px}
+.vitals-head{display:flex;align-items:center;gap:8px;font-family:var(--f-mono);font-size:11px;color:var(--text-faint);letter-spacing:.06em;margin-bottom:18px;text-transform:uppercase}
+.vital-row{margin-bottom:16px}
+.vital-label{display:flex;justify-content:space-between;font-size:12px;color:var(--text-dim);margin-bottom:6px}
+.mono{font-family:var(--f-mono);color:var(--text)}
+.bar-track{height:6px;border-radius:3px;background:var(--surface-2);overflow:hidden}
+.bar-fill{height:100%;border-radius:3px;transition:width .6s ease}
+
+/* small helpers */
+.pulse{animation:pulse 1.6s ease-in-out infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.35}}
+
+/* minimal responsive */
+@media(max-width:860px){.hero{grid-template-columns:1fr}.wrap{padding:0 16px}}
