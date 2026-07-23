@@ -31,12 +31,15 @@ function Upload() {
 
       const data = await response.json();
 
-      if (response.ok) {
-        setResumeData(data.data);
+     if (response.ok) {
+  setResumeData(data.data);
 
-        localStorage.setItem("resumeUploaded", "true");
-        localStorage.setItem("resumeData", JSON.stringify(data.data));
-      } else {
+  localStorage.setItem("resumeUploaded", "true");
+  localStorage.setItem("resumeData", JSON.stringify(data.data));
+
+  // Save email for interview
+  localStorage.setItem("candidateEmail", data.data.email);
+}else {
         alert(data.error || "Upload failed");
       }
     } catch (error) {

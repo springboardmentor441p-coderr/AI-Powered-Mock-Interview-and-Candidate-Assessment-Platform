@@ -1,373 +1,369 @@
 import React, { useEffect, useState } from "react";
-
+import { useNavigate } from "react-router-dom";
 
 function RecruiterDashboard() {
 
 
-  const [candidates, setCandidates] = useState([]);
+    const [candidates, setCandidates] = useState([]);
+    const [stats, setStats] = useState({
+    total_candidates: 0,
+    completed_interviews: 0,
+    average_score: 0,
+    shortlisted: 0,
+    
+});
+    const [topCandidate, setTopCandidate] = useState(null);
+    const [loading, setLoading] = useState(true);
 
-  const [loading, setLoading] = useState(true);
+    const [selectedCandidate, setSelectedCandidate] = useState(null);
+    const navigate = useNavigate();
 
 
-
-  useEffect(() => {
-
+    useEffect(() => {
 
     fetch("http://127.0.0.1:5000/candidates")
 
-      .then((response) => response.json())
+        .then(response => response.json())
 
-      .then((data) => {
+        .then(data => {
 
-        setCandidates(data);
+            console.log("API DATA:", data);
 
-        setLoading(false);
+            setCandidates(data.candidates || []);
 
-      })
+            setStats(data.stats || {});
 
-      .catch((error) => {
+            setTopCandidate(data.top_candidate || null);
 
-        console.log("Error fetching candidates:", error);
+            setLoading(false);
 
-        setLoading(false);
+        })
 
-      });
+        .catch(error => {
 
+            console.log(error);
 
-  }, []);
+            setLoading(false);
 
+        });
 
 
+}, []);
 
-  return (
+const updateStatus = async (email, status) => {
 
-    <div className="min-h-screen bg-gray-100 px-6 py-10">
+    await fetch("http://127.0.0.1:5000/update-status", {
+        method: "POST",
+        headers: {
+            "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+            email,
+            status
+        })
+    });
 
+    window.location.reload();
+};
 
-      <div className="max-w-7xl mx-auto">
+    
 
+        
+   return (
 
+<div className="min-h-screen bg-gray-100 px-8 py-10">
 
-        {/* Header */}
+<div className="max-w-7xl mx-auto">
 
-        <h1 className="text-4xl font-bold text-blue-600">
 
-          Recruiter Dashboard
+<h1 className="text-4xl font-bold text-blue-600">
+    Recruiter Dashboard
+</h1>
 
-        </h1>
 
+<p className="text-gray-600 mt-2">
+    Review candidates and manage hiring decisions.
+</p>
 
-        <p className="text-gray-600 mt-2">
 
-          Review candidates and manage hiring decisions.
 
-        </p>
+{/* Dashboard Cards */}
 
+<div className="grid md:grid-cols-4 gap-6 mt-8">
 
 
+<div className="bg-white rounded-xl shadow p-6">
+<p className="text-gray-500">
+Total Candidates
+</p>
 
+<h2 className="text-3xl font-bold text-blue-600 mt-3">
+{stats.total_candidates || 0}
+</h2>
 
-        {/* Statistics Cards */}
+</div>
 
-        <div className="grid md:grid-cols-3 gap-6 mt-8">
 
 
+<div className="bg-white rounded-xl shadow p-6">
 
-          <div className="bg-white rounded-xl shadow p-6">
+<p className="text-gray-500">
+Completed Interviews
+</p>
 
-            <p className="text-gray-500">
+<h2 className="text-3xl font-bold text-green-600 mt-3">
+{stats.completed_interviews || 0}
+</h2>
 
-              Total Candidates
+</div>
 
-            </p>
 
 
-            <h2 className="text-3xl font-bold text-blue-600 mt-3">
 
-              {candidates.length}
+<div className="bg-white rounded-xl shadow p-6">
 
-            </h2>
+<p className="text-gray-500">
+Average Score
+</p>
 
+<h2 className="text-3xl font-bold text-purple-600 mt-3">
+{Math.round(stats.average_score || 0)}
+</h2>
 
-          </div>
+</div>
 
 
 
 
-          <div className="bg-white rounded-xl shadow p-6">
+<div className="bg-white rounded-xl shadow p-6">
 
+<p className="text-gray-500">
+Shortlisted
+</p>
 
-            <p className="text-gray-500">
+<h2 className="text-3xl font-bold text-orange-600 mt-3">
+{stats.shortlisted || 0}
+</h2>
 
-              Shortlisted
+</div>
 
-            </p>
 
+</div>
 
-            <h2 className="text-3xl font-bold text-green-600 mt-3">
 
-              0
 
-            </h2>
 
 
-          </div>
+{/* Candidate Table */}
 
+<div className="bg-white rounded-xl shadow mt-10 overflow-hidden">
 
 
+<table className="w-full">
 
-          <div className="bg-white rounded-xl shadow p-6">
 
+<thead className="bg-gray-200">
 
-            <p className="text-gray-500">
+<tr>
 
-              Interviews Pending
+<th className="p-4 text-left">
+Candidate
+</th>
 
-            </p>
 
+<th className="p-4">
+Email
+</th>
 
-            <h2 className="text-3xl font-bold text-orange-500 mt-3">
 
-              {candidates.length}
+<th className="p-4">
+Score
+</th>
 
-            </h2>
 
+<th className="p-4">
+Technical
+</th>
 
-          </div>
 
+<th className="p-4">
+Communication
+</th>
 
 
-        </div>
+<th className="p-4">
+AI Recommendation
+</th>
 
 
+<th className="p-4">
+Status
+</th>
 
 
+<th className="p-4">
+Action
+</th>
 
-        {/* Candidate List */}
 
+</tr>
 
-        <div className="mt-10">
+</thead>
 
 
-          {
-            loading ? (
 
-              <p className="text-gray-600">
-                Loading candidates...
-              </p>
+<tbody>
 
 
-            ) : candidates.length === 0 ? (
+{
+loading ?
 
 
-              <p className="text-gray-600">
-                No candidates found.
-              </p>
+<tr>
 
+<td colSpan="8" className="text-center p-6">
+Loading candidates...
+</td>
 
-            ) : (
+</tr>
 
 
-              <div className="space-y-6">
+:
 
 
-                {
-                  candidates.map((candidate, index) => (
+candidates
+.sort((a,b)=>(b.score || 0)-(a.score || 0))
+.map((candidate,index)=>(
 
 
-                    <div
+<tr key={index} className="border-t">
 
-                      key={candidate.email}
 
-                      className="bg-white rounded-2xl shadow p-8"
+<td className="p-4 font-semibold">
+{candidate.name}
+</td>
 
-                    >
 
 
+<td className="p-4">
+{candidate.email}
+</td>
 
-                      <div className="flex justify-between items-start">
 
 
-                        <div>
 
+<td className="p-4 text-blue-600 font-bold">
 
-                          <h2 className="text-2xl font-bold">
+{candidate.score ?? "-"}/100
 
-                            {candidate.name}
+</td>
 
-                          </h2>
 
 
 
-                          <p className="text-gray-600 mt-2">
+<td className="p-4">
 
-                            {candidate.email}
+{candidate.technical_score ?? "-"}
 
-                          </p>
+</td>
 
 
-                        </div>
 
 
+<td className="p-4">
 
-                        <span className="bg-blue-100 text-blue-700 px-4 py-2 rounded-full">
+{candidate.communication_score ?? "-"}
 
-                          New
+</td>
 
-                        </span>
 
 
-                      </div>
 
 
+<td className="p-4">
 
+{candidate.recommendation || "-"}
 
+</td>
 
-                      <div className="mt-6 space-y-4">
 
 
 
-                        <p>
 
-                          <b>Phone:</b>{" "}
+<td className="p-4">
 
-                          {candidate.phone}
+<span
+className={`px-3 py-1 rounded-full text-white ${
+candidate.status === "Shortlisted"
+? "bg-green-600"
+: candidate.status === "Rejected"
+? "bg-red-600"
+: candidate.status === "Interview Completed"
+? "bg-blue-600"
+: "bg-yellow-500"
+}`}
 
-                        </p>
+>
 
+{candidate.status}
 
+</span>
 
-                        <p>
+</td>
 
-                          <b>Skills:</b>{" "}
 
-                          {candidate.skills}
 
-                        </p>
 
 
+<td className="p-4">
 
 
-                        <p>
+<button
 
-                          <b>Experience:</b>{" "}
+onClick={() =>
+navigate(`/interview-history/${candidate.email}`)
+}
 
-                          {candidate.experience}
+className="bg-blue-600 text-white px-5 py-2 rounded-lg hover:bg-blue-700"
 
-                        </p>
+>
 
+View
 
+</button>
 
 
-                        <p>
+</td>
 
-                          <b>Education:</b>{" "}
 
-                          {candidate.education}
 
-                        </p>
+</tr>
 
 
+))
 
-
-                        <p>
-
-                          <b>Projects:</b>{" "}
-
-                          {candidate.projects}
-
-                        </p>
-
-                        <p>
-                          <b>Certifications:</b>{" "}
-
-                          {candidate.certifications}
-                        </p>
-
-                        <p>
-                        <b>Languages:</b>{" "}
-                        {candidate.languages}
-                        </p>
-
-                      </div>
-
-
-
-
-
-                      <div className="flex gap-4 mt-8">
-
-
-                        <button
-
-                          className="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700"
-
-                        >
-
-                          View Resume
-
-                        </button>
-
-
-
-                        <button
-
-                          className="bg-green-600 text-white px-6 py-2 rounded-lg hover:bg-green-700"
-
-                        >
-
-                          Shortlist
-
-                        </button>
-
-
-
-
-                        <button
-
-                          className="bg-red-500 text-white px-6 py-2 rounded-lg hover:bg-red-600"
-
-                        >
-
-                          Reject
-
-                        </button>
-
-
-                      </div>
-
-
-
-
-                    </div>
-
-
-                  ))
-
-                }
-
-
-              </div>
-
-
-            )
-
-          }
-
-
-        </div>
-
-
-
-
-      </div>
-
-
-    </div>
-
-  );
 
 }
 
 
+
+</tbody>
+
+
+</table>
+
+
+</div>
+
+
+
+
+</div>
+
+
+</div>
+
+
+);
+}
 export default RecruiterDashboard;

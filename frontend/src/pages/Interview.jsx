@@ -1,557 +1,328 @@
-import React, { useEffect, useState, useRef } from "react";
+import React, { useState, useEffect, useRef } from "react";
+import { UltravoxSession } from "ultravox-client";
 import { useNavigate } from "react-router-dom";
-
 
 function Interview() {
 
-  const navigate = useNavigate();
+    const navigate = useNavigate();
+
+    const sessionRef = useRef(null);
+
+    const [started, setStarted] = useState(false);
+    const [status, setStatus] = useState("Not Connected");
+    const [timeLeft, setTimeLeft] = useState(600);
+    const [transcript, setTranscript] = useState("");
+    const [currentQuestion, setCurrentQuestion] = useState("");
+    const interviewEnded = useRef(false);
+    
+
+    useEffect(() => {
+
+        if (!started) return;
+
+        const timer = setInterval(() => {
+
+            setTimeLeft((prev) => {
+
+                if (prev <= 1) {
+
+                    clearInterval(timer);
+
+                    endInterview();
+
+                    return 0;
+                }
+
+                return prev - 1;
+
+            });
+
+        }, 1000);
+
+        return () => clearInterval(timer);
+
+    }, [started, navigate]);
+
+    const formatTime = () => {
+
+        const minutes = Math.floor(timeLeft / 60);
+        const seconds = timeLeft % 60;
+
+        return `${minutes}:${seconds < 10 ? "0" : ""}${seconds}`;
+
+    };
+const endInterview = async () => {
+
+    if (interviewEnded.current) return;
+
+    interviewEnded.current = true;
 
 
-  const questions = [
-    "Tell me about yourself.",
-    "Explain your SmartHire AI project.",
-    "What are your strengths and weaknesses?",
-    "Explain your experience with Python.",
-    "How do you handle challenges in a project?",
-  ];
-
-
-  const [started, setStarted] = useState(false);
-
-  const [currentQuestion, setCurrentQuestion] = useState(0);
-
-  const [answer, setAnswer] = useState("");
-
-  const [answers, setAnswers] = useState([]);
-
-  const [listening, setListening] = useState(false);
-
-  const [timeLeft, setTimeLeft] = useState(1200);
-
-
-  const recognitionRef = useRef(null);
-
-
-
-  // Timer
-
-  useEffect(() => {
-
-    if(!started) return;
-
-
-    const timer = setInterval(()=>{
-
-      setTimeLeft(prev=>{
-
-        if(prev <= 1){
-
-          clearInterval(timer);
-
-          return 0;
-
-        }
-
-        return prev - 1;
-
-      });
-
-
-    },1000);
-
-
-
-    return ()=>clearInterval(timer);
-
-
-  },[started]);
-
-
-
-
-
-  const formatTime = () => {
-
-    const minutes = Math.floor(timeLeft / 60);
-
-    const seconds = timeLeft % 60;
-
-
-    return `${minutes}:${seconds < 10 ? "0":""}${seconds}`;
-
-  };
-
-
-
-
-
-
-  // Speech Recognition
-
-  const startSpeaking = () => {
-
-
-    const SpeechRecognition =
-      window.SpeechRecognition ||
-      window.webkitSpeechRecognition;
-
-
-
-    if(!SpeechRecognition){
-
-      alert("Speech recognition not supported in this browser");
-
-      return;
-
+    if (sessionRef.current) {
+        await sessionRef.current.leaveCall();
     }
 
 
-
-    const recognition = new SpeechRecognition();
-
-
-    recognition.continuous = true;
-
-    recognition.interimResults = true;
-
-    recognition.lang = "en-US";
-
-
-
-    recognition.onstart = ()=>{
-
-      setListening(true);
-
-    };
-
-
-
-    recognition.onend = ()=>{
-
-      setListening(false);
-
-    };
-
-
-
-    recognition.onresult = (event)=>{
-
-
-      let finalText = "";
-
-
-
-      for(
-        let i = event.resultIndex;
-        i < event.results.length;
-        i++
-      ){
-
-        if(event.results[i].isFinal){
-
-          finalText += event.results[i][0].transcript;
-
-        }
-
-      }
-
-
-
-      if(finalText.trim()){
-
-        setAnswer(prev =>
-
-          prev + " " + finalText
-
-        );
-
-      }
-
-
-    };
-
-
-
-    recognitionRef.current = recognition;
-
-
-    recognition.start();
-
-
-  };
-
-
-
-
-
-  const stopSpeaking = ()=>{
-
-
-    if(recognitionRef.current){
-
-      recognitionRef.current.stop();
-
-    }
-
-
-  };
-
-
-
-
-
-
-  const saveInterview = async(finalAnswers)=>{
-
-
-    try{
-
-
-      const response = await fetch(
+    const response = await fetch(
         "http://127.0.0.1:5000/save-interview",
         {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json"
+            },
+            body: JSON.stringify({
+                email: localStorage.getItem("candidateEmail"),
+                transcript
+            })
+        }
+    );
 
-          method:"POST",
 
-          headers:{
-            "Content-Type":"application/json"
-          },
+    const result = await response.json();
 
-          body:JSON.stringify({
+    console.log(result);
 
-            email:"john.doe@gmail.com",
 
-            answers:finalAnswers
+    navigate("/evaluating");
 
-          })
+};
+    const startInterview = async () => {
+
+        try {
+
+            const email = localStorage.getItem("candidateEmail");
+
+            const response = await fetch(
+                "http://127.0.0.1:5000/ultravox/session",
+                {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json"
+                    },
+                    body: JSON.stringify({
+                        email
+                    })
+                }
+            );
+
+            const data = await response.json();
+
+            if (!response.ok) {
+                alert(data.error || "Unable to start interview.");
+                return;
+            }
+
+            const session = new UltravoxSession();
+
+            sessionRef.current = session;
+
+           session.addEventListener("status", () => {
+
+    console.log(session.status);
+
+    setStatus(session.status);
+
+
+    if (
+        session.status === "disconnected" &&
+        !interviewEnded.current
+    ) {
+
+        fetch("http://127.0.0.1:5000/update-interview-status", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json"
+            },
+            body: JSON.stringify({
+                email: localStorage.getItem("candidateEmail"),
+                status: "Incomplete"
+            })
+        });
+
+    }
+
+});
+
+            session.addEventListener("transcripts", () => {
+
+    const transcripts = session.transcripts;
+
+    console.log(transcripts);
+
+    const fullTranscript = transcripts
+        .map(t => `${t.speaker}: ${t.text}`)
+        .join("\n");
+
+    setTranscript(fullTranscript);
+
+    // Find the latest AI question
+    const lastAgentMessage = [...transcripts]
+        .reverse()
+        .find(t => t.speaker === "agent");
+
+    if (lastAgentMessage) {
+        setCurrentQuestion(lastAgentMessage.text);
+    }
+const lastUserMessage = [...transcripts]
+    .reverse()
+    .find(t => t.speaker === "user");
+
+if (lastUserMessage) {
+    setCandidateAnswer(lastUserMessage.text);
+}
+    // End interview when AI finishes
+    if (lastAgentMessage) {
+
+        const text = lastAgentMessage.text.toLowerCase();
+
+        if (
+            text.includes("thank you for your time") ||
+            text.includes("it was a pleasure speaking with you") ||
+            text.includes("have a great day") ||
+            text.includes("goodbye") ||
+            text.includes("interview is complete") ||
+            text.includes("interview has ended") ||
+            text.includes("we have completed")
+        ) {
+
+            setTimeout(() => {
+                endInterview();
+            }, 3000);
+        }
+    }
+});
+
+            await session.joinCall(data.joinUrl);
+await fetch("http://127.0.0.1:5000/update-interview-status", {
+    method: "POST",
+    headers: {
+        "Content-Type": "application/json"
+    },
+    body: JSON.stringify({
+        email: localStorage.getItem("candidateEmail"),
+        status: "Interview Started"
+    })
+});
+            setStarted(true);
+
+        } catch (err) {
+
+            console.log(err);
+
+            alert("Unable to connect to Ultravox.");
 
         }
-      );
-
-
-
-      const data = await response.json();
-
-
-      console.log(data);
-
-
-
-      if(response.ok){
-
-        alert("Interview Completed Successfully 🎉");
-
-        navigate("/results");
-
-      }
-
-
-
-    }
-    catch(error){
-
-      console.log(error);
-
-      alert("Interview save failed");
-
-    }
-
-
-  };
-
-
-
-
-
-
-  const nextQuestion = ()=>{
-
-
-    if(!answer.trim()){
-
-      alert("Please answer the question");
-
-      return;
-
-    }
-
-
-
-    stopSpeaking();
-
-
-
-    const currentAnswer={
-
-      question:questions[currentQuestion],
-
-      answer:answer
 
     };
 
+    
+   return (
+    <div className="min-h-screen bg-gray-100 px-6 py-10">
 
+        <div className="max-w-5xl mx-auto">
 
-    const updatedAnswers=[
+            <h1 className="text-4xl font-bold text-blue-600">
+                AI Mock Interview
+            </h1>
 
-      ...answers,
+            <p className="text-gray-600 mt-2">
+                SmartHire AI Voice Interview
+            </p>
 
-      currentAnswer
+            {!started ? (
 
-    ];
+                <div className="bg-white rounded-2xl shadow-lg p-10 mt-8 text-center">
 
+                    <div className="text-7xl">
+                        🤖
+                    </div>
 
+                    <h2 className="text-3xl font-bold mt-6">
+                        Ready for your AI Interview?
+                    </h2>
 
-    setAnswers(updatedAnswers);
+                    <p className="text-gray-600 mt-4">
+                        Ultravox will conduct your interview based on your resume.
+                    </p>
 
-    setAnswer("");
+                    <button
+                        onClick={startInterview}
+                        className="mt-8 bg-blue-600 text-white px-10 py-3 rounded-xl hover:bg-blue-700"
+                    >
+                        🚀 Start Interview
+                    </button>
 
+                </div>
 
+            ) : (
 
-    if(currentQuestion < questions.length-1){
+                <div className="grid lg:grid-cols-3 gap-6 mt-10">
 
-      setCurrentQuestion(currentQuestion+1);
+                    <div className="bg-white rounded-xl shadow p-6 text-center">
 
-    }
+                        <div className="text-7xl">
+                            🤖
+                        </div>
 
-    else{
+                        <h2 className="text-2xl font-bold mt-5">
+                            SmartHire AI
+                        </h2>
 
+                        <p className="text-green-600 mt-3 font-semibold">
+                            ● {status}
+                        </p>
 
-      saveInterview(updatedAnswers);
+                        <p className="text-red-500 text-3xl font-bold mt-8">
+                            ⏱ {formatTime()}
+                        </p>
 
+                    </div>
 
-    }
+                    <div className="lg:col-span-2 bg-white rounded-xl shadow p-8">
 
+                        <h2 className="text-3xl font-bold">
+                            Interview in Progress
+                        </h2>
 
-  };
+                        <div className="mt-6">
 
+                            <h3 className="text-xl font-semibold text-blue-600">
+                                Current Question
+                            </h3>
 
+                            <div className="mt-3 bg-blue-50 border border-blue-200 rounded-xl p-5">
+                                <p className="text-gray-800 text-lg leading-8">
+                                    {currentQuestion || "Waiting for AI to ask the first question..."}
+                                </p>
+                            </div>
 
+                            <p className="mt-6 text-lg text-gray-700">
+                                🎤 Listening...
+                            </p>
 
+                        </div>
 
-  return (
+                        <p className="mt-3 text-gray-500">
+                            Please answer naturally. The AI interviewer will ask
+                            follow-up questions based on your responses.
+                        </p>
 
-<div className="min-h-screen bg-gray-100 px-6 py-10">
+                        <button
+                            onClick={endInterview}
+                            className="mt-10 bg-red-600 hover:bg-red-700 text-white px-8 py-3 rounded-xl"
+                        >
+                            End Interview
+                        </button>
 
+                    </div>
 
-<div className="max-w-6xl mx-auto">
+                </div>
 
+            )}
 
-<h1 className="text-4xl font-bold text-blue-600">
+        </div>
 
-AI Mock Interview
-
-</h1>
-
-
-<p className="text-gray-600 mt-2">
-
-Practice interviews with SmartHire AI.
-
-</p>
-
-
-
-{
-!started ?
-
-
-<div className="bg-white rounded-2xl shadow-lg p-10 mt-8 text-center">
-
-
-<div className="text-7xl">
-
-🤖
-
-</div>
-
-
-<h2 className="text-3xl font-bold mt-6">
-
-Ready for your AI Interview?
-
-</h2>
-
-
-
-<button
-
-onClick={()=>setStarted(true)}
-
-className="mt-8 bg-blue-600 text-white px-10 py-3 rounded-xl"
-
->
-
-🚀 Start Interview
-
-</button>
-
-
-</div>
-
-
-:
-
-<>
-
-
-<div className="w-full bg-gray-300 h-3 rounded-full mt-8">
-
-<div
-
-className="bg-blue-600 h-3 rounded-full"
-
-style={{
-
-width:`${((currentQuestion+1)/questions.length)*100}%`
-
-}}
-
-></div>
-
-</div>
-
-
-
-<div className="grid lg:grid-cols-3 gap-6 mt-8">
-
-
-<div className="bg-white rounded-xl shadow p-6">
-
-
-<div className="text-6xl text-center">
-
-🤖
-
-</div>
-
-
-<h2 className="text-xl font-bold text-center mt-4">
-
-AI Interviewer
-
-</h2>
-
-
-<p className="text-center text-green-600">
-
-● Online
-
-</p>
-
-
-
-<p className="mt-8">
-
-Question {currentQuestion+1}/{questions.length}
-
-</p>
-
-
-
-<p className="text-2xl font-bold text-red-500 mt-3">
-
-⏱ {formatTime()}
-
-</p>
-
-
-
-</div>
-
-
-
-
-
-<div className="lg:col-span-2 bg-white rounded-xl shadow p-8">
-
-
-<p className="text-gray-600">
-
-Question {currentQuestion+1}
-
-</p>
-
-
-
-<h2 className="text-2xl font-bold mt-4">
-
-{questions[currentQuestion]}
-
-</h2>
-
-
-
-<button
-
-onClick={listening ? stopSpeaking : startSpeaking}
-
-className="mt-6 bg-purple-600 text-white px-8 py-3 rounded-xl"
-
->
-
-{listening ? "🛑 Stop Speaking" : "🎤 Start Speaking"}
-
-</button>
-
-
-
-<textarea
-
-value={answer}
-
-onChange={(e)=>setAnswer(e.target.value)}
-
-className="w-full h-40 border rounded-xl mt-6 p-4"
-
-placeholder="Your answer will appear here..."
-
- />
-
-
-
-<button
-
-onClick={nextQuestion}
-
-className="mt-6 bg-green-600 text-white px-8 py-3 rounded-xl"
-
->
-
-{
-
-currentQuestion===questions.length-1
-
-?
-
-"Finish Interview"
-
-:
-
-"Next Question →"
-
+    </div>
+);
 }
-
-</button>
-
-
-</div>
-
-
-</div>
-
-</>
-
-}
-
-
-
-</div>
-
-</div>
-
-  );
-
-}
-
-
 export default Interview;

@@ -1,149 +1,100 @@
-def evaluate_interview(answers):
+import os
+import json
+import re
+from groq import Groq
+from dotenv import load_dotenv
 
-    score = 0
-    technical_score = 0
-    communication_score = 0
+load_dotenv()
+
+client = Groq(
+    api_key=os.getenv("GROQ_API_KEY")
+)
 
 
-    total_questions = len(answers)
+def evaluate_interview(transcript):
+
+    prompt = f"""
+You are an AI interview evaluator.
+
+Evaluate the candidate based on the interview transcript below.
+
+Transcript:
+{transcript}
+
+Analyze:
+- Technical knowledge
+- Communication skills
+- Problem-solving ability
+- Professionalism
+
+Return ONLY valid JSON.
+Do not add any extra text, recommendation, or explanation outside JSON.
+
+Use this exact format:
+
+{{
+    "score": number,
+    "technical_score": number,
+    "communication_score": number,
+    "problem_solving_score": number,
+    "professionalism_score": number,
+    "feedback": "short feedback about candidate performance"
+}}
+"""
+
+    try:
+
+        response = client.chat.completions.create(
+            model="llama-3.1-8b-instant",
+            messages=[
+                {
+                    "role": "user",
+                    "content": prompt
+                }
+            ],
+            temperature=0.2
+        )
 
 
+        raw_response = response.choices[0].message.content
 
-    if total_questions == 0:
+        print("========== RAW GROQ RESPONSE ==========")
+        print(raw_response)
+
+
+        # Extract only JSON part
+        # Extract only the first JSON object
+        json_match = re.search(
+            r'\{[\s\S]*?\}',
+            raw_response)
+
+
+        if json_match:
+
+            json_data = json_match.group()
+
+            result = json.loads(json_data)
+
+            print("========== PARSED RESULT ==========")
+            print(result)
+
+            return result
+
+
+        else:
+
+            raise Exception("JSON object not found")
+
+
+    except Exception as e:
+
+        print("JSON PARSE ERROR:", e)
 
         return {
-
             "score": 0,
-
             "technical_score": 0,
-
             "communication_score": 0,
-
-            "feedback": "No answers provided"
-
+            "problem_solving_score": 0,
+            "professionalism_score": 0,
+            "feedback": "Failed to parse AI evaluation."
         }
-
-
-
-    technical_keywords = [
-
-        "python",
-        "java",
-        "sql",
-        "machine learning",
-        "flask",
-        "react",
-        "database",
-        "api",
-        "algorithm",
-        "project"
-
-    ]
-
-
-
-    total_length = 0
-
-    keyword_count = 0
-
-
-
-    for item in answers:
-
-
-        answer = item.get("answer", "").lower()
-
-
-        total_length += len(answer)
-
-
-
-        for keyword in technical_keywords:
-
-            if keyword in answer:
-
-                keyword_count += 1
-
-
-
-
-    # Technical score
-
-    technical_score = min(
-        100,
-        keyword_count * 10
-    )
-
-
-
-    # Communication score
-
-    average_length = total_length / total_questions
-
-
-    if average_length > 100:
-
-        communication_score = 90
-
-    elif average_length > 50:
-
-        communication_score = 75
-
-    else:
-
-        communication_score = 50
-
-
-
-
-    # Final score
-
-    score = int(
-
-        (technical_score * 0.6)
-        +
-        (communication_score * 0.4)
-
-    )
-
-
-
-    feedback = ""
-
-
-    if score >= 80:
-
-        feedback = (
-            "Excellent interview performance. "
-            "Good technical understanding and clear explanations."
-        )
-
-
-    elif score >= 60:
-
-        feedback = (
-            "Good performance. "
-            "Try adding more technical details and examples."
-        )
-
-
-    else:
-
-        feedback = (
-            "Need improvement. "
-            "Provide more detailed answers with project examples."
-        )
-
-
-
-    return {
-
-        "score": score,
-
-        "technical_score": technical_score,
-
-        "communication_score": communication_score,
-
-        "feedback": feedback
-
-    }

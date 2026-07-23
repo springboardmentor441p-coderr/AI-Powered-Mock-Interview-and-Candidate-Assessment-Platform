@@ -5,18 +5,17 @@ function Dashboard() {
   const [candidate, setCandidate] = useState(null);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    fetch("http://127.0.0.1:5000/candidate")
-      .then((response) => response.json())
-      .then((data) => {
-        setCandidate(data);
-        setLoading(false);
-      })
-      .catch((error) => {
-        console.log("Error fetching candidate:", error);
-        setLoading(false);
-      });
-  }, []);
+ useEffect(() => {
+
+  const data = localStorage.getItem("resumeData");
+
+  if (data) {
+    setCandidate(JSON.parse(data));
+  }
+
+  setLoading(false);
+
+}, []);
 
 
   if (loading) {
