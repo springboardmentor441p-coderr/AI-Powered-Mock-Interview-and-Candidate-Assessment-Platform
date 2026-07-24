@@ -109,26 +109,27 @@ class SpeechAnalysisService(BaseService):
     @staticmethod
     def _transcript_from_conversation_turns(session) -> TranscriptionResult:
         """
-        Builds a transcript from the candidate's `ConversationTurn` rows
-        (skips the AI interviewer's own turns - communication analysis
-        should score what the candidate said, not the interviewer).
-        Duration comes from the turns' own timing when available,
-        falling back to the session's overall `duration_seconds`.
+        Builds a transcript from the candidate's `Transcript` rows.
+        ConversationTurn only stores AI turns (created by ask_next_question);
+        candidate answers are stored in the Transcript model by the
+        frontend relay webhook.
         """
-        from apps.interview.models import ConversationTurn
+        from apps.interview.models.transcript import Transcript
 
-        turns = list(session.turns.order_by("order"))
+        turns = list(
+            Transcript.objects
+            .filter(interview=session, speaker="candidate")
+            .order_by("sequence_number")
+        )
+
         candidate_text = " ".join(
-            turn.text for turn in turns if turn.speaker == ConversationTurn.Speaker.CANDIDATE and turn.text
+            t.text for t in turns if t.text
         ).strip()
 
-        timed_ends = [turn.ended_at_ms for turn in turns if turn.ended_at_ms is not None]
-        duration_seconds = (max(timed_ends) / 1000.0) if timed_ends else float(session.duration_seconds or 0)
+        duration_seconds = float(session.duration_seconds or 0)
 
         return TranscriptionResult(
             text=candidate_text,
-            # This is the transcript we actually observed turn-by-turn
-            # during the call, not an STT guess - full confidence.
             confidence=1.0,
             duration_seconds=duration_seconds,
             word_timestamps=[],

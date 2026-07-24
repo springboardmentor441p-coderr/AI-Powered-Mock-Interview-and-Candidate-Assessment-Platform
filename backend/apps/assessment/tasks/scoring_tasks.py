@@ -2,6 +2,8 @@ import logging
 
 from celery import shared_task
 
+from core.exceptions import ExternalServiceError
+
 logger = logging.getLogger("smarthire")
 
 
@@ -28,6 +30,14 @@ def run_assessment_pipeline(self, session_id: str):
                 session_id=str(session.id),
                 overall_score=score.overall,
             )
-    except Exception as exc:  # noqa: BLE001
-        logger.exception("Assessment pipeline failed for session %s", session_id)
+
+    except ExternalServiceError as exc:
+        logger.warning(
+            "run_assessment_pipeline: transient error for session %s (attempt %d/%d): %s",
+            session_id, self.request.retries + 1, self.max_retries + 1, exc,
+        )
         raise self.retry(exc=exc)
+
+    except Exception:
+        logger.exception("run_assessment_pipeline: unrecoverable error for session %s", session_id)
+        raise

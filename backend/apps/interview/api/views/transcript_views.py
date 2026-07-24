@@ -36,6 +36,7 @@ class SessionTranscriptWebhookView(APIView):
 
     def post(self, request: Request, session_id: str, *args: Any, **kwargs: Any):
         from core.container import container
+        from apps.interview.models import ConversationTurn
 
         provided_secret = request.headers.get("X-Tool-Secret", "")
         if not settings.ULTRAVOX_TOOL_SHARED_SECRET or provided_secret != settings.ULTRAVOX_TOOL_SHARED_SECRET:
@@ -50,23 +51,7 @@ class SessionTranscriptWebhookView(APIView):
         serializer.is_valid(raise_exception=True)
         vd = cast(dict[str, Any], serializer.validated_data)
 
-        # The Ultravox webhook payload has no notion of our seed-topic
-        # model — Ultravox only ever emits raw speech turns — so
-        # question_id is never actually sent by the client despite being
-        # accepted in the payload. Derive it ourselves: whichever seed
-        # topic currently has status=ASKED is, by construction, the one
-        # being discussed right now (there is exactly one at a time; see
-        # InterviewOrchestrator.handle_ask_next_question).
-        question = None
-        if vd.get("question_id"):
-            question = Question.objects.filter(pk=vd["question_id"], session=session).first()
-        if question is None:
-            question = (
-                Question.objects
-                .filter(session=session, status=Question.Status.ASKED)
-                .order_by("-order")
-                .first()
-            )
+        question = self._resolve_question(session, vd, ConversationTurn)
 
         turn = container.transcript_service().save_turn(
             interview=session,
@@ -81,6 +66,36 @@ class SessionTranscriptWebhookView(APIView):
         )
 
         return APIResponse.created(data=TranscriptSerializer(turn).data)
+
+    @staticmethod
+    def _resolve_question(session, vd: dict, ConversationTurn) -> "Question | None":
+        """
+        Determine which seed topic this transcript turn belongs to.
+
+        Priority:
+          1. Explicit question_id in payload (frontend sent it — trust it).
+          2. Timestamp-based lookup: find the last ConversationTurn whose
+             seed_topic was introduced before this turn's timestamp. This
+             correctly handles async transcript delivery where turns arrive
+             after the orchestrator has already moved to the next topic.
+          3. Current ASKED topic — last resort for turns with no timestamp.
+
+        Why timestamp-based over status=ASKED:
+          Transcript webhooks arrive asynchronously from the frontend. By
+          the time turns for topic N reach Django, the orchestrator may have
+          already transitioned to topic N+1 (status=ASKED). Looking at the
+          current ASKED topic assigns all late-arriving turns to the wrong
+          topic. Using the turn's own timestamp against ConversationTurn
+          created_at anchors each turn to the correct topic regardless of
+          delivery lag.
+        """
+        # 1. Explicit question_id wins.
+        if vd.get("question_id"):
+            q = Question.objects.filter(pk=vd["question_id"], session=session).first()
+            if q:
+                return q
+       
+        return session.current_seed_topic
 
 
 class SessionTranscriptListView(APIView):

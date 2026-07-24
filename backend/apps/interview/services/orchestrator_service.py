@@ -117,7 +117,7 @@ class InterviewOrchestrator(BaseService):
     # ------------------------------------------------------------------
 
     @transaction.atomic
-    def handle_ask_next_question(self, *, session: InterviewSession, arguments: dict) -> str:
+    def handle_ask_next_question(self, *, session: InterviewSession, arguments: dict) -> tuple[str, str]:
         # Import at method top so Pylance can resolve the Celery task types.
         from apps.interview.tasks.evaluation_tasks import evaluate_topic_thread  # noqa: PLC0415
 
@@ -135,18 +135,20 @@ class InterviewOrchestrator(BaseService):
             return (
                 "You're almost out of time for this interview. Skip any remaining planned topics: "
                 "thank the candidate warmly for their time, ask if they have any brief questions for "
-                "you, then use the hangUp tool right away."
+                "you, then use the hangUp tool right away.",""
             )
 
         next_topic = session.seed_topics.filter(status=Question.Status.PENDING).order_by("order").first()  # type: ignore[attr-defined]
         if next_topic is None:
             return (
                 "All planned topics have been covered. Wrap up warmly: ask if the "
-                "candidate has any questions for you, thank them, then use the hangUp tool."
+                "candidate has any questions for you, thank them, then use the hangUp tool.",""
             )
 
         next_topic.status = Question.Status.ASKED
         next_topic.save(update_fields=["status"])
+        session.current_seed_topic = next_topic
+        session.save(update_fields=["current_seed_topic"])
 
         # The previous topic is now done — evaluate its full thread.
         # Full thread is only available once AI moves to the next topic.
@@ -191,7 +193,7 @@ class InterviewOrchestrator(BaseService):
                 "follow-up brief, and be ready to wrap up soon rather than opening a long new thread."
             )
 
-        return instruction
+        return instruction, str(next_topic.id)
 
     def _time_remaining_seconds(self, session: InterviewSession) -> float | None:
         if not session.started_at:

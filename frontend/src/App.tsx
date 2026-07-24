@@ -5,16 +5,19 @@ const TOOL_SECRET = import.meta.env.VITE_ULTRAVOX_TOOL_SECRET as string;
 const BACKEND = "http://localhost:8000/api/v1/interviews";
 
 function App() {
-  const sessionRef  = useRef<UltravoxSession | null>(null);
-  // Track the highest Ultravox transcript index we've already relayed.
-  // UV provides a stable 0-based index per turn; using it directly as
-  // sequence_number avoids the text-dedup skips and handles the case
-  // where multiple turns finalise between two event firings.
-  const lastSentIdx = useRef(-1);
+  const sessionRef      = useRef<UltravoxSession | null>(null);
+  const lastSentIdx     = useRef(-1);
+  const currentQuestionId = useRef<string>("");
+  const sessionIdRef    = useRef<string>("");
 
   const [status,    setStatus]    = useState("Disconnected");
   const [joinUrl,   setJoinUrl]   = useState("");
   const [sessionId, setSessionId] = useState("");
+
+  const handleSessionIdChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setSessionId(e.target.value);
+    sessionIdRef.current = e.target.value;
+  };
 
   useEffect(() => {
     const session = new UltravoxSession();
@@ -24,27 +27,45 @@ function App() {
       setStatus(String(session.status));
     });
 
-    session.addEventListener("transcripts", () => {
+    session.addEventListener("transcripts", async () => {
       const all = session.transcripts;
       if (!all?.length) return;
 
-      // Iterate every turn we haven't sent yet — the event fires on every
-      // array update, so multiple turns can accumulate between firings.
+      // Only poll current-topic when a new agent turn has finalized,
+      // since topic only changes when AI calls ask_next_question.
+      const hasNewAgentTurn = all
+        .slice(lastSentIdx.current + 1)
+        .some(t => t.isFinal && t.speaker === "agent");
+
+      if (hasNewAgentTurn) {
+        try {
+          const qRes = await fetch(
+            `${BACKEND}/realtime/sessions/${sessionIdRef.current}/current-topic/`,
+            { headers: { "X-Tool-Secret": TOOL_SECRET } }
+          );
+          if (qRes.ok) {
+            const qData = await qRes.json();
+            currentQuestionId.current = qData.data?.question_id ?? "";
+            console.log("[current-topic] question_id:", currentQuestionId.current);
+          }
+        } catch (e) {
+          console.warn("current-topic fetch failed:", e);
+        }
+      }
+
+      // Iterate every turn we haven't sent yet.
       for (let i = lastSentIdx.current + 1; i < all.length; i++) {
         const turn = all[i];
 
-        // Skip non-final turns; a later firing will pick them up once
-        // Ultravox marks them final. Do NOT advance the cursor here —
-        // we need to revisit this index on the next event.
+        // Skip non-final turns; revisit on next event firing.
         if (!turn.isFinal) break;
 
-        // Advance cursor only for turns we are actually sending.
         lastSentIdx.current = i;
 
-        const seq = i; // stable Ultravox index → sequence_number
+        const seq = i;
         console.log(`[transcript] seq=${seq} speaker=${turn.speaker}: ${turn.text.slice(0, 60)}`);
 
-        fetch(`${BACKEND}/realtime/sessions/${sessionId}/transcript/webhook/`, {
+        fetch(`${BACKEND}/realtime/sessions/${sessionIdRef.current}/transcript/webhook/`, {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
@@ -54,6 +75,7 @@ function App() {
             speaker:         turn.speaker === "agent" ? "assistant" : "candidate",
             text:            turn.text,
             sequence_number: seq,
+            question_id:     currentQuestionId.current || undefined,
             timestamp:       new Date().toISOString(),
           }),
         }).catch((err) => console.error(`relay failed for seq=${seq}:`, err));
@@ -67,15 +89,15 @@ function App() {
     return () => {
       session.leaveCall().catch(console.error);
     };
-  }, [sessionId]);
+  }, []); // no deps — sessionIdRef keeps it current without recreating the session
 
   const joinCall = async () => {
-    if (!sessionRef.current || !joinUrl || !sessionId) {
+    if (!sessionRef.current || !joinUrl || !sessionIdRef.current) {
       alert("Paste both the Session ID and Join URL first.");
       return;
     }
-    // Reset cursor for new call
     lastSentIdx.current = -1;
+    currentQuestionId.current = "";
 
     try {
       await sessionRef.current.joinCall(joinUrl);
@@ -97,7 +119,7 @@ function App() {
 
       <input
         value={sessionId}
-        onChange={(e) => setSessionId(e.target.value)}
+        onChange={handleSessionIdChange}
         placeholder="Paste Django Session ID (UUID)"
         style={{ width: "100%", padding: 12, fontSize: 16, marginBottom: 10, display: "block", boxSizing: "border-box" }}
       />

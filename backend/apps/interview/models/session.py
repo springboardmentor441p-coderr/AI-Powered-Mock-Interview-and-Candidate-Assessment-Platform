@@ -50,6 +50,19 @@ class InterviewSession(models.Model):
     call_join_url = models.URLField(max_length=1000, blank=True, default="")
     interrupt_count = models.PositiveIntegerField(default=0)
 
+    # Tracks which seed topic is currently being discussed. Set by the
+    # orchestrator each time ask_next_question advances to a new topic.
+    # Used by the transcript relay to tag incoming turns with the correct
+    # question_id without relying on status=ASKED ordering.
+    current_seed_topic = models.ForeignKey(
+        "interview.Question",
+        on_delete=models.SET_NULL,
+        null=True, blank=True,
+        related_name="+",
+    )
+
+    created_at = models.DateTimeField(auto_now_add=True)
+
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 

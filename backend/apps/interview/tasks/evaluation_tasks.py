@@ -17,6 +17,12 @@ Task: generate_interview_brief
   Triggered by InterviewOrchestrator._complete_session() after the
   call ends. Reads all ThreadEvaluation rows and generates a single
   InterviewBrief for the recruiter.
+
+  Race-condition guard: the task checks that every ASKED seed topic has
+  a ThreadEvaluation before generating the brief. If not all are ready
+  yet (evaluate_topic_thread may still be running), it reschedules
+  itself with a short countdown rather than running on incomplete data.
+  Max waits: 5 attempts × 30s = up to 2.5 min before giving up.
 """
 import logging
 
@@ -25,6 +31,11 @@ from celery import shared_task
 from core.exceptions import ExternalServiceError
 
 logger = logging.getLogger("smarthire")
+
+# How many times generate_interview_brief will reschedule itself waiting
+# for all thread evaluations to complete before giving up.
+_BRIEF_MAX_READINESS_WAITS = 5
+_BRIEF_READINESS_RETRY_DELAY = 30  # seconds
 
 
 @shared_task(
@@ -75,15 +86,6 @@ def evaluate_topic_thread(self, session_id: str, seed_topic_id: str) -> None:
     )
 
     if len(linked_turns) < 2:
-        # Fallback: find the AI turn that introduced this topic and take
-        # everything up to the next seed topic's AI turn.
-        #
-        # NOTE: we anchor on ConversationTurn (written by the orchestrator
-        # with a real seed_topic FK) rather than matching seed_topic.text
-        # against Transcript. The system prompt tells the model to ask
-        # "in your own natural words", so the spoken text in Transcript
-        # essentially never contains the seed topic's literal text —
-        # text__icontains anchoring silently matches nothing.
         topic_order = seed_topic.order
         next_topic = (
             Question.objects
@@ -91,30 +93,28 @@ def evaluate_topic_thread(self, session_id: str, seed_topic_id: str) -> None:
             .order_by("order")
             .first()
         )
-
-        start_turn = (
+        start_ct = (
             ConversationTurn.objects
             .filter(session=session, seed_topic=seed_topic)
-            .order_by("created_at")
+            .order_by("order")
             .first()
         )
-
-        if start_turn is not None:
+        if start_ct is not None:
             qs = Transcript.objects.filter(
                 interview=session,
-                created_at__gte=start_turn.created_at,
+                sequence_number__gte=start_ct.order,
             )
             if next_topic is not None:
-                end_turn = (
+                end_ct = (
                     ConversationTurn.objects
                     .filter(session=session, seed_topic=next_topic)
-                    .order_by("created_at")
+                    .order_by("order")
                     .first()
                 )
-                if end_turn is not None:
-                    qs = qs.filter(created_at__lt=end_turn.created_at)
+                if end_ct is not None:
+                    qs = qs.filter(sequence_number__lt=end_ct.order)
             linked_turns = list(qs.order_by("sequence_number"))
-
+            
     if not linked_turns:
         logger.warning(
             "evaluate_topic_thread: no transcript turns found for topic %s in session %s — skipping.",
@@ -188,18 +188,27 @@ def evaluate_topic_thread(self, session_id: str, seed_topic_id: str) -> None:
     default_retry_delay=30,
     name="apps.interview.tasks.generate_interview_brief",
 )
-def generate_interview_brief(self, session_id: str) -> None:
+def generate_interview_brief(self, session_id: str, _readiness_attempt: int = 0) -> None:
     """
     Generate the post-interview brief after all topics are evaluated.
 
     Called by _complete_session() after the call ends. Reads all
     ThreadEvaluation rows for the session and writes one InterviewBrief.
 
+    Race-condition guard: every seed topic with status=ASKED must have a
+    corresponding ThreadEvaluation before the brief is generated. If some
+    are still being evaluated (evaluate_topic_thread is async and may lag),
+    this task reschedules itself with a short delay rather than generating
+    an incomplete brief. It will wait up to _BRIEF_MAX_READINESS_WAITS
+    attempts before proceeding anyway (so a failed evaluate_topic_thread
+    doesn't block the brief forever).
+
     Args:
-        session_id: UUID of the InterviewSession.
+        session_id:         UUID of the InterviewSession.
+        _readiness_attempt: Internal counter — do not pass from callers.
     """
     from core.container import container
-    from apps.interview.models import InterviewBrief, InterviewSession, ThreadEvaluation
+    from apps.interview.models import InterviewBrief, InterviewSession, Question, ThreadEvaluation
 
     # Idempotency.
     if InterviewBrief.objects.filter(interview_id=session_id).exists():
@@ -211,6 +220,47 @@ def generate_interview_brief(self, session_id: str) -> None:
         logger.warning("generate_interview_brief: session %s not found — skipping.", session_id)
         return
 
+    # ------------------------------------------------------------------
+    # Readiness check: all ASKED seed topics must have a ThreadEvaluation.
+    # If not, reschedule rather than generate a partial brief.
+    # ------------------------------------------------------------------
+    asked_topic_ids = set(
+        Question.objects
+        .filter(session=session, status=Question.Status.ASKED)
+        .values_list("id", flat=True)
+    )
+    evaluated_topic_ids = set(
+        ThreadEvaluation.objects
+        .filter(interview=session)
+        .values_list("seed_topic_id", flat=True)
+    )
+    pending_topics = asked_topic_ids - evaluated_topic_ids
+
+    if pending_topics and _readiness_attempt < _BRIEF_MAX_READINESS_WAITS:
+        logger.info(
+            "generate_interview_brief: %d topic(s) not yet evaluated for session %s "
+            "(attempt %d/%d) — rescheduling in %ds.",
+            len(pending_topics), session_id,
+            _readiness_attempt + 1, _BRIEF_MAX_READINESS_WAITS,
+            _BRIEF_READINESS_RETRY_DELAY,
+        )
+        generate_interview_brief.apply_async( # pyright: ignore[reportCallIssue]
+            args=[session_id],
+            kwargs={"_readiness_attempt": _readiness_attempt + 1},
+            countdown=_BRIEF_READINESS_RETRY_DELAY,
+        )
+        return
+
+    if pending_topics:
+        logger.warning(
+            "generate_interview_brief: %d topic(s) still unevaluated after %d waits "
+            "for session %s — generating brief on available data.",
+            len(pending_topics), _BRIEF_MAX_READINESS_WAITS, session_id,
+        )
+
+    # ------------------------------------------------------------------
+    # All (or as many as we'll get) thread evaluations are ready.
+    # ------------------------------------------------------------------
     thread_evals = list(
         ThreadEvaluation.objects
         .filter(interview=session)

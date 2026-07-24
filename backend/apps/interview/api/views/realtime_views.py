@@ -113,11 +113,10 @@ class SessionRealtimeToolAskNextQuestionView(APIView):
             return APIResponse.error(message="Invalid tool credentials.", http_status=status.HTTP_401_UNAUTHORIZED)
 
         session = get_object_or_404(InterviewSession, pk=session_id)
-        result_text = container.interview_orchestrator().handle_ask_next_question(
+        result_text, question_id = container.interview_orchestrator().handle_ask_next_question(
             session=session, arguments=cast(dict, request.data) if request.data else {},
         )
-        return APIResponse.success(data={"result": result_text})
-
+        return APIResponse.success(data={"result": result_text, "question_id": question_id})
 
 class SessionRealtimeAccountWebhookView(APIView):
     """
@@ -157,6 +156,25 @@ class SessionRealtimeAccountWebhookView(APIView):
         )
         return APIResponse.success(data={}, http_status=status.HTTP_204_NO_CONTENT)
 
+class SessionCurrentTopicView(APIView):
+    """
+    GET /api/v1/interviews/realtime/sessions/<session_id>/current-topic/
+
+    Returns the current active seed topic UUID. Called by the frontend
+    transcript relay to tag each turn with the correct question_id.
+    Authenticated by X-Tool-Secret (same as transcript webhook).
+    """
+    permission_classes = [AllowAny]
+    throttle_classes = []
+
+    def get(self, request: Request, session_id: str, *args: Any, **kwargs: Any):
+        provided_secret = request.headers.get("X-Tool-Secret", "")
+        if not settings.ULTRAVOX_TOOL_SHARED_SECRET or provided_secret != settings.ULTRAVOX_TOOL_SHARED_SECRET:
+            return APIResponse.error(message="Invalid credentials.", http_status=status.HTTP_401_UNAUTHORIZED)
+        session = get_object_or_404(InterviewSession, pk=session_id)
+        return APIResponse.success(data={
+           "question_id": str(session.current_seed_topic.id) if session.current_seed_topic else None
+        })
 
 class SessionRealtimeTranscriptView(APIView):
     """
@@ -190,3 +208,7 @@ class SessionRealtimeTranscriptView(APIView):
             was_interrupted=vd.get("was_interrupted", False),
         )
         return APIResponse.created(data=ConversationTurnSerializer(turn).data)
+    
+    
+    
+    

@@ -3,6 +3,7 @@ from django.urls import path
 from apps.interview.api.views.realtime_views import (
     SessionRealtimeAccountWebhookView, SessionRealtimeCreateView, SessionRealtimeStartView,
     SessionRealtimeToolAskNextQuestionView, SessionRealtimeTranscriptView,
+    SessionCurrentTopicView, 
 )
 from apps.interview.api.views.session_views import (
     InterviewTemplateListCreateView, SessionAnswerView, SessionCompleteView,
@@ -49,5 +50,7 @@ urlpatterns = [
 
     # Orchestrator tools
     path("realtime/sessions/<uuid:session_id>/tools/ask-next-question/", SessionRealtimeToolAskNextQuestionView.as_view(), name="realtime_tool_ask_next_question"),
+    path("realtime/sessions/<uuid:session_id>/current-topic/", SessionCurrentTopicView.as_view(), 
+    name="realtime_current_topic"),
     path("realtime/webhooks/ultravox/", SessionRealtimeAccountWebhookView.as_view(), name="realtime_webhook_ultravox"),
 ]
