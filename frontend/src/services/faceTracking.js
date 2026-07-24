@@ -6,6 +6,8 @@ let faceLandmarker = null;
  * Load the MediaPipe FaceLandmarker model. Call this once before tracking starts.
  */
 export async function initFaceTracking() {
+  if (faceLandmarker) return faceLandmarker;
+
   const filesetResolver = await FilesetResolver.forVisionTasks(
     'https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@latest/wasm'
   );
@@ -18,7 +20,7 @@ export async function initFaceTracking() {
     },
     outputFaceBlendshapes: false,
     runningMode: 'VIDEO',
-    numFaces: 2, // detect up to 2 faces so we can flag "multiple people detected"
+    numFaces: 2,
   });
 
   return faceLandmarker;

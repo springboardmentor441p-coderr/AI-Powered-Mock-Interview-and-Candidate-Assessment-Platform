@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { initFaceTracking, detectFace } from '../services/faceTracking';
 import { initObjectDetection, detectObjects } from '../services/objectDetection';
 
+let modelsInitialized = false;
 const FACE_CHECK_INTERVAL = 500;
 const OBJECT_CHECK_INTERVAL = 2000; // object detection is heavier, check less often
 const LOOK_AWAY_THRESHOLD = 4000;
@@ -14,14 +15,23 @@ function ProctoringMonitor({ videoElement, calibrationBaseline, onViolation }) {
   const objectIntervalRef = useRef(null);
 
   useEffect(() => {
-    let cancelled = false;
-    Promise.all([initFaceTracking(), initObjectDetection()]).then(() => {
+  let cancelled = false;
+
+  async function loadModels() {
+    if (modelsInitialized) {
       if (!cancelled) setIsReady(true);
-    });
-    return () => {
-      cancelled = true;
-    };
-  }, []);
+      return;
+    }
+    await Promise.all([initFaceTracking(), initObjectDetection()]);
+    modelsInitialized = true;
+    if (!cancelled) setIsReady(true);
+  }
+
+  loadModels();
+  return () => {
+    cancelled = true;
+  };
+}, []);
 
   // Face + gaze monitoring
   useEffect(() => {
