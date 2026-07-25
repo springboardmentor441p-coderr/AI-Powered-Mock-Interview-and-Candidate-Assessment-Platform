@@ -252,7 +252,12 @@ class InterviewOrchestrator(BaseService):
             )
         )
 
-        transaction.on_commit(lambda: run_assessment_pipeline.delay(str(session.id)))  # type: ignore[union-attr]
+        transaction.on_commit(
+            lambda: run_assessment_pipeline.apply_async(
+                args=[str(session.id)],# type: ignore[union-attr]
+                countdown=15,
+            )
+        )  
         self.logger.info("Realtime session %s completed; evaluation and assessment pipelines queued.", session.id)
 
     # ------------------------------------------------------------------
