@@ -15,18 +15,15 @@ from apps.assessment.models import SpeechAnalysis
 
 class SpeechAnalysisService(BaseService):
     """
-    Orchestrates: transcript -> communication analysis -> emotion
-    detection -> eye-contact tracking. All four collaborators are
-    injected, keeping this class oblivious to which concrete provider
-    is in use.
+    Orchestrates: transcript → communication analysis → emotion/eye-contact.
 
-    Scripted sessions get their transcript from `stt.transcribe()`
-    against the uploaded `session.audio_recording`. Realtime (Ultravox)
-    sessions never upload an audio file - the call happens directly
-    between the candidate's browser and the voice provider - so their
-    transcript is assembled from the `ConversationTurn` rows recorded
-    during the call instead. Either way `communication` gets a plain
-    transcript + duration and doesn't need to know the difference.
+    Face data source priority:
+      1. Server-side video file (session.video_recording) — existing path.
+      2. Browser-sent FaceAssessmentSnapshot rows — new realtime path.
+      3. Nothing (fields remain null, ConfidenceStrategy treats as 0).
+
+    All four collaborators are injected, keeping this class oblivious to
+    which concrete provider is in use.
     """
 
     def __init__(
@@ -63,27 +60,19 @@ class SpeechAnalysisService(BaseService):
 
             video_path = session.video_recording.path if session.video_recording else ""
             if video_path:
-                emotion = self._emotion.analyze(video_path)
-                eye = self._eye_contact.analyze(video_path)
-                analysis.dominant_emotion = emotion.dominant_emotion
-                analysis.emotion_breakdown = emotion.emotion_breakdown
-                analysis.confidence_score = emotion.confidence_score
-                analysis.eye_contact_percentage = eye.eye_contact_percentage
-                analysis.attention_score = eye.attention_score
-                analysis.engagement_score = eye.engagement_score
+                # Path 1: analyse the server-side recording.
+                self._apply_face_from_video(analysis=analysis, video_path=video_path)
             else:
-                # No video was ever captured for this session (true for
-                # every realtime/voice-only call, and for a scripted
-                # session the candidate simply didn't upload video for).
-                # Leave the video-derived fields null rather than
-                # scoring a face that was never recorded - ConfidenceStrategy
-                # already treats these as 0 via `or 0`.
-                analysis.dominant_emotion = ""
-                analysis.emotion_breakdown = {}
-                analysis.confidence_score = None
-                analysis.eye_contact_percentage = None
-                analysis.attention_score = None
-                analysis.engagement_score = None
+                # Path 2: try browser-sent MediaPipe snapshots.
+                applied = self._apply_face_from_snapshots(analysis=analysis, session=session)
+                if not applied:
+                    # Path 3: no face data at all — leave fields null.
+                    analysis.dominant_emotion = ""
+                    analysis.emotion_breakdown = {}
+                    analysis.confidence_score = None
+                    analysis.eye_contact_percentage = None
+                    analysis.attention_score = None
+                    analysis.engagement_score = None
 
             analysis.status = SpeechAnalysis.Status.COMPLETED
             analysis.save()
@@ -97,6 +86,10 @@ class SpeechAnalysisService(BaseService):
 
         return analysis
 
+    # ------------------------------------------------------------------ #
+    # Private helpers                                                       #
+    # ------------------------------------------------------------------ #
+
     def _transcribe(self, session) -> TranscriptionResult:
         from apps.interview.models import InterviewSession
 
@@ -106,13 +99,32 @@ class SpeechAnalysisService(BaseService):
         audio_path = session.audio_recording.path if session.audio_recording else ""
         return self._stt.transcribe(audio_path)
 
+    def _apply_face_from_video(self, *, analysis, video_path: str) -> None:
+        """Analyse a server-side video file using DeepFace + MediaPipe."""
+        emotion = self._emotion.analyze(video_path)
+        eye = self._eye_contact.analyze(video_path)
+        analysis.dominant_emotion = emotion.dominant_emotion
+        analysis.emotion_breakdown = emotion.emotion_breakdown
+        analysis.confidence_score = emotion.confidence_score
+        analysis.eye_contact_percentage = eye.eye_contact_percentage
+        analysis.attention_score = eye.attention_score
+        analysis.engagement_score = eye.engagement_score
+
+    def _apply_face_from_snapshots(self, *, analysis, session) -> bool:
+        """
+        Apply aggregated browser-sent FaceAssessmentSnapshot rows to the
+        analysis.  Returns True if any snapshot data existed.
+        """
+        from apps.assessment.services.face_assessment_service import FaceAssessmentService
+        service = FaceAssessmentService()
+        return service.apply_to_analysis(session=session, analysis=analysis)
+
     @staticmethod
     def _transcript_from_conversation_turns(session) -> TranscriptionResult:
         """
-        Builds a transcript from the candidate's `Transcript` rows.
-        ConversationTurn only stores AI turns (created by ask_next_question);
-        candidate answers are stored in the Transcript model by the
-        frontend relay webhook.
+        Builds a transcript from the candidate's Transcript rows.
+        ConversationTurn only stores AI turns; candidate answers are stored
+        in the Transcript model by the frontend relay webhook.
         """
         from apps.interview.models.transcript import Transcript
 
@@ -122,10 +134,7 @@ class SpeechAnalysisService(BaseService):
             .order_by("sequence_number")
         )
 
-        candidate_text = " ".join(
-            t.text for t in turns if t.text
-        ).strip()
-
+        candidate_text = " ".join(t.text for t in turns if t.text).strip()
         duration_seconds = float(session.duration_seconds or 0)
 
         return TranscriptionResult(
