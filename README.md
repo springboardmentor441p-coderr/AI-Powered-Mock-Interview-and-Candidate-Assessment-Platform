@@ -541,19 +541,6 @@ uv run alembic history
 
 ---
 
-## Admin Credentials
-
-Default admin account seeded by `scripts/create_admin.py`:
-
-| Field | Value |
-|-------|-------|
-| Username | `ranjith` |
-| Password | `ranjith143` |
-| Email | `ranjith@smarthire.ai` |
-| Role | `admin` |
-
-> **Change this password immediately in any non-development environment.**
-
 ---
 
 ## Branch Strategy
