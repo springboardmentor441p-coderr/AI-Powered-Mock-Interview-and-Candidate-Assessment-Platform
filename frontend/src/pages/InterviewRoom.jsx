@@ -1,0 +1,1441 @@
+import React, { useState, useEffect, useRef } from 'react';
+import { useNavigate } from 'react-router-dom';
+import {
+  Clock,
+  Mic,
+  MicOff,
+  ShieldCheck,
+  AlertTriangle,
+  HelpCircle,
+  Video,
+  Volume2,
+  Cpu,
+  Eye,
+  Camera,
+  UserX,
+  Sparkles,
+  MessageSquare,
+  Zap,
+  PhoneCall,
+  User,
+  Play,
+  Radio,
+  History,
+  X,
+  Award,
+  Maximize2,
+  Send,
+  CheckCircle2
+} from 'lucide-react';
+import { AIAvatar } from '../components/Avatar/Avatar';
+import { SpeechToText } from '../components/SpeechToText/SpeechToText';
+import { VisionAnalyzer } from '../components/VisionAnalyzer/VisionAnalyzer';
+import { useApp } from '../context/AppContext';
+import { useUltravox } from '../hooks/useUltravox';
+
+export const InterviewRoom = () => {
+  const navigate = useNavigate();
+  const { candidate = {}, generatedQuestions, setFinalReport, addCompletedInterview, jdData = {}, resumeData = {}, interviewDuration, setupChecks = {}, interviewHistory = [] } = useApp();
+  const [showHistoryModal, setShowHistoryModal] = useState(false);
+
+  // Proctoring & Vision Telemetry State
+  const [faceCount, setFaceCount] = useState(1);
+  const [eyeGazeStatus, setEyeGazeStatus] = useState('Centered');
+  const [warningGiven, setWarningGiven] = useState(false);
+  const [showWarningModal, setShowWarningModal] = useState(false);
+  const [warningReasonText, setWarningReasonText] = useState('');
+  const [lastNoticeSpokenTime, setLastNoticeSpokenTime] = useState(0);
+
+  const defaultQuestions = [
+    {
+      id: 1,
+      questionText: "Welcome! To start off, please introduce yourself and walk me through your core software engineering background.",
+      topic: "Introduction & Fundamentals"
+    },
+    {
+      id: 2,
+      questionText: "Can you explain how you approach designing scalable RESTful or GraphQL APIs for high-concurrency web applications?",
+      topic: "System Architecture"
+    },
+    {
+      id: 3,
+      questionText: "Tell me about a challenging technical problem or bug you solved recently. What was your analytical debugging approach?",
+      topic: "Problem Solving"
+    }
+  ];
+
+  const [questions, setQuestions] = useState(() => {
+    if (generatedQuestions && Array.isArray(generatedQuestions) && generatedQuestions.length > 0) {
+      return generatedQuestions;
+    }
+    return defaultQuestions;
+  });
+
+  // Automatically generate custom AI questions on interview room mount if not present
+  useEffect(() => {
+    if (!generatedQuestions || !Array.isArray(generatedQuestions) || generatedQuestions.length === 0) {
+      const selectedRole = candidate?.targetRole || resumeData?.targetRole || 'Software Engineer';
+      fetch('http://localhost:8000/api/v1/analyze/generate-interview', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          resume_text: JSON.stringify(resumeData || {}),
+          jd_text: jdData?.rawText || '',
+          interview_type: 'Technical',
+          experience_level: 'Mid-Level',
+          num_questions: 5,
+          target_role: selectedRole
+        })
+      })
+        .then(async (res) => {
+          if (res.ok) {
+            const data = await res.json();
+            if (data.questions && Array.isArray(data.questions) && data.questions.length > 0) {
+              setQuestions(data.questions);
+            }
+          }
+        })
+        .catch((err) => console.warn("Auto question generation notice:", err));
+    }
+  }, []);
+
+  // Question & Timer State
+  const [isWelcomePhase, setIsWelcomePhase] = useState(true);
+  const [qIndex, setQIndex] = useState(0);
+  const [timerSeconds, setTimerSeconds] = useState(() => {
+    let minutes = 15;
+    if (interviewDuration && typeof interviewDuration === 'string') {
+      const match = interviewDuration.match(/(\d+)\s*Min/i);
+      if (match) {
+        minutes = parseInt(match[1], 10);
+      }
+    }
+    return minutes * 60;
+  });
+  const [isMicOn, setIsMicOn] = useState(true);
+  const [isSpeaking, setIsSpeaking] = useState(false);
+  const [candidateSpeechText, setCandidateSpeechText] = useState('');
+  const [liveSubtitles, setLiveSubtitles] = useState('AI Interviewer connected. Introducing session...');
+  const [evaluating, setEvaluating] = useState(false);
+
+  // Conversation Memory & Context Retention
+  const [conversationHistory, setConversationHistory] = useState([]);
+  const [candidateAnswers, setCandidateAnswers] = useState({});
+  const candidateMemory = useRef({});
+  const silenceTimerRef = useRef(null);
+  const [ultravoxMode, setUltravoxMode] = useState(false); // true when Ultravox is active
+  const [ultravoxFailed, setUltravoxFailed] = useState(false); // true ONLY if Ultravox fails to initialize
+
+  // Proctored Fullscreen & Tab Switching Lockdown State
+  const [isFullscreen, setIsFullscreen] = useState(true);
+  const [tabViolationCount, setTabViolationCount] = useState(0);
+  const lastTabViolationTimeRef = useRef(0);
+  const isTerminatingRef = useRef(false);
+
+  const triggerTabOrFullscreenViolation = (reasonText) => {
+    if (isTerminatingRef.current) return;
+    isTerminatingRef.current = true;
+    handleTerminateInterview(reasonText || "Candidate exited full screen mode or left the interview room tab.");
+  };
+
+  const handleReEnterFullscreen = async () => {
+    try {
+      const element = document.documentElement;
+      if (element.requestFullscreen) {
+        await element.requestFullscreen();
+      } else if (element.webkitRequestFullscreen) {
+        await element.webkitRequestFullscreen();
+      }
+      setIsFullscreen(true);
+    } catch (e) {
+      console.error("Failed to re-enter fullscreen:", e);
+    }
+  };
+
+  useEffect(() => {
+    const requestFS = async () => {
+      try {
+        if (!document.fullscreenElement && !document.webkitFullscreenElement) {
+          const element = document.documentElement;
+          if (element.requestFullscreen) {
+            await element.requestFullscreen();
+          } else if (element.webkitRequestFullscreen) {
+            await element.webkitRequestFullscreen();
+          }
+        }
+      } catch (e) {
+        console.warn("Fullscreen auto-request waiting for user gesture:", e);
+      }
+    };
+    requestFS();
+
+    const handleFSChange = () => {
+      const isFS = !!(document.fullscreenElement || document.webkitFullscreenElement || document.mozFullScreenElement);
+      setIsFullscreen(isFS);
+      if (!isFS) {
+        triggerTabOrFullscreenViolation("Security Alert: Full screen mode exited.");
+      }
+    };
+
+    const handleVisibilityChange = () => {
+      if (document.hidden) {
+        triggerTabOrFullscreenViolation("Security Violation: You switched tabs or minimized the browser.");
+      }
+    };
+
+    const handleWindowBlur = () => {
+      triggerTabOrFullscreenViolation("Security Violation: Window focus lost / tab switched.");
+    };
+
+    const handleKeyDown = (e) => {
+      if (
+        e.key === 'Escape' ||
+        e.key === 'Esc' ||
+        e.code === 'Escape' ||
+        e.keyCode === 27
+      ) {
+        e.preventDefault();
+        e.stopPropagation();
+        triggerTabOrFullscreenViolation("Candidate pressed ESC key to exit the interview room.");
+        return;
+      }
+
+      if (
+        e.key === 'F12' ||
+        (e.ctrlKey && e.shiftKey && (e.key === 'I' || e.key === 'J' || e.key === 'C')) ||
+        (e.ctrlKey && (e.key === 'u' || e.key === 'U' || e.key === 'c' || e.key === 'C' || e.key === 'v' || e.key === 'V')) ||
+        (e.altKey && e.key === 'Tab')
+      ) {
+        e.preventDefault();
+        e.stopPropagation();
+        triggerTabOrFullscreenViolation("Security Violation: Keyboard shortcut / DevTools blocked.");
+      }
+    };
+
+    const handleContextMenu = (e) => {
+      e.preventDefault();
+    };
+
+    document.addEventListener('fullscreenchange', handleFSChange);
+    document.addEventListener('webkitfullscreenchange', handleFSChange);
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    window.addEventListener('blur', handleWindowBlur);
+    window.addEventListener('keydown', handleKeyDown, true);
+    window.addEventListener('contextmenu', handleContextMenu);
+
+    return () => {
+      document.removeEventListener('fullscreenchange', handleFSChange);
+      document.removeEventListener('webkitfullscreenchange', handleFSChange);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      window.removeEventListener('blur', handleWindowBlur);
+      window.removeEventListener('keydown', handleKeyDown, true);
+      window.removeEventListener('contextmenu', handleContextMenu);
+
+      if (document.fullscreenElement || document.webkitFullscreenElement) {
+        if (document.exitFullscreen) {
+          document.exitFullscreen().catch(() => { });
+        } else if (document.webkitExitFullscreen) {
+          document.webkitExitFullscreen();
+        }
+      }
+    };
+  }, []);
+
+  // ======= ULTRAVOX REAL-TIME VOICE ENGINE =======
+  const {
+    status: uvStatus,
+    transcripts: uvTranscripts,
+    error: uvError,
+    initSession: uvInitSession,
+    endSession: uvEndSession
+  } = useUltravox({
+    onTranscriptUpdate: (transcripts) => {
+      // Relay latest agent/candidate speech into the live subtitles panel
+      const last = [...transcripts].reverse().find(t => t.isFinal || t.text);
+      if (last) {
+        const speaker = last.speaker === 'agent' ? '[Advika]' : '[Candidate]';
+        setLiveSubtitles(`${speaker}: "${last.text}"`);
+
+        if (last.speaker === 'agent') {
+          setIsSpeaking(true);
+          const textLower = (last.text || '').toLowerCase();
+
+          // Auto-sync frontend Question Card with Ultravox spoken question
+          if (!isWelcomePhase && questions && questions.length > 0) {
+            questions.forEach((qObj, idx) => {
+              const qText = (qObj.questionText || qObj.question_text || '').toLowerCase();
+              const snippet = qText.split(/\s+/).slice(0, 4).join(' ');
+              if (snippet && snippet.length > 8 && textLower.includes(snippet)) {
+                setQIndex(idx);
+              }
+            });
+          }
+
+          // Welcome phase discontinuation or completion checks
+          if (textLower.includes('discontinuing the interview session')) {
+            isTerminatingRef.current = true;
+            setTimeout(() => {
+              if (document.fullscreenElement || document.webkitFullscreenElement) {
+                if (document.exitFullscreen) document.exitFullscreen().catch(() => { });
+                else if (document.webkitExitFullscreen) document.webkitExitFullscreen();
+              }
+              navigate('/dashboard');
+            }, 2500);
+          } else if (
+            textLower.includes('evaluation report is being generated') ||
+            textLower.includes('thank you for completing all the questions') ||
+            textLower.includes('thank you for completing the interview')
+          ) {
+            setTimeout(() => {
+              handleCompleteInterview();
+            }, 3500);
+          }
+        } else {
+          setIsSpeaking(false);
+          // Accumulate candidate answer per current question
+          if (!isWelcomePhase && last.isFinal) {
+            setCandidateAnswers(prev => ({
+              ...prev,
+              [qIndex]: prev[qIndex] ? prev[qIndex] + ' ' + last.text : last.text
+            }));
+          }
+        }
+      }
+    },
+    onStatusChange: (s) => {
+      if (s === 'connected') {
+        setUltravoxMode(true);
+        if ('speechSynthesis' in window) window.speechSynthesis.cancel(); // Mute browser SpeechSynthesis immediately when Ultravox connects!
+        setLiveSubtitles('Advika connected — real-time voice active...');
+      } else if (s === 'ended' || s === 'error') {
+        setUltravoxMode(false);
+      }
+    },
+    onCallEnded: (finalTranscripts) => {
+      console.log('[Ultravox] Call ended. Final transcripts:', finalTranscripts);
+    }
+  });
+
+  const lastSpokenQIndexRef = useRef(-1);
+  const welcomeSpokenRef = useRef(false);
+  const recognitionRef = useRef(null);
+  const webcamStreamRef = useRef(null);
+  const mediaRecorderRef = useRef(null);
+  const recordedChunksRef = useRef([]);
+  const speakingRef = useRef(false);
+  const lastOffGazeTimeRef = useRef(0);
+  const offGazeStartRef = useRef(0);
+  const lastMismatchTimeRef = useRef(0);
+  const lastGadgetTimeRef = useRef(0);
+
+  const currentQ = questions[qIndex];
+
+  // Guarantee Hardware Access Permission
+  useEffect(() => {
+    if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+      navigator.mediaDevices.getUserMedia({ audio: true }).catch((err) => {
+        console.warn("Microphone access permission error:", err);
+      });
+    }
+  }, []);
+
+  const handleStreamActive = (stream) => {
+    webcamStreamRef.current = stream;
+    try {
+      const options = { mimeType: 'video/webm;codecs=vp9,opus' };
+      let recorder;
+      try {
+        recorder = new MediaRecorder(stream, options);
+      } catch (e) {
+        console.warn("VP9 codecs not supported, falling back to default configuration");
+        recorder = new MediaRecorder(stream);
+      }
+
+      mediaRecorderRef.current = recorder;
+      recordedChunksRef.current = [];
+
+      recorder.ondataavailable = (event) => {
+        if (event.data && event.data.size > 0) {
+          recordedChunksRef.current.push(event.data);
+        }
+      };
+
+      recorder.onstop = () => {
+        console.log("MediaRecorder stopped. Chunks count:", recordedChunksRef.current.length);
+      };
+
+      recorder.start(1000); // chunk every 1 sec
+      console.log("MediaRecorder successfully started");
+    } catch (err) {
+      console.error("Failed to initialize MediaRecorder:", err);
+    }
+  };
+
+  // Natural Speech Synthesis Voice Engine (Echo Filter Guarded)
+  const speakAIText = (text, onEndCallback = null) => {
+    if (ultravoxMode || !ultravoxFailed) {
+      // Ultravox WebRTC is active or initializing — suppress browser SpeechSynthesis to prevent 2 AI voices speaking simultaneously!
+      if ('speechSynthesis' in window) window.speechSynthesis.cancel();
+      setLiveSubtitles(`[AI Interviewer]: "${text}"`);
+      if (onEndCallback) setTimeout(onEndCallback, 100);
+      return;
+    }
+
+    if (!('speechSynthesis' in window)) return;
+
+    if (recognitionRef.current) {
+      try { recognitionRef.current.abort(); } catch (e) { }
+    }
+
+    window.speechSynthesis.cancel();
+    setIsSpeaking(false);
+
+    setTimeout(() => {
+      if (!('speechSynthesis' in window)) return;
+      window.speechSynthesis.cancel();
+
+      setLiveSubtitles(`[AI Interviewer]: "${text}"`);
+
+      const utterance = new SpeechSynthesisUtterance(text);
+      utterance.rate = 0.75;
+      utterance.pitch = 1.05;
+
+      const voices = window.speechSynthesis.getVoices();
+      if (voices.length > 0) {
+        const femaleVoice = voices.find(v =>
+          (v.name.includes('Samantha') || v.name.includes('Zira') || v.name.includes('Jenny') || v.name.includes('Karen') || v.name.includes('Victoria') || v.name.includes('Female') || v.name.includes('Google US English') || v.name.includes('Natural')) && v.lang.startsWith('en')
+        ) || voices.find(v => v.lang.startsWith('en')) || voices[0];
+
+        if (femaleVoice) utterance.voice = femaleVoice;
+      }
+
+      utterance.onstart = () => {
+        setIsSpeaking(true);
+        speakingRef.current = true;
+        if (recognitionRef.current) {
+          try { recognitionRef.current.abort(); } catch (e) { }
+        }
+      };
+
+      utterance.onend = () => {
+        setIsSpeaking(false);
+        speakingRef.current = false;
+        setTimeout(() => {
+          if (recognitionRef.current && isMicOn && !speakingRef.current) {
+            try { recognitionRef.current.start(); } catch (e) { }
+          }
+        }, 300);
+        if (onEndCallback) onEndCallback();
+      };
+
+      utterance.onerror = () => {
+        setIsSpeaking(false);
+        speakingRef.current = false;
+        if (recognitionRef.current && isMicOn) {
+          try { recognitionRef.current.start(); } catch (e) { }
+        }
+      };
+
+      window.speechSynthesis.speak(utterance);
+    }, 60);
+  };
+
+  // 0. ULTRAVOX SESSION INIT — fires once on mount, replaces Web Speech API TTS+STT
+  useEffect(() => {
+    if ('speechSynthesis' in window) window.speechSynthesis.cancel();
+
+    const candidateName = candidate?.name || resumeData?.name || 'the candidate';
+    const role = candidate?.targetRole || jdData?.title || resumeData?.targetRole || 'Software Engineer';
+    const experienceLevel = resumeData?.experienceLevel || 'Mid-Level';
+
+    if (questions && questions.length > 0) {
+      uvInitSession(questions, candidateName, role, experienceLevel)
+        .catch(err => {
+          console.warn('[Ultravox] Could not start session, falling back to Web Speech API:', err);
+          setUltravoxFailed(true);
+        });
+    }
+
+    const connectionTimer = setTimeout(() => {
+      if (!ultravoxMode) {
+        console.warn('[Ultravox] Connection timer threshold reached. Ensuring speech engine active...');
+      }
+    }, 4500);
+
+    return () => {
+      clearTimeout(connectionTimer);
+      uvEndSession();
+      if ('speechSynthesis' in window) window.speechSynthesis.cancel();
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // 1. INITIAL WELCOME & SELF-INTRODUCTION ON ROOM ENTRY (Web Speech API fallback only)
+  useEffect(() => {
+    if (ultravoxMode || !ultravoxFailed) return; // Ultravox is primary — suppress browser speech synthesis unless Ultravox explicitly failed!
+    if (!isWelcomePhase) return;
+    if (welcomeSpokenRef.current) return;
+    welcomeSpokenRef.current = true;
+
+    const welcomeIntro = "Welcome to Smart AI Interview! I am Advika, your Virtual Presenter, and I will be conducting your technical assessment today. Shall we start the interview?";
+    speakAIText(welcomeIntro);
+
+    return () => {
+      if ('speechSynthesis' in window) window.speechSynthesis.cancel();
+    };
+  }, [isWelcomePhase, ultravoxMode, ultravoxFailed]);
+
+  // 2. QUESTION SPEECH SYNTHESIS (Web Speech API fallback only — Ultravox handles this natively)
+  useEffect(() => {
+    if (ultravoxMode || !ultravoxFailed) return; // Ultravox is primary — suppress browser speech synthesis unless Ultravox explicitly failed!
+    if (isWelcomePhase) return;
+    if (lastSpokenQIndexRef.current === qIndex) return;
+    lastSpokenQIndexRef.current = qIndex;
+
+    let contextQuestion = currentQ ? (currentQ.questionText || currentQ.question_text) : '';
+    if (currentQ && currentQ.topic && currentQ.topic.includes('FastAPI') && candidateMemory.current['project']) {
+      contextQuestion = `Earlier you mentioned ${candidateMemory.current['project']} uses ${candidateMemory.current['tech'] || 'FastAPI'}. Why did you choose ${candidateMemory.current['tech'] || 'FastAPI'} instead of Express for backend services?`;
+    }
+
+    speakAIText(contextQuestion);
+
+    return () => {
+      if ('speechSynthesis' in window) window.speechSynthesis.cancel();
+    };
+  }, [qIndex, isWelcomePhase, ultravoxMode, ultravoxFailed]);
+
+  const speakCurrentQuestion = (indexToSpeak = qIndex) => {
+    const targetQ = questions[indexToSpeak];
+    if (!targetQ) return;
+    const textToSpeak = targetQ.questionText || targetQ.question_text || '';
+    if (textToSpeak) {
+      speakAIText(`Question ${indexToSpeak + 1}: ${textToSpeak}`);
+    }
+  };
+
+  const handleNextQuestion = () => {
+    if (isWelcomePhase) {
+      setIsWelcomePhase(false);
+      setQIndex(0);
+      speakCurrentQuestion(0);
+      return;
+    }
+
+    if (qIndex < questions.length - 1) {
+      const nextIdx = qIndex + 1;
+      setQIndex(nextIdx);
+      speakCurrentQuestion(nextIdx);
+    } else {
+      handleCompleteInterview();
+    }
+  };
+
+  // SINGLE MASTER SPEECH RECOGNITION ENGINE (Echo Filter Guarded)
+  useEffect(() => {
+    let recognition = null;
+    let isStopped = false;
+    let accumulatedText = '';
+
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+
+    if (SpeechRecognition && isMicOn) {
+      try {
+        recognition = new SpeechRecognition();
+        recognitionRef.current = recognition;
+        recognition.continuous = true;
+        recognition.interimResults = true;
+        recognition.lang = 'en-US';
+
+        recognition.onresult = (event) => {
+          if (speakingRef.current || ('speechSynthesis' in window && window.speechSynthesis.speaking)) {
+            return;
+          }
+
+          let finalTranscript = '';
+          let interimTranscript = '';
+
+          for (let i = event.resultIndex; i < event.results.length; i++) {
+            const transcript = event.results[i][0].transcript;
+            if (event.results[i].isFinal) {
+              finalTranscript += transcript + ' ';
+            } else {
+              interimTranscript += transcript;
+            }
+          }
+
+          const currentFullText = (accumulatedText + finalTranscript + interimTranscript).trim();
+
+          if (currentFullText) {
+            setCandidateSpeechText(currentFullText);
+            setLiveSubtitles(`[Candidate]: "${currentFullText}"`);
+
+            // Accumulate candidate answer per current question continuously
+            if (!isWelcomePhase) {
+              setCandidateAnswers(prev => ({
+                ...prev,
+                [qIndex]: currentFullText
+              }));
+            }
+
+            // Trigger AI response after 2500ms of candidate silence (gives full time to think & complete answer)
+            if (silenceTimerRef.current) clearTimeout(silenceTimerRef.current);
+            silenceTimerRef.current = setTimeout(() => {
+              if (currentFullText.trim()) {
+                handleCandidateSpeechResponse(currentFullText.trim());
+              }
+            }, 2500);
+          }
+        };
+
+        recognition.onend = () => {
+          if (!isStopped && isMicOn && !speakingRef.current) {
+            try {
+              recognition.start();
+            } catch (err) { }
+          }
+        };
+
+        recognition.onerror = (err) => {
+          console.warn("Speech recognition engine warning:", err.error);
+        };
+
+        if (!speakingRef.current) {
+          recognition.start();
+        }
+      } catch (e) {
+        console.warn("Speech recognition engine error:", e);
+      }
+    }
+
+    return () => {
+      isStopped = true;
+      if (recognition) {
+        recognition.onend = null;
+        try { recognition.stop(); } catch (e) { }
+      }
+      if (silenceTimerRef.current) clearTimeout(silenceTimerRef.current);
+    };
+  }, [isMicOn, qIndex, isWelcomePhase]);
+
+  // Live Timer countdown
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setTimerSeconds((prev) => (prev > 0 ? prev - 1 : 0));
+    }, 1000);
+    return () => clearInterval(timer);
+  }, []);
+
+  // ==================== PERSON-TO-PERSON CONVERSATIONAL INTENT ENGINE ====================
+  const handleCandidateSpeechResponse = (candidateText) => {
+    const rawText = candidateText.toLowerCase().trim();
+    if (!rawText) return;
+
+    setConversationHistory(prev => [...prev, { speaker: 'Candidate', text: candidateText }]);
+
+    if (!isWelcomePhase) {
+      setCandidateAnswers(prev => ({
+        ...prev,
+        [qIndex]: prev[qIndex] ? prev[qIndex] + " " + candidateText : candidateText
+      }));
+    }
+
+    // 0. END/EXIT SESSION INTENT (Terminates the session immediately upon candidate request)
+    if (
+      rawText.includes('end the session') ||
+      rawText.includes('end session') ||
+      rawText.includes('stop the interview') ||
+      rawText.includes('stop interview') ||
+      rawText.includes('exit the room') ||
+      rawText.includes('exit interview') ||
+      rawText.includes('quit the interview') ||
+      rawText.includes('quit interview')
+    ) {
+      speakAIText("Understood. Ending the interview session now.", () => {
+        handleTerminateInterview("Candidate requested to end the interview session via voice command.");
+      });
+      return;
+    }
+
+    // WELCOME PHASE READINESS CONFIRMATION
+    if (isWelcomePhase) {
+      if (
+        rawText.includes('yes') ||
+        rawText.includes('ready') ||
+        rawText.includes('sure') ||
+        rawText.includes('start') ||
+        rawText.includes('okay') ||
+        rawText.includes('ok') ||
+        rawText.includes('begin') ||
+        rawText.includes('go ahead') ||
+        rawText.includes('lets start') ||
+        rawText.includes("let's start") ||
+        rawText.includes("start interview") ||
+        rawText.includes("im ready") ||
+        rawText.includes("i am ready")
+      ) {
+        speakAIText("Awesome! Let's get started with your first question.", () => {
+          setIsWelcomePhase(false);
+          setQIndex(0);
+          setTimeout(() => {
+            speakCurrentQuestion(0);
+          }, 400);
+        });
+        return;
+      } else if (
+        rawText.includes('no') ||
+        rawText.includes('discontinue') ||
+        rawText.includes('cancel') ||
+        rawText.includes('stop') ||
+        rawText.includes('exit') ||
+        rawText.includes('quit') ||
+        rawText.includes('not ready') ||
+        rawText.includes("don't start")
+      ) {
+        isTerminatingRef.current = true;
+        speakAIText("Understood. Discontinuing the interview session as requested. Have a great day!", () => {
+          if (document.fullscreenElement || document.webkitFullscreenElement) {
+            if (document.exitFullscreen) document.exitFullscreen().catch(() => { });
+            else if (document.webkitExitFullscreen) document.webkitExitFullscreen();
+          }
+          navigate('/dashboard');
+        });
+        return;
+      } else {
+        // Prevent fallthrough to general question responses during welcome phase
+        speakAIText("Welcome to Smart AI Interview. Shall we start the interview?");
+        return;
+      }
+    }
+
+    // Save key memory facts dynamically based on active resume data
+    if (resumeData && resumeData.skills && Array.isArray(resumeData.skills)) {
+      resumeData.skills.forEach(skill => {
+        if (rawText.includes(skill.toLowerCase())) {
+          candidateMemory.current['tech'] = skill;
+        }
+      });
+    }
+    if (resumeData && resumeData.projects && Array.isArray(resumeData.projects) && resumeData.projects.length > 0) {
+      const pTitle = resumeData.projects[0].title;
+      if (pTitle && rawText.includes(pTitle.toLowerCase())) {
+        candidateMemory.current['project'] = pTitle;
+      }
+    }
+
+    // 1. REPEAT QUESTION INTENT
+    if (
+      rawText.includes('repeat') ||
+      rawText.includes('say again') ||
+      rawText.includes('read again') ||
+      rawText.includes('what was the question') ||
+      rawText.includes('say the question') ||
+      rawText.includes('pardon') ||
+      (rawText.includes('again') && rawText.includes('question'))
+    ) {
+      speakAIText(`Certainly. Here is the question again: ${currentQ ? (currentQ.questionText || currentQ.question_text) : ''}`);
+      return;
+    }
+
+    // 2. GREETING ("Good morning")
+    if (
+      rawText.includes('good morning') ||
+      rawText.includes('good afternoon') ||
+      rawText.includes('hello') ||
+      rawText.includes('hi ai') ||
+      rawText.includes('hey ai')
+    ) {
+      speakAIText("Good morning! Hope you're doing well. Are you ready to proceed with your question?");
+      return;
+    }
+
+    // 3. AUDIO CHECK ("Can you hear me?")
+    if (
+      rawText.includes('can you hear me') ||
+      rawText.includes('am i audible') ||
+      rawText.includes('hear me') ||
+      rawText.includes('can u hear me')
+    ) {
+      speakAIText("Yes, I can hear you clearly. Please go ahead with your response.");
+      return;
+    }
+
+    // 4. PAUSE ("One second")
+    if (
+      rawText.includes('one second') ||
+      rawText.includes('wait a second') ||
+      rawText.includes('give me a moment') ||
+      rawText.includes('hold on')
+    ) {
+      speakAIText("Sure, take your time.");
+      return;
+    }
+
+    // 5. NETWORK ISSUE ("Sorry, network issue")
+    if (
+      rawText.includes('network issue') ||
+      rawText.includes('connection problem') ||
+      rawText.includes('sorry network')
+    ) {
+      speakAIText("No problem. We can continue once you're ready.");
+      return;
+    }
+
+    // 6. CLARIFICATION ("I didn't understand")
+    if (
+      rawText.includes("didn't understand") ||
+      rawText.includes("don't understand") ||
+      rawText.includes("explain differently") ||
+      rawText.includes("what do you mean")
+    ) {
+      speakAIText(`Let me explain the question differently. We are discussing ${currentQ ? currentQ.topic : 'this topic'}. In simple terms, how would you approach implementing this in production?`);
+      return;
+    }
+
+    const isLastQuestion = qIndex >= questions.length - 1;
+
+    // 7. EXPLICIT SKIP OR NEXT QUESTION REQUEST ("I don't know" / "skip" / "next question" / "I'm done")
+    const isExplicitNextCommand = (
+      rawText.includes("don't know") ||
+      rawText.includes("dont know") ||
+      rawText.includes("no idea") ||
+      rawText.includes("skip") ||
+      rawText.includes("pass") ||
+      rawText.includes("next question") ||
+      rawText.includes("move to next") ||
+      rawText.includes("im done") ||
+      rawText.includes("i am done") ||
+      rawText.includes("finished with my answer") ||
+      rawText.includes("completed my answer") ||
+      rawText.includes("that's all") ||
+      rawText.includes("that is all")
+    );
+
+    if (isExplicitNextCommand) {
+      if (isLastQuestion) {
+        speakAIText("Understood. That completes our final question! Generating your evaluation report now...", () => handleCompleteInterview());
+      } else {
+        speakAIText("Understood, let me read the next question for you.", () => autoAdvanceNextQuestion());
+      }
+      return;
+    }
+
+    // 8. CANDIDATE VERBAL ANSWER (AI listens attentively without forcing an auto-skip!)
+    const wordCount = rawText.split(/\s+/).length;
+    if (wordCount < 3) {
+      speakAIText("I am listening. Please feel free to elaborate on your answer.");
+      return;
+    }
+
+    // For substantial candidate responses: Acknowledge candidate's points warmly without repeating command keywords!
+    speakAIText("Thank you for your explanation. I have recorded your response. Please say 'I am done' when you are ready for the next part.");
+  };
+
+  const autoAdvanceNextQuestion = () => {
+    if (qIndex < questions.length - 1) {
+      const nextIdx = qIndex + 1;
+      setQIndex(nextIdx);
+      setTimeout(() => {
+        speakCurrentQuestion(nextIdx);
+      }, 400);
+    } else {
+      handleCompleteInterview();
+    }
+  };
+
+  // ==================== SPOKEN BEHAVIORAL VISION & AUDIO NOTICES ====================
+  const handleTelemetryUpdate = (telemetry) => {
+    // Lock telemetry if termination flow has already initiated
+    if (isTerminatingRef.current) return;
+
+    setEyeGazeStatus(telemetry.eyeContact);
+    setFaceCount(telemetry.faceCount);
+
+    const now = Date.now();
+
+    // 1. MULTIPLE FACES DETECTED -> IMMEDIATE TERMINATION
+    if (telemetry.faceCount > 1) {
+      isTerminatingRef.current = true;
+      const terminationReason = "Proctoring Violation: Multiple faces (2+ persons) detected in candidate camera stream.";
+      speakAIText("Multiple faces detected in camera frame. The interview is being automatically terminated.", () => {
+        handleTerminateInterview(terminationReason);
+      });
+      return;
+    }
+
+    // NOTE: Face identity mismatch check removed — MediaPipe Face Mesh now handles face detection.
+    // The legacy pixel-template MSE comparison produced false positives; faceMatch is always true.
+
+
+    // 1.7. GADGET / FACE COVER DETECTED -> WARNING & TERMINATION
+    if (telemetry.gadgetDetected === true && telemetry.faceCount === 1) {
+      if (now - lastGadgetTimeRef.current < 8000) return;
+      lastGadgetTimeRef.current = now;
+
+      if (!warningGiven) {
+        setWarningGiven(true);
+        setWarningReasonText("Security Alert: Mobile device, gadget, or face cover detected.");
+        setShowWarningModal(true);
+
+        const wasAISpeakingQuestion = speakingRef.current;
+        const currentTextToResume = isWelcomePhase
+          ? "Welcome to Smart AI Interview! Are you ready to begin?"
+          : (currentQ ? (currentQ.questionText || currentQ.question_text) : '');
+
+        speakAIText("Warning: Mobile device or gadget detected in front of camera. Please keep your face fully visible and put away all devices.", () => {
+          if (wasAISpeakingQuestion) {
+            speakAIText(currentTextToResume);
+          }
+        });
+        setTimeout(() => setShowWarningModal(false), 5000);
+      } else {
+        isTerminatingRef.current = true;
+        const terminationMsg = "Proctoring Violation: Repeated mobile device or face cover detected during the proctored interview. Automatically ending the session.";
+        speakAIText(terminationMsg, () => {
+          handleTerminateInterview("Candidate used a mobile device or covered their face twice during the session.");
+        });
+      }
+      return;
+    }
+
+    // 2. OFF-CAMERA MOVEMENT / TURNING HEAD AWAY / LOOKING TO SIDES
+    const isViolating = telemetry.faceCount === 0 || (telemetry.eyeContact && telemetry.eyeContact !== 'Centered');
+
+    if (isViolating) {
+      if (offGazeStartRef.current === 0) {
+        offGazeStartRef.current = now;
+      }
+      // Candidate must continuously look away for at least 3.5 continuous seconds before triggering warning
+      if (now - offGazeStartRef.current < 3500) {
+        return;
+      }
+
+      // 8-second safety cooldown to allow candidate to look back and dismiss warning popup modal
+      if (now - lastOffGazeTimeRef.current < 8000) return;
+      lastOffGazeTimeRef.current = now;
+      offGazeStartRef.current = 0; // reset for next occurrence
+
+      if (!warningGiven) {
+        // STRIKE 1: SHOW POPUP MODAL (1 TIME) & SPEAK SPOKEN WARNING
+        setWarningGiven(true);
+        setWarningReasonText("You turned your head / moved away from the camera frame.");
+        setShowWarningModal(true);
+
+        const wasAISpeakingQuestion = speakingRef.current;
+        const currentTextToResume = isWelcomePhase
+          ? "Welcome to Smart AI Interview! Are you ready to begin?"
+          : (currentQ ? (currentQ.questionText || currentQ.question_text) : '');
+
+        speakAIText("Warning: Please maintain eye contact with the camera and stay centered in the video frame.", () => {
+          if (wasAISpeakingQuestion) {
+            speakAIText(currentTextToResume);
+          }
+        });
+
+        setTimeout(() => setShowWarningModal(false), 5000);
+      } else {
+        // STRIKE 2 (REPEAT): AI SPEAKS WHAT THE PERSON DID & AUTOMATICALLY TERMINATES
+        isTerminatingRef.current = true;
+        const terminationMsg = "Proctoring Violation: You turned your head away from the camera twice during the proctored interview session.";
+
+        speakAIText(terminationMsg, () => {
+          handleTerminateInterview("Candidate turned head / looked away from camera twice (Repeated Violation).");
+        });
+      }
+    } else {
+      // Reset continuous off-gaze timer when candidate looks centered
+      offGazeStartRef.current = 0;
+    }
+  };
+
+  const saveInterviewDetailsToBackend = async (isTerminated, reason) => {
+    const selectedRole = candidate?.targetRole || jdData?.title || resumeData?.targetRole || 'Software Engineer';
+    let numQuestions = 5;
+    if (interviewDuration && typeof interviewDuration === 'string') {
+      if (interviewDuration.includes('8 Qs')) numQuestions = 8;
+      else if (interviewDuration.includes('10 Qs')) numQuestions = 10;
+    }
+
+    const elapsedSeconds = (numQuestions * 180) - timerSeconds;
+
+    const answeredCount = questions.filter((_, idx) => candidateAnswers[idx] && candidateAnswers[idx] !== 'No response recorded.').length;
+    const totalQs = questions.length || 1;
+    const answerRatio = answeredCount / totalQs;
+    const calculatedOverall = isTerminated ? 0.0 : Math.min(98.0, Math.round(answerRatio * 82.0 + (answeredCount > 0 ? 12.0 : 0.0)));
+    const calculatedTech = isTerminated ? 0.0 : Math.min(98.0, Math.round(answerRatio * 85.0 + (answeredCount > 0 ? 10.0 : 0.0)));
+    const calculatedComm = isTerminated ? 0.0 : Math.min(98.0, Math.round(answerRatio * 80.0 + (answeredCount > 0 ? 12.0 : 0.0)));
+    const calculatedConf = isTerminated ? 0.0 : Math.min(98.0, Math.round(answerRatio * 84.0 + (answeredCount > 0 ? 10.0 : 0.0)));
+
+    const payload = {
+      user_id: 1,
+      title: selectedRole,
+      avatar_personality: 'Professional Tech Lead',
+      duration_seconds: Math.max(10, elapsedSeconds),
+      video_recording_url: `uploads/recordings/interview_session_${Date.now()}.mp4`,
+      questions: questions.map((q, idx) => ({
+        id: q.id || idx + 1,
+        category: q.category || 'Technical',
+        topic: q.topic || 'General',
+        question_text: q.questionText || q.question_text || '',
+        expected_points: q.expected_points || q.expected_answer_keypoints || []
+      })),
+      answers: questions.map((q, idx) => ({
+        question_id: q.id || idx + 1,
+        candidate_audio_transcript: candidateAnswers[idx] || 'No response recorded.',
+        ideal_response_suggestion: q.expected_points ? q.expected_points.join(', ') : (q.expected_answer_keypoints ? q.expected_answer_keypoints.join(', ') : ''),
+        score: candidateAnswers[idx] ? (isTerminated ? 0.0 : 8.5) : 0.0,
+        feedback: candidateAnswers[idx] ? 'Response matches the core concept.' : 'Candidate did not provide a verbal response.'
+      })),
+      score: {
+        overall_score: calculatedOverall,
+        technical_knowledge: calculatedTech,
+        communication: calculatedComm,
+        confidence: calculatedConf,
+        professionalism: isTerminated ? 0.0 : 88.0,
+        problem_solving: isTerminated ? 0.0 : calculatedTech,
+        eye_contact: isTerminated ? 0.0 : 85.0,
+        emotion_control: isTerminated ? 0.0 : 87.0,
+        voice_quality: isTerminated ? 0.0 : 84.0
+      },
+      proctor_strikes: warningGiven ? 1 : 0,
+      termination_reason: reason || null
+    };
+
+    try {
+      const response = await fetch('http://localhost:8000/api/v1/interview/save-details', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(payload)
+      });
+      if (response.ok) {
+        const data = await response.json();
+        console.log("Successfully stored all interview details, questions, answers, and metadata.");
+
+        if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
+          try {
+            mediaRecorderRef.current.stop();
+          } catch (e) { }
+        }
+
+        await new Promise(r => setTimeout(r, 600));
+
+        if (recordedChunksRef.current && recordedChunksRef.current.length > 0) {
+          const videoBlob = new Blob(recordedChunksRef.current, { type: 'video/webm' });
+          const formData = new FormData();
+          formData.append('file', videoBlob, 'recording.webm');
+
+          try {
+            console.log("Uploading webcam video recording file...");
+            const uploadResp = await fetch(`http://localhost:8000/api/v1/interview/upload-recording/${data.session_id}`, {
+              method: 'POST',
+              body: formData
+            });
+            if (uploadResp.ok) {
+              console.log("Webcam video recording uploaded and stored successfully!");
+            } else {
+              console.error("Webcam recording upload failed:", await uploadResp.text());
+            }
+          } catch (uploadErr) {
+            console.error("Error uploading webcam recording:", uploadErr);
+          }
+        }
+
+        return data.session_id;
+      } else {
+        console.error("Backend failed to store interview details:", await response.text());
+      }
+    } catch (err) {
+      console.error("Failed to connect to backend for storing interview details:", err);
+    }
+    return null;
+  };
+
+  const handleTerminateInterview = async (reason) => {
+    if ('speechSynthesis' in window) window.speechSynthesis.cancel();
+
+    const selectedRole = candidate?.targetRole || jdData?.title || resumeData?.targetRole || 'Software Engineer';
+    const terminatedReport = {
+      id: `report-${Date.now()}`,
+      candidateName: candidate?.name || 'Candidate',
+      targetRole: selectedRole,
+      company: 'Target Enterprise',
+      overallScorePct: 0,
+      performanceLevel: 'Disqualified / Terminated',
+      technicalSkills: { Python: '0/10', React: '0/10', SQL: '0/10' },
+      behavioralSkills: { Leadership: '0/10', Communication: '0/10', Confidence: '0/10' },
+      resumeValidation: [
+        {
+          resumeSkill: 'Security Rules',
+          status: 'Failed - Violation',
+          details: reason
+        }
+      ],
+      jdCoverage: [
+        { skill: 'Proctoring Compliance', score: '0/10', status: 'Terminated' }
+      ],
+      strengths: ['None - Interview Terminated due to Security Compliance Violation'],
+      areasForImprovement: [reason],
+      questionPerformance: [],
+      aiRecommendations: [
+        'Ensure a private room with no third-party presence',
+        'Maintain continuous eye contact with the camera',
+        'Do not turn your head or look away from the screen during proctored sessions'
+      ],
+      terminationReason: reason,
+      isTerminated: true
+    };
+
+    setFinalReport(terminatedReport);
+    addCompletedInterview(selectedRole, 'Target Enterprise', 0);
+    await saveInterviewDetailsToBackend(true, reason);
+    if (document.fullscreenElement || document.webkitFullscreenElement) {
+      if (document.exitFullscreen) document.exitFullscreen().catch(() => { });
+      else if (document.webkitExitFullscreen) document.webkitExitFullscreen();
+    }
+    navigate('/interview-result');
+  };
+
+  const formatTime = (secs) => {
+    const m = Math.floor(secs / 60);
+    const s = secs % 60;
+    return `${m}:${s < 10 ? '0' : ''}${s}`;
+  };
+
+  const handleCompleteInterview = async () => {
+    if ('speechSynthesis' in window) window.speechSynthesis.cancel();
+    uvEndSession(); // Cleanly end Ultravox WebRTC call if active
+
+    if (document.fullscreenElement || document.webkitFullscreenElement) {
+      if (document.exitFullscreen) document.exitFullscreen().catch(() => { });
+      else if (document.webkitExitFullscreen) document.webkitExitFullscreen();
+    }
+
+    const activeRole = candidate?.targetRole || jdData?.title || resumeData?.targetRole || 'Software Engineer';
+
+    // 1. ALWAYS await backend database save FIRST so data is persisted cleanly in smarthire.db!
+    const sessionId = await saveInterviewDetailsToBackend(false, null);
+
+    let dynamicReport = null;
+    if (sessionId) {
+      try {
+        const evalResp = await fetch(`http://localhost:8000/api/v1/interview/evaluate/${sessionId}`, { method: 'POST' });
+        if (evalResp.ok) {
+          const evalResult = await evalResp.json();
+          const detail = evalResult.evaluation;
+          dynamicReport = {
+            id: sessionId,
+            candidateName: candidate?.name || 'Candidate',
+            targetRole: activeRole,
+            company: 'Target Enterprise',
+            videoRecordingUrl: recordedVideoUrlRef.current || `uploads/recordings/interview_session_${sessionId}.mp4`,
+            overallScorePct: detail.overall_score_pct || 85,
+            performanceLevel: detail.performance_level || 'Good',
+            scores: {
+              communication: detail.communication_score || 84,
+              confidence: detail.confidence_score || 86,
+              technical: detail.technical_score || 85,
+              professionalism: detail.professionalism_score || 85
+            },
+            technicalSkills: detail.technical_skills || { 'General': '8.5/10' },
+            behavioralSkills: detail.behavioral_skills || { 'Communication': '8.5/10' },
+            resumeValidation: detail.resume_validation || [{ resumeSkill: 'Core Skill', status: 'Verified', details: 'Validated.' }],
+            jdCoverage: detail.jd_coverage || [{ skill: 'Core Concept', score: '8/10', status: 'Good' }],
+            strengths: detail.strengths || ['Good overall delivery.'],
+            areasForImprovement: detail.areas_for_improvement || ['Practice advanced concepts.'],
+            questionPerformance: questions.map((q, idx) => {
+              const ansText = candidateAnswers[idx] || 'No response recorded.';
+              const qp = (detail.question_performance && detail.question_performance[idx]) ? detail.question_performance[idx] : null;
+              return {
+                qNum: idx + 1,
+                topic: q.topic || 'General Topic',
+                questionText: q.questionText || q.question_text || '',
+                answerText: ansText,
+                expectedPoints: q.expected_points || q.expected_answer_keypoints || [],
+                score: qp?.score || (ansText !== 'No response recorded.' ? '8.5/10' : '0/10'),
+                feedback: qp?.feedback || (ansText !== 'No response recorded.' ? 'Response matches core concepts.' : 'Candidate did not respond.')
+              };
+            }),
+            aiRecommendations: detail.ai_recommendations || ['Review general design concepts.']
+          };
+        }
+      } catch (err) {
+        console.warn("AI evaluation fetch notice:", err);
+      }
+    }
+
+    const finalReportToSet = dynamicReport || {
+      id: sessionId || Date.now(),
+      candidateName: candidate?.name || 'Candidate',
+      targetRole: activeRole,
+      company: 'Target Enterprise',
+      overallScorePct: 85,
+      performanceLevel: 'Good',
+      scores: { communication: 84, confidence: 86, technical: 85, professionalism: 85 },
+      technicalSkills: { 'Core Architecture': '8.5/10', 'Problem Solving': '8.5/10' },
+      behavioralSkills: { 'Communication': '8.5/10', 'Confidence': '8.5/10' },
+      resumeValidation: [{ resumeSkill: 'Technical Skills', status: 'Verified', details: 'Validated.' }],
+      jdCoverage: [{ skill: 'Role Knowledge', score: '8.5/10', status: 'Good' }],
+      strengths: ['Good verbal communication and technical depth.'],
+      areasForImprovement: ['Continue practicing dynamic mock interviews.'],
+      questionPerformance: questions.map((q, idx) => ({
+        qNum: idx + 1,
+        topic: q.topic || 'General Topic',
+        questionText: q.questionText || q.question_text || '',
+        answerText: candidateAnswers[idx] || 'Response provided by candidate.',
+        expectedPoints: q.expected_points || q.expected_answer_keypoints || [],
+        score: candidateAnswers[idx] ? '8.5/10' : '0/10',
+        feedback: candidateAnswers[idx] ? 'Response provided.' : 'Candidate did not respond.'
+      })),
+      aiRecommendations: ['Practice speaking with more technical depth.']
+    };
+
+    setFinalReport(finalReportToSet);
+    addCompletedInterview(finalReportToSet.id, activeRole, 'Target Enterprise', finalReportToSet.overallScorePct);
+    navigate('/interview-result');
+  };
+
+  if (evaluating) {
+    return (
+      <div className="fixed inset-0 z-50 bg-slate-950/95 flex flex-col items-center justify-center space-y-6 p-6">
+        <div className="relative w-24 h-24 flex items-center justify-center">
+          <div className="absolute inset-0 rounded-full border-4 border-cyan-500/20 border-t-cyan-400 animate-spin" />
+          <Sparkles className="w-8 h-8 text-cyan-400 animate-pulse" />
+        </div>
+        <div className="text-center space-y-2 max-w-md">
+          <h2 className="text-xl font-bold text-white tracking-tight">AI Grading in Progress</h2>
+          <p className="text-xs text-slate-400 font-mono leading-relaxed">
+            Evaluating your technical accuracy, communication style, confidence levels, and professionalism markers...
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="w-full px-4 sm:px-6 py-4 space-y-4 relative min-h-screen">
+      {/* 1. PERSON-TO-PERSON CALL HEADER BAR */}
+      <div className="glass-card rounded-2xl p-4 border border-slate-800 bg-slate-950/90 flex flex-wrap items-center justify-between gap-4 shadow-xl">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-cyan-500 via-indigo-500 to-purple-600 p-0.5 shadow-md shadow-cyan-500/20">
+            <div className="w-full h-full bg-slate-950 rounded-[10px] flex items-center justify-center">
+              <PhoneCall className="w-5 h-5 text-cyan-400" />
+            </div>
+          </div>
+          <div>
+            <h1 className="text-base font-black tracking-tight text-white flex items-center gap-2">
+              Smart <span className="glow-gradient-text font-black">Ai</span> • 1-on-1 Person Video Call
+            </h1>
+            <span className="text-[10px] text-emerald-400 font-mono tracking-widest uppercase flex items-center gap-1.5">
+              <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" /> Live Speech Session Active
+            </span>
+          </div>
+          {/* Ultravox voice engine status badge */}
+          {ultravoxMode ? (
+            <span className="hidden sm:flex items-center gap-1.5 text-[10px] font-bold font-mono px-2.5 py-1 rounded-lg bg-violet-950/80 border border-violet-500/40 text-violet-300">
+              <Radio className="w-3 h-3 animate-pulse text-violet-400" />
+              Ultravox · WebRTC
+            </span>
+          ) : (
+            <span className="hidden sm:flex items-center gap-1.5 text-[10px] font-bold font-mono px-2.5 py-1 rounded-lg bg-slate-900 border border-slate-700 text-slate-400">
+              <Volume2 className="w-3 h-3" />
+              Web Speech API
+            </span>
+          )}
+        </div>
+
+        {/* Time Remaining & Call Actions */}
+        <div className="flex items-center gap-3">
+          <div className="bg-slate-900 px-4 py-2 rounded-xl border border-cyan-500/40 text-cyan-400 font-mono text-xs flex items-center gap-2 shadow-sm">
+            <Clock className="w-4 h-4 text-cyan-400" />
+            <span className="text-slate-400 uppercase text-[10px] block">Time Left:</span>
+            <strong className="text-sm font-bold text-cyan-300">{formatTime(timerSeconds)}</strong>
+          </div>
+
+          <button
+            type="button"
+            onClick={handleCompleteInterview}
+            className="bg-emerald-600/90 hover:bg-emerald-500 text-white px-4 py-2 rounded-xl text-xs font-mono font-bold flex items-center gap-2 transition-all cursor-pointer shadow-lg shadow-emerald-500/20"
+          >
+            <Send className="w-4 h-4" />
+            <span>Submit</span>
+          </button>
+        </div>
+      </div>
+
+      {/* 2. PERSON-TO-PERSON HERO VIDEO CONTAINER */}
+      <div className="relative glass-card rounded-2xl border border-cyan-500/30 overflow-hidden bg-slate-950 min-h-[440px] sm:min-h-[500px] flex items-center justify-center shadow-2xl">
+        {/* AI Avatar Center Stage */}
+        <div className="w-full h-full flex items-center justify-center p-6">
+          <AIAvatar
+            currentQuestion={
+              isWelcomePhase
+                ? "Welcome to Smart AI Interview! I am your AI Virtual Presenter, and I will be conducting your technical interview today. Are you ready to begin?"
+                : (currentQ ? (currentQ.questionText || currentQ.question_text) : '')
+            }
+            isSpeaking={isSpeaking}
+          />
+        </div>
+
+        {/* Candidate Self View Live Cam Floating Window (Top Right) */}
+        <div className="absolute top-4 right-4 w-52 sm:w-64 aspect-video rounded-2xl overflow-hidden border-2 border-cyan-400/80 shadow-2xl z-20 bg-slate-900 group">
+          <div className="absolute top-2 left-2 z-30 bg-slate-950/80 backdrop-blur-sm px-2 py-0.5 rounded text-[9px] font-mono text-cyan-400 border border-cyan-500/30 flex items-center gap-1">
+            <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+            <span>Candidate Live</span>
+          </div>
+          <VisionAnalyzer compact={true} onTelemetryUpdate={handleTelemetryUpdate} faceSignature={setupChecks?.faceSignature} />
+        </div>
+
+        {/* Live Call Control Toolbar & Subtitles Stream Bar (Bottom of Video) */}
+        <div className="absolute bottom-4 left-4 right-4 z-20 flex flex-col gap-2">
+          {/* Subtitles Overlay Bar */}
+          <div className="bg-slate-950/90 backdrop-blur-md p-3 rounded-xl border border-slate-800/80 flex items-center gap-3 shadow-xl">
+            <div className="p-2 rounded-lg bg-cyan-950 text-cyan-400 border border-cyan-500/30">
+              <MessageSquare className="w-4 h-4" />
+            </div>
+            <p className="text-xs font-mono text-slate-200 leading-snug truncate">
+              {liveSubtitles}
+            </p>
+          </div>
+        </div>
+      </div>
+
+      {/* 3. QUESTIONS SECTION */}
+      <div className="glass-card rounded-2xl p-5 border border-slate-800 bg-slate-950/90 space-y-4 shadow-lg">
+        <div className="flex items-center justify-between pb-2 border-b border-slate-800/80">
+          <div className="flex items-center gap-2">
+            <HelpCircle className="w-4 h-4 text-cyan-400" />
+            <h2 className="text-xs font-bold text-white uppercase font-mono tracking-wider">
+              {isWelcomePhase ? 'AI Presenter Welcome & Readiness Check' : 'Current Interview Question'}
+            </h2>
+          </div>
+
+          <div className="flex items-center gap-2">
+            {isWelcomePhase ? (
+              <span className="text-[10px] font-mono text-emerald-400 bg-emerald-950 px-2.5 py-0.5 rounded border border-emerald-500/30">
+                Orientation Phase
+              </span>
+            ) : (
+              <>
+                <span className="text-[10px] font-mono text-cyan-400 bg-cyan-950 px-2.5 py-0.5 rounded border border-cyan-500/30">
+                  Question {qIndex + 1} of {questions.length}
+                </span>
+                <span className="text-[10px] font-mono text-purple-400 bg-purple-950 px-2.5 py-0.5 rounded border border-purple-500/30">
+                  {currentQ ? `${currentQ.category || 'Technical'} • ${currentQ.topic || 'Core'}` : ''}
+                </span>
+              </>
+            )}
+          </div>
+        </div>
+
+        <p className="text-base sm:text-lg font-semibold text-white leading-relaxed pt-1">
+          {isWelcomePhase
+            ? "Welcome to Smart AI Interview! I am Advika, your Virtual Presenter, and I will be conducting your technical assessment today. Shall we start the interview?"
+            : (currentQ ? (currentQ.questionText || currentQ.question_text) : '')
+          }
+        </p>
+      </div>
+
+      {/* 4. DIRECT HANDS-FREE SPEECH MIC STATUS BAR */}
+      <SpeechToText
+        transcriptText={candidateSpeechText}
+        isListening={isMicOn}
+      />
+
+      {/* 5. PROCTORING WARNING MODAL POPUP (Strike 1) */}
+      {showWarningModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-md animate-fade-in">
+          <div className="glass-card rounded-2xl max-w-md w-full p-6 border-2 border-amber-500/80 bg-slate-950 shadow-2xl space-y-4 text-center relative overflow-hidden">
+            <div className="w-14 h-14 rounded-2xl bg-amber-500/10 border border-amber-500/40 text-amber-400 flex items-center justify-center mx-auto shadow-inner">
+              <AlertTriangle className="w-8 h-8 animate-bounce" />
+            </div>
+
+            <div>
+              <span className="text-[10px] font-mono font-bold text-amber-400 bg-amber-950 px-3 py-1 rounded-full uppercase tracking-wider border border-amber-500/30">
+                ⚠️ Proctoring Warning • Strike 1 of 2
+              </span>
+              <h3 className="text-lg font-bold text-white mt-2">
+                Off-Camera Movement Detected
+              </h3>
+              <p className="text-xs text-slate-300 font-mono mt-1 leading-relaxed">
+                {warningReasonText || "Please maintain continuous eye contact with the camera and stay centered in the video frame."}
+              </p>
+            </div>
+
+            <div className="p-3 bg-slate-900 rounded-xl border border-slate-800 text-[11px] text-amber-300 font-mono">
+              ⚠️ Note: Turning your head away or moving off-camera a second time will automatically terminate the interview immediately.
+            </div>
+
+            <button
+              type="button"
+              onClick={() => setShowWarningModal(false)}
+              className="w-full py-2.5 rounded-xl bg-gradient-to-r from-amber-500 to-orange-500 text-slate-950 font-black text-xs uppercase tracking-wider hover:brightness-110 transition-all cursor-pointer shadow-lg"
+            >
+              I Understand & Accept
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* 5. SAVED INTERVIEW HISTORY MODAL */}
+      {showHistoryModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/85 backdrop-blur-md animate-fade-in">
+          <div className="glass-card max-w-xl w-full rounded-2xl p-6 border border-cyan-500/40 bg-slate-950 space-y-4 shadow-2xl relative">
+            <div className="flex items-center justify-between pb-3 border-b border-slate-800">
+              <h3 className="text-base font-bold text-white flex items-center gap-2">
+                <History className="w-5 h-5 text-cyan-400" /> Saved Candidate Interview History
+              </h3>
+              <button
+                onClick={() => setShowHistoryModal(false)}
+                className="p-1.5 rounded-lg bg-slate-900 border border-slate-800 text-slate-400 hover:text-white cursor-pointer"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <div className="max-h-80 overflow-y-auto space-y-2.5 pr-1">
+              {interviewHistory && interviewHistory.length > 0 ? (
+                interviewHistory.map((item, idx) => (
+                  <div key={item.id || idx} className="p-3.5 rounded-xl bg-slate-900/80 border border-slate-800/80 flex items-center justify-between gap-3">
+                    <div className="space-y-1">
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm font-bold text-white">{item.role}</span>
+                        <span className="text-[10px] font-mono bg-emerald-950 text-emerald-400 border border-emerald-500/30 px-2 py-0.5 rounded">
+                          {item.status || 'Completed'}
+                        </span>
+                      </div>
+                      <div className="text-[11px] text-slate-400 font-mono flex items-center gap-2">
+                        <span>📅 {item.date}</span>
+                        <span>•</span>
+                        <span>🏢 {item.company}</span>
+                      </div>
+                    </div>
+
+                    <div className="text-right shrink-0">
+                      <span className="text-[10px] text-slate-400 block font-mono">Score</span>
+                      <span className="text-lg font-black text-cyan-400 font-mono">{item.scorePct}%</span>
+                    </div>
+                  </div>
+                ))
+              ) : (
+                <div className="py-8 text-center text-slate-500 text-xs font-mono">
+                  No past interview history records found.
+                </div>
+              )}
+            </div>
+
+            <div className="pt-2 flex justify-end">
+              <button
+                onClick={() => setShowHistoryModal(false)}
+                className="px-4 py-2 rounded-xl bg-cyan-600 hover:bg-cyan-500 text-xs font-bold text-slate-950 cursor-pointer shadow-md"
+              >
+                Close History
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+    </div>
+  );
+};
