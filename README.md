@@ -1,16 +1,43 @@
-# SmartHire AI – AI-Powered Mock Interview and Candidate Assessment Platform
+# SmartHire AI – AI-Powered Mock Interview & Candidate Assessment Platform
 
-## Overview
-
-SmartHire AI is an AI-powered recruitment platform that helps candidates practice technical interviews and enables recruiters to evaluate candidate performance. The platform automatically extracts resume details, generates personalized interview questions, conducts voice-based mock interviews, evaluates responses using AI, and stores interview results for later review.
+> An AI-powered recruitment platform that automates resume analysis, generates personalized interview questions, conducts voice-based mock interviews, and evaluates candidate performance using Large Language Models.
 
 ---
 
-## Features
+# Table of Contents
 
-### Resume Upload & Parsing
+* Overview
+* Key Features
+* Technology Stack
+* System Architecture
+* AI Technologies Used
+* Project Workflow
+* Folder Structure
+* API Endpoints
+* Getting Started
+* Environment Variables
+* Database
+* Future Enhancements
+* Contributors
+* License
 
-* Upload resumes in PDF format.
+---
+
+# Overview
+
+SmartHire AI is an intelligent recruitment platform designed to improve the interview experience for both candidates and recruiters.
+
+The platform automatically extracts candidate information from resumes, generates technical interview questions using AI, conducts real-time voice interviews, evaluates candidate responses, and stores interview reports for future analysis.
+
+The goal is to reduce manual interview effort while providing fair, structured, and AI-assisted candidate evaluation.
+
+---
+
+# Key Features
+
+## Resume Parsing
+
+* Upload PDF resumes
 * Automatically extracts:
 
   * Name
@@ -23,122 +50,312 @@ SmartHire AI is an AI-powered recruitment platform that helps candidates practic
   * Certifications
   * Languages
 
-### AI Question Generation
+---
 
-* Generates interview questions based on:
+## AI Question Generation
 
-  * Candidate skills
-  * Projects
-  * Experience
-* Uses the Groq LLM (Llama 3.1) for intelligent question generation.
+Interview questions are generated dynamically using the candidate's:
 
-### AI Voice Interview
+* Skills
+* Experience
+* Projects
+* Education
 
-* Conducts voice-based mock interviews using Ultravox.
-* AI asks interview questions through speech.
-* Candidate answers naturally using voice.
-* Supports real-time voice interaction.
-
-### AI Answer Evaluation
-
-* Evaluates candidate responses using the Groq LLM.
-* Measures:
-
-  * Technical Knowledge
-  * Communication Skills
-  * Problem Solving
-  * Confidence
-* Generates:
-
-  * Overall Score
-  * Technical Score
-  * Communication Score
-  * Personalized Feedback
-
-### Interview History
-
-* Stores completed interview results.
-* Allows candidates to view previous interview attempts.
-* Maintains interview history for future reference.
-
-### Recruiter Dashboard
-
-* View uploaded candidate resumes.
-* Access interview reports.
-* Review AI-generated scores and feedback.
+This enables every interview to be personalized instead of using fixed question sets.
 
 ---
 
-## Tech Stack
+## Voice-Based Interview
 
-### Frontend
+The interview is conducted through voice interaction.
 
-* React
-* Vite
-* Tailwind CSS
-* JavaScript
+Features include:
 
-### Backend
-
-* Flask
-* Python
-* SQLite
-
-### AI & Voice
-
-* Groq API
-* Llama 3.1 8B Instant
-* Ultravox Voice SDK
-
-### Resume Parsing
-
-* PyMuPDF (fitz)
-* Regular Expressions (Regex)
+* AI asks interview questions
+* Candidate answers using speech
+* Real-time speech conversation
+* Natural interview experience
 
 ---
 
-## Project Structure
+## AI Answer Evaluation
+
+Candidate answers are evaluated using an LLM.
+
+Evaluation includes:
+
+* Technical Knowledge
+* Communication Skills
+* Confidence
+* Problem Solving
+* Overall Performance
+
+The platform generates:
+
+* Overall Score
+* Technical Score
+* Communication Score
+* AI Feedback
+
+---
+
+## Interview History
+
+Stores previous interview sessions.
+
+Candidates can:
+
+* View previous interviews
+* Compare performance
+* Track improvement
+
+---
+
+## Recruiter Dashboard
+
+Recruiters can:
+
+* View uploaded resumes
+* Review interview reports
+* Access AI-generated feedback
+* Monitor candidate performance
+
+---
+
+# Technology Stack
+
+| Layer             | Technology                  |
+| ----------------- | --------------------------- |
+| Frontend          | React, Vite, Tailwind CSS   |
+| Backend           | Flask, Python               |
+| Database          | SQLite                      |
+| Resume Parsing    | PyMuPDF (fitz), Regex       |
+| AI Model          | Groq (Llama 3.1 8B Instant) |
+| Voice AI          | Ultravox SDK                |
+| API Communication | REST APIs                   |
+| Version Control   | Git & GitHub                |
+
+---
+
+# System Architecture
 
 ```text
-SmartHire-AI/
-│
-├── backend/
-│   ├── app.py
-│   ├── llm_service.py
-│   ├── answer_evaluator.py
-│   ├── question_generator.py
-│   ├── ultravox_service.py
-│   ├── evaluator.py
-│   ├── check_db.py
-│   └── requirements.txt
-│
-├── frontend/
-│   ├── src/
-│   │   ├── pages/
-│   │   │   ├── Home.jsx
-│   │   │   ├── Upload.jsx
-│   │   │   ├── Interview.jsx
-│   │   │   ├── Result.jsx
-│   │   │   ├── InterviewHistory.jsx
-│   │   │   ├── Dashboard.jsx
-│   │   │   └── RecruiterDashboard.jsx
-│   │   └── components/
-│   └── package.json
-│
-└── README.md
+                    Candidate
+                        │
+                        ▼
+               Upload Resume (PDF)
+                        │
+                        ▼
+              Resume Parser (Flask)
+                        │
+         Extract Candidate Information
+                        │
+                        ▼
+          Groq LLM Question Generator
+                        │
+                        ▼
+             Personalized Questions
+                        │
+                        ▼
+        Ultravox Voice Interview Agent
+        (Question ↔ Voice ↔ Candidate)
+                        │
+                        ▼
+          Candidate Voice Responses
+                        │
+                        ▼
+          Groq AI Answer Evaluation
+                        │
+                        ▼
+            Interview Score & Feedback
+                        │
+                        ▼
+              SQLite Database Storage
+                        │
+                        ▼
+       Candidate & Recruiter Dashboard
 ```
 
 ---
 
-## Installation
+# AI Technologies Used
 
-### Clone the Repository
+## 1. Groq LLM
+
+### Model
+
+```
+Llama 3.1 8B Instant
+```
+
+### Responsibilities
+
+* Resume-based question generation
+* Candidate answer evaluation
+* Technical scoring
+* Communication scoring
+* Personalized feedback generation
+
+---
+
+## 2. Ultravox SDK
+
+Used for:
+
+* Voice interaction
+* Asking interview questions
+* Listening to candidate responses
+* Real-time conversational interview experience
+
+---
+
+## 3. Resume Parsing
+
+Resume information is extracted using:
+
+* PyMuPDF (fitz)
+* Python Regular Expressions
+
+Extracted information includes:
+
+* Contact details
+* Education
+* Skills
+* Projects
+* Certifications
+* Languages
+
+---
+
+# Project Workflow
+
+```
+Resume Upload
+      │
+      ▼
+Resume Parsing
+      │
+      ▼
+Candidate Information Extraction
+      │
+      ▼
+Groq Generates Interview Questions
+      │
+      ▼
+Ultravox Conducts Voice Interview
+      │
+      ▼
+Candidate Answers Questions
+      │
+      ▼
+Groq Evaluates Responses
+      │
+      ▼
+Score Generation
+      │
+      ▼
+Feedback Generation
+      │
+      ▼
+Interview History Stored
+      │
+      ▼
+Recruiter Dashboard
+```
+
+---
+
+# Evaluation Criteria
+
+| Category                     | Weight |
+| ---------------------------- | ------ |
+| Technical Knowledge          | 40%    |
+| Communication Skills         | 20%    |
+| Problem Solving              | 20%    |
+| Confidence & Professionalism | 20%    |
+
+---
+
+# Folder Structure
+
+```text
+SmartHire-AI
+│
+├── backend
+│   ├── app.py
+│   ├── llm_service.py
+│   ├── evaluator.py
+│   ├── answer_evaluator.py
+│   ├── question_generator.py
+│   ├── ultravox_service.py
+│   ├── check_db.py
+│   ├── requirements.txt
+│   └── .env
+│
+├── frontend
+│   ├── src
+│   │   ├── components
+│   │   ├── pages
+│   │   │
+│   │   ├── Home.jsx
+│   │   ├── Upload.jsx
+│   │   ├── Interview.jsx
+│   │   ├── Result.jsx
+│   │   ├── InterviewHistory.jsx
+│   │   ├── Dashboard.jsx
+│   │   ├── RecruiterDashboard.jsx
+│   │   └── Feedback.jsx
+│   │
+│   └── package.json
+│
+├── README.md
+└── .gitignore
+```
+
+---
+
+# API Endpoints
+
+## Resume
+
+| Method | Endpoint  | Description             |
+| ------ | --------- | ----------------------- |
+| POST   | `/upload` | Upload and parse resume |
+
+---
+
+## Interview
+
+| Method | Endpoint              | Description                  |
+| ------ | --------------------- | ---------------------------- |
+| POST   | `/generate-questions` | Generate interview questions |
+| POST   | `/ultravox/session`   | Create Ultravox session      |
+| POST   | `/ultravox/speak`     | Send question to voice agent |
+
+---
+
+## Evaluation
+
+| Method | Endpoint             | Description                 |
+| ------ | -------------------- | --------------------------- |
+| POST   | `/save-interview`    | Save interview results      |
+| GET    | `/interview-results` | View interview reports      |
+| GET    | `/candidate`         | Candidate information       |
+| GET    | `/results`           | Retrieve evaluation results |
+
+---
+
+# Getting Started
+
+## Clone Repository
 
 ```bash
 git clone https://github.com/<your-username>/AI-Powered-Mock-Interview-and-Candidate-Assessment-Platform.git
 ```
 
-### Backend Setup
+---
+
+## Backend Setup
 
 ```bash
 cd backend
@@ -155,7 +372,7 @@ python app.py
 
 ---
 
-### Frontend Setup
+## Frontend Setup
 
 ```bash
 cd frontend
@@ -167,7 +384,7 @@ npm run dev
 
 ---
 
-## Environment Variables
+# Environment Variables
 
 Create a `.env` file inside the backend folder.
 
@@ -178,27 +395,32 @@ ULTRAVOX_API_KEY=your_ultravox_api_key
 
 ---
 
-## Workflow
+# Database
 
-1. Upload a resume.
-2. Resume details are extracted automatically.
-3. AI generates interview questions based on the resume.
-4. Ultravox conducts the voice interview.
-5. Candidate answers using voice.
-6. Groq evaluates the responses.
-7. Scores and feedback are generated.
-8. Results are stored in the database.
-9. Candidates and recruiters can review interview history.
+Current database:
+
+```
+SQLite
+```
+
+Stores:
+
+* Candidate Information
+* Resume Data
+* Interview Scores
+* Technical Scores
+* Communication Scores
+* Feedback
+* Interview History
 
 ---
-
 
 
 ## Author
 
 **Kavali Deepthi Priya**
 
-B.Tech Computer Science Engineering (2025)
+* SmartHire AI Project Team
 
 GitHub: https://github.com/Deepthi0511
 
