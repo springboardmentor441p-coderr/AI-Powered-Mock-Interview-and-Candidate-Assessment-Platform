@@ -1,3 +1,11 @@
+import { motion } from "framer-motion";
+import AIAvatar from "../components/interview/AIAvatar";
+import StatusBadge from "../components/interview/StatusBadge";
+import TimerCard from "../components/interview/TimerCard";
+import QuestionCard from "../components/interview/QuestionCard";
+import TranscriptPanel from "../components/interview/TranscriptPanel";
+import InterviewTips from "../components/interview/InterviewTips";
+import VoiceAnimation from "../components/interview/VoiceAnimation";
 import React, { useState, useEffect, useRef } from "react";
 import { UltravoxSession } from "ultravox-client";
 import { useNavigate } from "react-router-dom";
@@ -10,47 +18,39 @@ function Interview() {
 
     const [started, setStarted] = useState(false);
     const [status, setStatus] = useState("Not Connected");
-    const [timeLeft, setTimeLeft] = useState(600);
+    const [elapsedTime, setElapsedTime] = useState(0);
     const [transcript, setTranscript] = useState("");
     const [currentQuestion, setCurrentQuestion] = useState("");
     const interviewEnded = useRef(false);
+    const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
+    const transcriptRef = useRef("");
+    const totalQuestions = 15;
     
 
     useEffect(() => {
 
-        if (!started) return;
+    if (!started) return;
 
-        const timer = setInterval(() => {
+    const timer = setInterval(() => {
 
-            setTimeLeft((prev) => {
+        setElapsedTime((prev) => prev + 1);
 
-                if (prev <= 1) {
+    }, 1000);
 
-                    clearInterval(timer);
+    return () => clearInterval(timer);
 
-                    endInterview();
-
-                    return 0;
-                }
-
-                return prev - 1;
-
-            });
-
-        }, 1000);
-
-        return () => clearInterval(timer);
-
-    }, [started, navigate]);
+}, [started]);
 
     const formatTime = () => {
 
-        const minutes = Math.floor(timeLeft / 60);
-        const seconds = timeLeft % 60;
+    const minutes = Math.floor(elapsedTime / 60);
 
-        return `${minutes}:${seconds < 10 ? "0" : ""}${seconds}`;
+    const seconds = elapsedTime % 60;
 
-    };
+    return `${minutes}:${seconds < 10 ? "0" : ""}${seconds}`;
+};
+
+
 const endInterview = async () => {
 
     if (interviewEnded.current) return;
@@ -70,10 +70,10 @@ const endInterview = async () => {
             headers: {
                 "Content-Type": "application/json"
             },
-            body: JSON.stringify({
-                email: localStorage.getItem("candidateEmail"),
-                transcript
-            })
+           body: JSON.stringify({
+    email: localStorage.getItem("candidateEmail"),
+    transcript: transcriptRef.current
+})
         }
     );
 
@@ -154,6 +154,7 @@ const endInterview = async () => {
         .join("\n");
 
     setTranscript(fullTranscript);
+    transcriptRef.current = fullTranscript;
 
     // Find the latest AI question
     const lastAgentMessage = [...transcripts]
@@ -167,8 +168,15 @@ const lastUserMessage = [...transcripts]
     .reverse()
     .find(t => t.speaker === "user");
 
-if (lastUserMessage) {
-    setCandidateAnswer(lastUserMessage.text);
+if (lastAgentMessage) {
+    setCurrentQuestion(lastAgentMessage.text);
+
+    setCurrentQuestionIndex(prev => {
+        if (prev < totalQuestions - 1) {
+            return prev + 1;
+        }
+        return prev;
+    });
 }
     // End interview when AI finishes
     if (lastAgentMessage) {
@@ -217,112 +225,195 @@ await fetch("http://127.0.0.1:5000/update-interview-status", {
 
     
    return (
-    <div className="min-h-screen bg-gray-100 px-6 py-10">
+  <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-white">
 
-        <div className="max-w-5xl mx-auto">
+    <div className="max-w-7xl mx-auto px-6 py-10">
 
-            <h1 className="text-4xl font-bold text-blue-600">
-                AI Mock Interview
-            </h1>
+      {/* Header */}
+      <motion.div
+        initial={{ opacity: 0, y: -30 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.5 }}
+        className="flex justify-between items-center mb-10"
+      >
 
-            <p className="text-gray-600 mt-2">
-                SmartHire AI Voice Interview
-            </p>
+        <div>
+          <h1 className="text-4xl font-bold text-gray-900">
+            AI Mock Interview
+          </h1>
 
-            {!started ? (
+          <p className="text-gray-500 mt-2">
+            SmartHire AI Voice Interview Platform
+          </p>
+        </div>
 
-                <div className="bg-white rounded-2xl shadow-lg p-10 mt-8 text-center">
+        {started && <StatusBadge status={status} />}
 
-                    <div className="text-7xl">
-                        🤖
-                    </div>
+      </motion.div>
 
-                    <h2 className="text-3xl font-bold mt-6">
-                        Ready for your AI Interview?
-                    </h2>
 
-                    <p className="text-gray-600 mt-4">
-                        Ultravox will conduct your interview based on your resume.
-                    </p>
+      {!started ? (
 
-                    <button
-                        onClick={startInterview}
-                        className="mt-8 bg-blue-600 text-white px-10 py-3 rounded-xl hover:bg-blue-700"
-                    >
-                        🚀 Start Interview
-                    </button>
+        <motion.div
+          initial={{ opacity: 0, scale: 0.95 }}
+          animate={{ opacity: 1, scale: 1 }}
+          transition={{ duration: 0.6 }}
+          className="bg-white rounded-3xl shadow-xl p-16 text-center"
+        >
 
-                </div>
+          <AIAvatar />
 
-            ) : (
+          <h2 className="text-4xl font-bold mt-8">
+            Ready to Begin?
+          </h2>
 
-                <div className="grid lg:grid-cols-3 gap-6 mt-10">
+          <p className="text-gray-600 text-lg mt-5 max-w-2xl mx-auto">
 
-                    <div className="bg-white rounded-xl shadow p-6 text-center">
+            SmartHire AI will conduct a personalized voice interview
+            based on your uploaded resume. Answer naturally and
+            confidently.
 
-                        <div className="text-7xl">
-                            🤖
-                        </div>
+          </p>
 
-                        <h2 className="text-2xl font-bold mt-5">
-                            SmartHire AI
-                        </h2>
 
-                        <p className="text-green-600 mt-3 font-semibold">
-                            ● {status}
-                        </p>
+          <button
+            onClick={startInterview}
+            className="
+              mt-10 
+              bg-blue-600 
+              hover:bg-blue-700 
+              text-white 
+              px-10 
+              py-4 
+              rounded-2xl 
+              text-lg 
+              font-semibold 
+              transition
+            "
+          >
+            Start AI Interview
+          </button>
 
-                        <p className="text-red-500 text-3xl font-bold mt-8">
-                            ⏱ {formatTime()}
-                        </p>
+        </motion.div>
 
-                    </div>
 
-                    <div className="lg:col-span-2 bg-white rounded-xl shadow p-8">
+      ) : (
 
-                        <h2 className="text-3xl font-bold">
-                            Interview in Progress
-                        </h2>
+        <div className="grid lg:grid-cols-12 gap-8">
 
-                        <div className="mt-6">
 
-                            <h3 className="text-xl font-semibold text-blue-600">
-                                Current Question
-                            </h3>
+          {/* LEFT PANEL */}
+          <div className="lg:col-span-3 space-y-6">
 
-                            <div className="mt-3 bg-blue-50 border border-blue-200 rounded-xl p-5">
-                                <p className="text-gray-800 text-lg leading-8">
-                                    {currentQuestion || "Waiting for AI to ask the first question..."}
-                                </p>
-                            </div>
+            <AIAvatar />
 
-                            <p className="mt-6 text-lg text-gray-700">
-                                🎤 Listening...
-                            </p>
+            <TimerCard
+              time={formatTime()}
+            />
 
-                        </div>
+            <VoiceAnimation />
 
-                        <p className="mt-3 text-gray-500">
-                            Please answer naturally. The AI interviewer will ask
-                            follow-up questions based on your responses.
-                        </p>
+            
 
-                        <button
-                            onClick={endInterview}
-                            className="mt-10 bg-red-600 hover:bg-red-700 text-white px-8 py-3 rounded-xl"
-                        >
-                            End Interview
-                        </button>
+          </div>
 
-                    </div>
 
-                </div>
 
-            )}
+          {/* CENTER PANEL */}
+          <div className="lg:col-span-6 space-y-6">
+
+
+            <QuestionCard
+              question={currentQuestion}
+            />
+
+
+            <TranscriptPanel
+              transcript={transcript}
+            />
+
+
+          </div>
+
+
+
+
+          {/* RIGHT PANEL */}
+          <div className="lg:col-span-3 space-y-6">
+
+
+            <InterviewTips />
+
+
+
+            {/* Question Progress */}
+
+            <div className="bg-white rounded-2xl shadow-lg p-6">
+
+              <h3 className="font-semibold text-gray-800 mb-4">
+                Interview Progress
+              </h3>
+
+
+              <div className="w-full bg-gray-200 rounded-full h-3">
+
+                <div
+                  className="
+                    bg-blue-600 
+                    h-3 
+                    rounded-full 
+                    transition-all 
+                    duration-500
+                  "
+                  style={{
+                    width: `${
+                      ((currentQuestionIndex + 1) / totalQuestions) * 100
+                    }%`
+                  }}
+                />
+
+              </div>
+
+
+              <p className="text-sm text-gray-500 mt-3 text-center">
+
+                Question {currentQuestionIndex + 1} of {totalQuestions}
+
+              </p>
+
+
+            </div>
+
+
+
+            <button
+              onClick={endInterview}
+              className="
+                w-full
+                bg-red-600
+                hover:bg-red-700
+                text-white
+                py-4
+                rounded-2xl
+                font-semibold
+                transition
+              "
+            >
+              End Interview
+            </button>
+
+
+          </div>
+
 
         </div>
 
+      )}
+
+
     </div>
+
+  </div>
 );
 }
 export default Interview;

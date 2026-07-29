@@ -10,7 +10,6 @@ DATABASE_NAME = os.path.join(
 print("USING DATABASE:", DATABASE_NAME)
 
 
-
 def get_db_connection():
 
     conn = sqlite3.connect(
@@ -23,16 +22,11 @@ def get_db_connection():
     return conn
 
 
-
-
-
 def create_table():
 
     conn = get_db_connection()
 
     cur = conn.cursor()
-
-
 
     # -----------------------
     # Resume Table
@@ -68,8 +62,6 @@ def create_table():
         )
     """)
 
-
-
     # -----------------------
     # Add status column if missing
     # -----------------------
@@ -81,7 +73,6 @@ def create_table():
         for column in cur.fetchall()
     ]
 
-
     if "status" not in resume_columns:
 
         cur.execute("""
@@ -90,10 +81,6 @@ def create_table():
         """)
 
         print("Status column added successfully.")
-
-
-
-
 
     # -----------------------
     # Interview Results Table
@@ -125,11 +112,8 @@ def create_table():
         )
     """)
 
-
-
-
     # -----------------------
-    # Add recommendation columns if missing
+    # Check existing columns
     # -----------------------
 
     cur.execute("PRAGMA table_info(interview_results)")
@@ -139,7 +123,9 @@ def create_table():
         for column in cur.fetchall()
     ]
 
-
+    # -----------------------
+    # Add recommendation column
+    # -----------------------
 
     if "recommendation" not in interview_columns:
 
@@ -150,8 +136,9 @@ def create_table():
 
         print("Recommendation column added.")
 
-
-
+    # -----------------------
+    # Add recommendation reason
+    # -----------------------
 
     if "recommendation_reason" not in interview_columns:
 
@@ -162,11 +149,31 @@ def create_table():
 
         print("Recommendation reason column added.")
 
+    # -----------------------
+    # Add interview status
+    # -----------------------
 
+    if "interview_status" not in interview_columns:
 
+        cur.execute("""
+            ALTER TABLE interview_results
+            ADD COLUMN interview_status TEXT DEFAULT 'Completed'
+        """)
 
+        print("Interview status column added.")
 
+    # -----------------------
+    # Add completion reason
+    # -----------------------
 
+    if "completion_reason" not in interview_columns:
+
+        cur.execute("""
+            ALTER TABLE interview_results
+            ADD COLUMN completion_reason TEXT
+        """)
+
+        print("Completion reason column added.")
 
     # -----------------------
     # Interview Answers Table
@@ -198,16 +205,10 @@ def create_table():
         )
     """)
 
-
-
     conn.commit()
 
     conn.close()
 
 
-
-
-
 # Create tables when application starts
-
 create_table()

@@ -7,13 +7,29 @@ function Evaluating() {
 
     useEffect(() => {
 
-        const timer = setTimeout(() => {
-            navigate("/results");
-        }, 4000);
+    const timer = setTimeout(() => {
 
-        return () => clearTimeout(timer);
+        const email = localStorage.getItem("candidateEmail");
 
-    }, []);
+        console.log("Candidate Email:", email);
+
+        if (email) {
+
+    console.log("Navigating to:", `/interview-results`);
+
+    navigate("/results");
+
+} else {
+
+    console.error("Candidate email not found");
+
+}
+
+    }, 4000);
+
+    return () => clearTimeout(timer);
+
+}, [navigate]);
 
     return (
 

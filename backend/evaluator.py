@@ -14,87 +14,166 @@ client = Groq(
 def evaluate_interview(transcript):
 
     prompt = f"""
-You are an AI interview evaluator.
+You are an expert AI Technical Interview Evaluator for SmartHire AI.
 
-Evaluate the candidate based on the interview transcript below.
+Your task is to evaluate the candidate ONLY based on the interview transcript.
 
-Transcript:
-{transcript}
+=========================
+Evaluation Criteria
+=========================
 
-Analyze:
-- Technical knowledge
-- Communication skills
-- Problem-solving ability
-- Professionalism
+1. Technical Knowledge (40%)
+2. Communication Skills (20%)
+3. Problem Solving Ability (20%)
+4. Professionalism & Confidence (20%)
 
-Return ONLY valid JSON.
-Do not add any extra text, recommendation, or explanation outside JSON.
+=========================
+Interview Completion Rules
+=========================
 
-Use this exact format:
+- Determine whether the interview is Completed or Incomplete.
+- If the candidate answered only a few questions or disconnected early,
+  mark it as "Incomplete".
+- Incomplete interviews should receive appropriately lower scores.
+- Never recommend a candidate who did not complete the interview.
+
+=========================
+Scoring Rules
+=========================
+
+IMPORTANT:
+
+ALL SCORES MUST BE BETWEEN 0 AND 100.
+
+DO NOT return scores between 0 and 10.
+
+Examples:
+
+Excellent candidate:
+Overall Score = 92
+
+Good candidate:
+Overall Score = 81
+
+Average candidate:
+Overall Score = 67
+
+Weak candidate:
+Overall Score = 42
+
+Very poor candidate:
+Overall Score = 18
+
+=========================
+Return ONLY Valid JSON
+=========================
+
+Use EXACTLY this format.
 
 {{
-    "score": number,
-    "technical_score": number,
-    "communication_score": number,
-    "problem_solving_score": number,
-    "professionalism_score": number,
-    "feedback": "short feedback about candidate performance"
+    "interview_status": "Completed",
+
+    "completion_reason": "Candidate completed the interview successfully.",
+
+    "score": 82,
+
+    "technical_score": 85,
+
+    "communication_score": 80,
+
+    "problem_solving_score": 78,
+
+    "professionalism_score": 84,
+
+    "feedback": "Provide a detailed evaluation discussing technical strengths, communication quality, professionalism, confidence, weaknesses, and areas for improvement. Do NOT mention hiring decision.",
+
+    "recommendation": "Recommended",
+
+    "recommendation_reason": "Briefly explain why the candidate should or should not be selected."
 }}
+
+Transcript:
+
+{transcript}
 """
 
     try:
 
         response = client.chat.completions.create(
+
             model="llama-3.1-8b-instant",
+
             messages=[
                 {
                     "role": "user",
                     "content": prompt
                 }
             ],
-            temperature=0.2
-        )
 
+            temperature=0.2
+
+        )
 
         raw_response = response.choices[0].message.content
 
-        print("========== RAW GROQ RESPONSE ==========")
+        print("\n========== RAW GROQ RESPONSE ==========")
         print(raw_response)
 
+        json_match = re.search(r"\{[\s\S]*\}", raw_response)
 
-        # Extract only JSON part
-        # Extract only the first JSON object
-        json_match = re.search(
-            r'\{[\s\S]*?\}',
-            raw_response)
-
-
-        if json_match:
-
-            json_data = json_match.group()
-
-            result = json.loads(json_data)
-
-            print("========== PARSED RESULT ==========")
-            print(result)
-
-            return result
-
-
-        else:
-
+        if not json_match:
             raise Exception("JSON object not found")
 
+        result = json.loads(json_match.group())
+
+        # Safety checks
+        result["score"] = max(0, min(100, int(result.get("score", 0))))
+        result["technical_score"] = max(
+            0,
+            min(100, int(result.get("technical_score", 0)))
+        )
+        result["communication_score"] = max(
+            0,
+            min(100, int(result.get("communication_score", 0)))
+        )
+        result["problem_solving_score"] = max(
+            0,
+            min(100, int(result.get("problem_solving_score", 0)))
+        )
+        result["professionalism_score"] = max(
+            0,
+            min(100, int(result.get("professionalism_score", 0)))
+        )
+
+        print("\n========== PARSED RESULT ==========")
+        print(result)
+
+        return result
 
     except Exception as e:
 
-        print("JSON PARSE ERROR:", e)
+        print("EVALUATION ERROR:", e)
 
         return {
+
+            "interview_status": "Incomplete",
+
+            "completion_reason": "Evaluation failed",
+
             "score": 0,
+
             "technical_score": 0,
+
             "communication_score": 0,
+
             "problem_solving_score": 0,
+
             "professionalism_score": 0,
-            "feedback": "Failed to parse AI evaluation."
+
+            "feedback": "Unable to evaluate interview.",
+
+            "recommendation": "Not Recommended",
+
+            "recommendation_reason": "Evaluation failed."
+
         }

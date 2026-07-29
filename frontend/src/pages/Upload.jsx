@@ -1,4 +1,4 @@
-import { useState } from "react";
+import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 
 function Upload() {
@@ -31,90 +31,110 @@ function Upload() {
 
       const data = await response.json();
 
-     if (response.ok) {
-  setResumeData(data.data);
+      if (response.ok) {
+        setResumeData(data.data);
 
-  localStorage.setItem("resumeUploaded", "true");
-  localStorage.setItem("resumeData", JSON.stringify(data.data));
+        localStorage.removeItem("interviewStatus");
+        localStorage.removeItem("interviewResult");
+        localStorage.removeItem("recommendation");
+        localStorage.removeItem("score");
+        localStorage.setItem("resumeUploaded", "true");
+        localStorage.setItem(
+          "resumeData",
+          JSON.stringify(data.data)
+        );
 
-  // Save email for interview
-  localStorage.setItem("candidateEmail", data.data.email);
-}else {
-        alert(data.error || "Upload failed");
+        localStorage.setItem(
+          "candidateEmail",
+          data.data.email
+        );
+
+        navigate("/dashboard");
+      } else {
+        alert(data.message || "Resume upload failed");
       }
+
     } catch (error) {
-      console.log(error);
+      console.error("Upload Error:", error);
       alert("Backend connection failed");
     } finally {
       setLoading(false);
     }
   };
 
+
   return (
-    <div className="min-h-screen bg-gray-100 px-6 py-12">
-      <div className="max-w-5xl mx-auto">
-        <h1 className="text-4xl font-bold text-center text-blue-600">
-          Resume Analyzer
+    <div className="min-h-screen bg-gray-100 flex items-center justify-center px-6">
+
+      <div className="bg-white shadow-xl rounded-2xl p-8 w-full max-w-lg">
+
+        <h1 className="text-3xl font-bold text-blue-600 text-center">
+          Upload Resume
         </h1>
 
-        <p className="text-center text-gray-600 mt-3">
-          Upload your resume and let SmartHire AI analyze your profile.
+        <p className="text-gray-500 text-center mt-2">
+          Upload your resume to analyze your skills and create your candidate profile
         </p>
 
-        <div className="bg-white rounded-2xl shadow-lg p-8 mt-10">
-          <div className="border-2 border-dashed border-blue-400 rounded-xl p-10 text-center">
-            <div className="text-5xl">📄</div>
 
-            <h2 className="text-xl font-semibold mt-4">
-              Upload Resume PDF
-            </h2>
+        <div className="mt-8 border-2 border-dashed border-blue-300 rounded-xl p-8 text-center">
 
-            <input
-              type="file"
-              accept=".pdf"
-              onChange={handleFileChange}
-              className="mt-5"
-            />
+          <input
+            type="file"
+            accept=".pdf,.doc,.docx"
+            onChange={handleFileChange}
+            className="hidden"
+            id="resumeUpload"
+          />
 
-            {file && (
-              <p className="mt-4 text-gray-600">
-                Selected: {file.name}
-              </p>
-            )}
-          </div>
-
-          <button
-            onClick={handleUpload}
-            className="w-full mt-8 bg-blue-600 text-white py-3 rounded-xl hover:bg-blue-700"
+          <label
+            htmlFor="resumeUpload"
+            className="cursor-pointer text-blue-600 font-medium"
           >
-            {loading ? "Uploading Resume..." : "Upload Resume"}
-          </button>
+            {file ? file.name : "Click to select resume"}
+          </label>
+
+          <p className="text-sm text-gray-400 mt-2">
+            Supported formats: PDF, DOC, DOCX
+          </p>
+
         </div>
 
+
+        <button
+          onClick={handleUpload}
+          disabled={loading}
+          className={`w-full mt-6 py-3 rounded-xl text-white font-semibold transition
+          ${
+            loading
+              ? "bg-gray-400 cursor-not-allowed"
+              : "bg-blue-600 hover:bg-blue-700"
+          }`}
+        >
+          {loading ? "Uploading..." : "Upload Resume"}
+        </button>
+
+
         {resumeData && (
-  <div className="bg-white rounded-2xl shadow-lg p-8 mt-8 text-center">
+          <div className="mt-6 bg-green-50 p-4 rounded-xl">
 
-    <div className="text-6xl mb-4">
-      ✅
-    </div>
+            <h2 className="font-semibold text-green-700">
+              Resume Uploaded Successfully
+            </h2>
 
-    <h2 className="text-3xl font-bold text-green-600">
-      Resume Uploaded Successfully
-    </h2>
+            <p className="text-sm text-gray-600 mt-2">
+              Name: {resumeData.name}
+            </p>
 
-    <p className="text-gray-600 mt-3">
-      Your resume has been uploaded and extracted successfully.    </p>
+            <p className="text-sm text-gray-600">
+              Email: {resumeData.email}
+            </p>
 
-    <button
-      onClick={() => navigate("/dashboard")}
-      className="mt-8 bg-blue-600 text-white px-8 py-3 rounded-xl hover:bg-blue-700"
-    >
-      Continue to Dashboard →
-    </button>
+          </div>
+        )}
 
-  </div>
-)}
       </div>
+
     </div>
   );
 }

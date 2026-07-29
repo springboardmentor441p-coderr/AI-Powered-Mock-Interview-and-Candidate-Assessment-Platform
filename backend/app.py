@@ -32,216 +32,220 @@ os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 @app.route("/candidates", methods=["GET"])
 def get_candidates():
 
-    conn = get_db_connection()
-    cursor = conn.cursor()
+    try:
 
+        conn = get_db_connection()
+        cursor = conn.cursor()
 
-    # Total candidates
-    cursor.execute("""
-        SELECT COUNT(*) FROM resumes
-    """)
-    total_candidates = cursor.fetchone()[0]
+        # -----------------------------
+        # Total Candidates
+        # -----------------------------
+        cursor.execute("""
+            SELECT COUNT(*)
+            FROM resumes
+        """)
+        total_candidates = cursor.fetchone()[0]
 
-
-    # Completed interviews
-    cursor.execute("""
-        SELECT COUNT(*)
-        FROM interview_results
-        WHERE answers IS NOT NULL
-        AND answers != ''
-    """)
-    completed_interviews = cursor.fetchone()[0]
-
-
-    # Average score
-    cursor.execute("""
-        SELECT AVG(score)
-        FROM interview_results
-        WHERE score IS NOT NULL
-    """)
-    average_score = cursor.fetchone()[0] or 0
-
-
-    # Shortlisted count
-    cursor.execute("""
-        SELECT COUNT(*)
-        FROM resumes
-        WHERE status = 'Shortlisted'
-    """)
-    shortlisted = cursor.fetchone()[0]
-
-
-
-    # Get candidate details
-    cursor.execute("""
-        SELECT
-
-            r.name,
-            r.email,
-            r.phone,
-            r.skills,
-            r.experience,
-            r.education,
-            r.projects,
-            r.certifications,
-            r.languages,
-
-            i.score,
-            i.technical_score,
-            i.communication_score,
-            i.feedback,
-
-            i.recommendation,
-            i.recommendation_reason,
-
-            i.answers,
-            i.created_at,
-
-            r.status
-
-
-        FROM resumes r
-
-
-        LEFT JOIN interview_results i
-
-        ON r.email = i.candidate_email
-
-
-        AND i.id = (
-
-            SELECT id
+        # -----------------------------
+        # Completed Interviews
+        # -----------------------------
+        cursor.execute("""
+            SELECT COUNT(DISTINCT candidate_email)
             FROM interview_results
+            WHERE answers IS NOT NULL
+            AND TRIM(answers) != ''
+        """)
+        completed_interviews = cursor.fetchone()[0]
 
-            WHERE candidate_email = r.email
+        pending_interviews = total_candidates - completed_interviews
 
-            ORDER BY id DESC
+        # -----------------------------
+        # Average Score
+        # -----------------------------
+        cursor.execute("""
+            SELECT AVG(score)
+            FROM interview_results
+            WHERE id IN (
+                SELECT MAX(id)
+                FROM interview_results
+                GROUP BY candidate_email
+            )
+            AND score IS NOT NULL
+        """)
 
-            LIMIT 1
+        average_score = round(cursor.fetchone()[0] or 0)
 
-        )
+        # -----------------------------
+        # Shortlisted Count
+        # -----------------------------
+        cursor.execute("""
+            SELECT COUNT(*)
+            FROM interview_results
+            WHERE recruiter_status='Shortlisted'
+            AND id IN (
+                SELECT MAX(id)
+                FROM interview_results
+                GROUP BY candidate_email
+            )
+        """)
 
-    """)
+        shortlisted = cursor.fetchone()[0]
 
+        # -----------------------------
+        # Candidate List
+        # -----------------------------
+        cursor.execute("""
+            SELECT
 
-    rows = cursor.fetchall()
+                r.name,
+                r.email,
+                r.phone,
+                r.skills,
+                r.experience,
+                r.education,
+                r.projects,
+                r.certifications,
+                r.languages,
 
+                i.score,
+                i.technical_score,
+                i.communication_score,
 
-    print("TOTAL ROWS:", len(rows))
+                i.feedback,
+                i.recommendation,
+                i.recommendation_reason,
 
+                i.answers,
+                i.created_at,
 
-    candidates = []
+                i.interview_status,
+                i.completion_reason,
 
+                i.recruiter_status
 
-    for row in rows:
+            FROM resumes r
 
-        print("DATABASE ROW:", row[0], row[1])
+            LEFT JOIN interview_results i
 
+            ON r.email=i.candidate_email
 
-        status = "Pending"
+            AND i.id=(
 
+                SELECT MAX(id)
 
-        # Interview completed only when transcript exists
-        if row[15] is not None and row[15] != "":
-            status = "Interview Completed"
+                FROM interview_results
 
+                WHERE candidate_email=r.email
 
+            )
 
-        # Recruiter decision
-        if row[17] in ["Shortlisted", "Rejected"]:
-            status = row[17]
+            ORDER BY r.name
 
+        """)
 
+        rows = cursor.fetchall()
 
-        candidates.append({
+        candidates = []
 
-            "name": row[0],
-            "email": row[1],
-            "phone": row[2],
+        for row in rows:
 
-            "skills": row[3],
-            "experience": row[4],
-            "education": row[5],
-            "projects": row[6],
-            "certifications": row[7],
-            "languages": row[8],
+            transcript = row[15] if row[15] else ""
 
+            if transcript.strip():
+                interview_status = "Interview Completed"
+            else:
+                interview_status = "Pending Interview"
 
-            "score": row[9],
-            "technical_score": row[10],
-            "communication_score": row[11],
+            recruiter_status = row[19] if row[19] else "Pending"
 
+            candidates.append({
 
-            "feedback": row[12],
+                "name": row[0],
+                "email": row[1],
+                "phone": row[2],
 
+                "skills": row[3],
+                "experience": row[4],
+                "education": row[5],
+                "projects": row[6],
+                "certifications": row[7],
+                "languages": row[8],
 
-            # Only recommendation shown in dashboard
-            "recommendation": row[13],
+                "score": row[9] if row[9] is not None else None,
 
-            "recommendation_reason": row[14],
+                "technical_score": row[10],
 
+                "communication_score": row[11],
 
-            # Used only in View page
-            "transcript": row[15],
+                "feedback": row[12],
 
+                "recommendation": row[13] if row[13] else "N/A",
 
-            "interview_date": row[16],
+                "recommendation_reason": row[14],
 
+                "transcript": transcript,
 
-            "status": status
+                "interview_date": row[16],
+
+                "interview_status": interview_status,
+
+                "completion_reason": row[18],
+
+                "recruiter_status": recruiter_status
+
+            })
+
+        # -----------------------------
+        # Top Candidate
+        # -----------------------------
+        completed = [
+            c for c in candidates
+            if c["score"] is not None
+        ]
+
+        top_candidate = None
+
+        if completed:
+
+            top_candidate = max(
+                completed,
+                key=lambda x: x["score"]
+            )
+
+        conn.close()
+
+        return jsonify({
+
+            "stats":{
+
+                "total_candidates":total_candidates,
+
+                "completed_interviews":completed_interviews,
+
+                "pending_interviews":pending_interviews,
+
+                "average_score":average_score,
+
+                "shortlisted":shortlisted
+
+            },
+
+            "top_candidate":top_candidate,
+
+            "candidates":candidates
 
         })
 
+    except Exception as e:
 
+        print("CANDIDATE API ERROR:", e)
 
-    # Find top candidate
+        return jsonify({
 
-    completed_candidates = [
+            "error":str(e)
 
-        c for c in candidates
-
-        if c["score"] is not None
-
-    ]
-
-
-    top_candidate = None
-
-
-    if completed_candidates:
-
-        top_candidate = max(
-            completed_candidates,
-            key=lambda x: x["score"]
-        )
-
-
-
-    conn.close()
-
-
-
-    return jsonify({
-
-        "top_candidate": top_candidate,
-
-
-        "stats": {
-
-            "total_candidates": total_candidates,
-
-            "completed_interviews": completed_interviews,
-
-            "average_score": round(average_score),
-
-            "shortlisted": shortlisted
-
-        },
-
-
-        "candidates": candidates
-
-    })
+        }),500
+#----save interview----
 
 @app.route("/save-interview", methods=["POST"])
 def save_interview():
@@ -273,19 +277,31 @@ def save_interview():
 
 
 
+        # -----------------------------
         # AI Evaluation
-        evaluation = evaluate_interview(
-            transcript,
-            candidate_email
-        )
+        # -----------------------------
+
+        evaluation = evaluate_interview(transcript)
+
         print("EVALUATION:", evaluation)
+        interview_status = evaluation.get(
+        "interview_status",
+        "Completed")
+
+        completion_reason = evaluation.get(
+        "completion_reason", "")
+
+        recommendation_reason = evaluation.get(
+        "recommendation_reason",
+        evaluation["feedback"])
+
 
 
         # -----------------------------
         # Generate AI Recommendation
         # -----------------------------
 
-        score = evaluation["score"]
+        score = evaluation.get("score", 0)
 
 
         if score >= 80:
@@ -304,11 +320,16 @@ def save_interview():
 
 
 
-        recommendation_reason = evaluation["feedback"]
+        recommendation_reason = evaluation.get(
+    "recommendation_reason",
+    "AI recommendation generated based on interview performance."
+)
 
 
 
-        # Database connection
+        # -----------------------------
+        # Database Connection
+        # -----------------------------
 
         conn = get_db_connection()
 
@@ -316,62 +337,61 @@ def save_interview():
 
 
 
-        # Save interview result
+        # -----------------------------
+        # Save Interview Result
+        # -----------------------------
 
         cursor.execute(
             """
             INSERT INTO interview_results
-            (
-                candidate_email,
-                answers,
-                score,
-                technical_score,
-                communication_score,
-                feedback,
-                recommendation,
-                recommendation_reason
-            )
+(
+    candidate_email,
+    answers,
+    score,
+    technical_score,
+    communication_score,
+    feedback,
+    recommendation,
+    recommendation_reason,
+    interview_status,
+    completion_reason
+)
 
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 
             """,
 
             (
-                candidate_email,
-                transcript,
-
-                evaluation["score"],
-
-                evaluation["technical_score"],
-
-                evaluation["communication_score"],
-
-                evaluation["feedback"],
-
-                recommendation,
-
-                recommendation_reason
-            )
-
+                (
+    candidate_email,
+    transcript,
+    evaluation["score"],
+    evaluation["technical_score"],
+    evaluation["communication_score"],
+    evaluation["feedback"],
+    recommendation,
+    recommendation_reason,
+    evaluation.get("interview_status", "Completed"),
+    evaluation.get("completion_reason", "")
+)
+)
         )
 
 
 
-        # Update resume status
+        # -----------------------------
+        # Update Resume Status
+        # -----------------------------
 
-        cursor.execute(
-            """
-            UPDATE resumes
-
-            SET status = 'Interview Completed'
-
-            WHERE email = ?
-
-            """,
-
-            (candidate_email,)
-
-        )
+        cursor.execute("""
+        UPDATE resumes
+        SET 
+            interview_status = 'Pending',
+            recruiter_status = 'Pending',
+            recommendation = NULL,
+            score = NULL
+        WHERE email = ?
+    """, (candidate_email,))
 
 
 
@@ -385,16 +405,18 @@ def save_interview():
 
             "message": "Interview saved successfully",
 
-            "recommendation": recommendation
+            "recommendation": recommendation,
 
-        })
+            "score": evaluation.get("score", 0)
+
+        }), 200
 
 
 
     except Exception as e:
 
 
-        print(e)
+        print("SAVE INTERVIEW ERROR:", e)
 
 
         return jsonify({
@@ -405,40 +427,82 @@ def save_interview():
 @app.route("/interview-history/<email>", methods=["GET"])
 def interview_history(email):
 
-    conn = get_db_connection()
-    cursor = conn.cursor()
+    try:
 
-    cursor.execute("""
-        SELECT
-            id,
-            score,
-            technical_score,
-            communication_score,
-            feedback,
-            answers,
-            created_at
-        FROM interview_results
-        WHERE candidate_email = ?
-        ORDER BY id DESC
-    """, (email,))
+        conn = get_db_connection()
+        cursor = conn.cursor()
 
-    rows = cursor.fetchall()
-    conn.close()
+        cursor.execute("""
+            SELECT
+                id,
+                created_at,
+                score,
+                technical_score,
+                communication_score,
+                feedback,
+                recommendation,
+                recommendation_reason,
+                answers,
+                interview_status
 
-    history = []
+            FROM interview_results
 
-    for row in rows:
-        history.append({
-            "id": row[0],
-            "score": row[1],
-            "technical_score": row[2],
-            "communication_score": row[3],
-            "feedback": row[4],
-            "answers": row[5],
-            "created_at": row[6]
+            WHERE candidate_email = ?
+
+            ORDER BY created_at DESC
+        """, (email,))
+
+        rows = cursor.fetchall()
+
+        print("EMAIL:", email)
+        print("TOTAL INTERVIEWS:", len(rows))
+
+        interviews = []
+
+        for row in rows:
+
+            interviews.append({
+
+                "id": row[0],
+
+                "date": row[1],
+
+                "score": row[2],
+
+                "technical_score": row[3],
+
+                "communication_score": row[4],
+
+                "feedback": row[5],
+
+                "recommendation": row[6],
+
+                "recommendation_reason": row[7],
+
+                "transcript": row[8],
+
+                "interview_status": row[9],
+            })
+
+        conn.close()
+
+        return jsonify({
+
+            "email": email,
+
+            "count": len(interviews),
+
+            "interviews": interviews
+
         })
 
-    return jsonify(history)
+    except Exception as e:
+
+        print("INTERVIEW HISTORY ERROR:", e)
+
+        return jsonify({
+            "error": str(e)
+        }), 500
 # -----------------------
 # Upload Resume
 # -----------------------
@@ -449,7 +513,6 @@ def upload_resume():
     try:
 
         if "resume" not in request.files:
-
             return jsonify({
                 "error": "No file uploaded"
             }), 400
@@ -459,7 +522,6 @@ def upload_resume():
 
 
         if file.filename == "":
-
             return jsonify({
                 "error": "No file selected"
             }), 400
@@ -489,23 +551,35 @@ def upload_resume():
 
 
 
+        email = details.get("email")
+
+
+        if not email:
+            return jsonify({
+                "error": "Email not found in resume"
+            }), 400
+
+
+
+        print("Candidate Email:", email)
+
+
+
         conn = get_db_connection()
 
         cursor = conn.cursor()
 
 
 
-        # -----------------------
-        # Check Duplicate Email
-        # -----------------------
+        # Check existing candidate
 
         cursor.execute(
             """
             SELECT id 
             FROM resumes
-            WHERE email = ?
+            WHERE TRIM(email) = TRIM(?)
             """,
-            (details["email"],)
+            (email,)
         )
 
 
@@ -516,12 +590,36 @@ def upload_resume():
         if existing_candidate:
 
 
+            # Reset interview status for new attempt
+
+            cursor.execute(
+                """
+                UPDATE resumes
+                SET
+                    interview_status = 'Pending',
+                    recruiter_status = 'Pending',
+                    recommendation = 'Pending'
+                WHERE TRIM(email) = TRIM(?)
+                """,
+                (email,)
+            )
+
+
+            conn.commit()
+
+
+            print(
+                "Existing candidate reset:",
+                cursor.rowcount
+            )
+
+
             conn.close()
 
 
             return jsonify({
 
-                "message": "Resume already uploaded for this email",
+                "message": "Resume uploaded again. Interview status reset.",
 
                 "data": details
 
@@ -530,10 +628,7 @@ def upload_resume():
 
 
 
-
-        # -----------------------
-        # Insert New Resume
-        # -----------------------
+        # Insert new candidate
 
         cursor.execute(
             """
@@ -548,24 +643,30 @@ def upload_resume():
                 projects,
                 certifications,
                 languages,
-                resume_path
+                resume_path,
+                interview_status,
+                recruiter_status,
+                recommendation
             )
 
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 
             """,
 
             (
-                details["name"],
-                details["email"],
-                details["phone"],
-                ", ".join(details["skills"]),
-                details["education"],
-                details["experience"],
-                details["projects"],
-                details["certifications"],
-                details["languages"],
-                filepath
+                details.get("name"),
+                details.get("email"),
+                details.get("phone"),
+                ", ".join(details.get("skills", [])),
+                details.get("education"),
+                details.get("experience"),
+                details.get("projects"),
+                details.get("certifications"),
+                details.get("languages"),
+                filepath,
+                "Pending",
+                "Pending",
+                "Pending"
             )
 
         )
@@ -589,9 +690,7 @@ def upload_resume():
 
     except Exception as e:
 
-
-        print("ERROR:", e)
-
+        print("UPLOAD ERROR:", e)
 
         return jsonify({
 
@@ -630,57 +729,277 @@ def update_status():
         return jsonify({
             "error": str(e)
         }), 500
+
+    
 @app.route("/candidate", methods=["GET"])
 def get_candidate():
+
+    try:
+
+        email = request.args.get("email")
+
+        if not email:
+            return jsonify({
+                "error": "Email is required"
+            }), 400
+
+
+        conn = get_db_connection()
+        cursor = conn.cursor()
+
+
+        cursor.execute("""
+            SELECT
+
+                r.name,
+                r.email,
+                r.phone,
+                r.skills,
+                r.education,
+                r.experience,
+                r.projects,
+                r.certifications,
+                r.languages,
+
+                r.interview_status,
+                r.recruiter_status,
+
+                i.score,
+                i.technical_score,
+                i.communication_score,
+
+                i.feedback,
+                i.recommendation,
+                i.recommendation_reason,
+
+                i.completion_reason,
+
+                i.created_at
+
+
+            FROM resumes r
+
+
+            LEFT JOIN interview_results i
+
+            ON r.email = i.candidate_email
+
+
+            AND i.id = (
+
+                SELECT MAX(id)
+
+                FROM interview_results
+
+                WHERE candidate_email = r.email
+
+            )
+
+
+            WHERE r.email = ?
+
+        """, (email,))
+
+
+        row = cursor.fetchone()
+
+
+        conn.close()
+
+
+
+        if not row:
+
+            return jsonify({
+                "message": "Candidate not found"
+            }), 404
+
+
+
+
+        return jsonify({
+
+            "name": row[0],
+
+            "email": row[1],
+
+            "phone": row[2],
+
+
+            "skills": row[3].split(",") if row[3] else [],
+
+            "education": row[4],
+
+            "experience": row[5],
+
+            "projects": row[6],
+
+            "certifications": row[7],
+
+            "languages": row[8],
+
+
+
+            # Current candidate status from resumes table
+
+            "interview_status": row[9] if row[9] else "Pending",
+
+            "recruiter_status": row[10] if row[10] else "Pending",
+
+
+
+            # Latest interview result
+
+            "ai_score": row[11] if row[11] is not None else "Pending",
+
+            "technical_score": row[12] if row[12] is not None else 0,
+
+            "communication_score": row[13] if row[13] is not None else 0,
+
+
+            "feedback": row[14] if row[14] else "Interview not completed.",
+
+            "recommendation": row[15] if row[15] else "Pending",
+
+            "recommendation_reason": row[16] if row[16] else "Not available",
+
+
+            "completion_reason": row[17] if row[17] else "",
+
+
+            "interview_date": row[18]
+
+        })
+
+
+    except Exception as e:
+
+        print("CANDIDATE ERROR:", e)
+
+        return jsonify({
+
+            "error": str(e)
+
+        }), 500
+# -----------------------
+# Get Interview Results
+# -----------------------
+
+@app.route("/interview-results/<email>", methods=["GET"])
+def get_interview_results(email):
 
     try:
 
         conn = get_db_connection()
         cursor = conn.cursor()
 
-        cursor.execute(
-            """
+
+        # Get all interview attempts
+        cursor.execute("""
             SELECT
-                name,
-                email,
-                phone,
-                skills,
-                education,
-                experience,
-                projects,
-                certifications,
-                languages
-            FROM resumes
+                id,
+                score,
+                technical_score,
+                communication_score,
+                feedback,
+                recommendation,
+                recommendation_reason,
+                created_at
+            FROM interview_results
+            WHERE candidate_email = ?
             ORDER BY id DESC
-            LIMIT 1
-            """
-        )
+        """, (email,))
 
-        row = cursor.fetchone()
 
-        conn.close()
+        results = cursor.fetchall()
 
-        if row:
 
-            return jsonify({
+        attempts = []
 
-                "name": row[0],
-                "email": row[1],
-                "phone": row[2],
-                "skills": row[3].split(", ") if row[3] else [],
-                "education": row[4],
-                "experience": row[5],
-                "projects": row[6],
-                "certifications": row[7],
-                "languages": row[8]
+
+        for result in results:
+
+            result_id = result[0]
+
+
+            # Get transcript/question answers
+            cursor.execute("""
+    SELECT
+        id,
+        score,
+        technical_score,
+        communication_score,
+        feedback,
+        recommendation,
+        recommendation_reason,
+        created_at,
+        recruiter_status
+    FROM interview_results
+    WHERE candidate_email = ?
+    ORDER BY id DESC
+""", (email,))
+
+
+            answers = cursor.fetchall()
+
+
+            transcript = []
+
+
+            for answer in answers:
+
+                transcript.append({
+
+                    "question": answer[0],
+
+                    "candidate_answer": answer[1],
+
+                    "score": answer[2],
+
+                    "feedback": answer[3],
+
+                    "strengths": answer[4],
+
+                    "improvements": answer[5],
+
+                    "ideal_answer": answer[6]
+
+                })
+
+
+
+            attempts.append({
+
+                "date": result[7],
+
+                "overall_score": result[1],
+
+                "technical_score": result[2],
+
+                "communication_score": result[3],
+
+                "overall_feedback": result[4],
+
+                "recommendation": result[5],
+
+                "recommendation_reason": result[6],
+
+                "transcript": transcript
 
             })
 
+
+        conn.close()
+
+
         return jsonify({
 
-            "message": "No candidate found"
+            "email": email,
+
+            "attempts": attempts
 
         })
+
 
     except Exception as e:
 
@@ -690,12 +1009,9 @@ def get_candidate():
 
         }), 500
 
-# -----------------------
-# Get Interview Results
-# -----------------------
 
-@app.route("/interview-results", methods=["GET"])
-def get_interview_results():
+@app.route("/candidate-results/<email>", methods=["GET"])
+def get_candidate_results(email):
 
     try:
 
@@ -703,62 +1019,130 @@ def get_interview_results():
         cursor = conn.cursor()
 
         cursor.execute("""
-    SELECT
-        candidate_email,
-        score,
-        technical_score,
-        communication_score,
-        feedback,
-        recommendation,
-        recommendation_reason,
-        created_at
-    FROM interview_results
-    ORDER BY id DESC
-    LIMIT 1
-""")
+            SELECT
+                candidate_email,
+                score,
+                technical_score,
+                communication_score,
+                feedback,
+                recommendation,
+                recommendation_reason,
+                recruiter_status,
+                created_at
+            FROM interview_results
+            WHERE candidate_email = ?
+            ORDER BY id DESC
+            LIMIT 1
+        """, (email,))
 
         row = cursor.fetchone()
 
         conn.close()
 
-        if row:
-
+        if not row:
             return jsonify({
-
-    "email": row[0],
-
-    "overall_score": row[1],
-
-    "technical_score": row[2],
-
-    "communication_score": row[3],
-
-    "overall_feedback": row[4],
-
-    "recommendation": row[5],
-
-    "recommendation_reason": row[6],
-
-    "date": row[7]
-
-})
+                "error": "No interview results found"
+            }), 404
 
         return jsonify({
 
-            "message": "No interview results found"
+            "email": row[0],
+
+            "overall_score": row[1],
+
+            "technical_score": row[2],
+
+            "communication_score": row[3],
+
+            "overall_feedback": row[4],
+
+            "recommendation": row[5],
+
+            "recommendation_reason": row[6],
+
+            "recruiter_status": row[7] if row[7] else "Pending",
+
+            "date": row[8]
 
         })
 
     except Exception as e:
 
         return jsonify({
-
             "error": str(e)
-
         }), 500
 
 
-# -----------------------
+@app.route("/update-candidate-status", methods=["POST"])
+def update_candidate_status():
+
+    try:
+
+        data = request.get_json()
+
+        email = data.get("email")
+        status = data.get("status")
+
+
+        print("Received:", email, status)
+
+
+        conn = get_db_connection()
+        cursor = conn.cursor()
+
+
+        cursor.execute("""
+            UPDATE interview_results
+            SET recruiter_status = ?
+            WHERE id = (
+                SELECT id
+                FROM interview_results
+                WHERE candidate_email = ?
+                ORDER BY created_at DESC
+                LIMIT 1
+            )
+        """,
+        (
+            status,
+            email
+        ))
+
+
+        conn.commit()
+
+
+        print(
+            "Updated rows:",
+            cursor.rowcount
+        )
+
+
+        conn.close()
+
+
+        return jsonify({
+
+            "message": "Recruiter status updated",
+
+            "status": status
+
+        })
+
+
+    except Exception as e:
+
+        print(
+            "STATUS UPDATE ERROR:",
+            e
+        )
+
+        return jsonify({
+
+            "error": str(e)
+
+        }),500
+    
+    
 # Generate AI Interview Questions
 # -----------------------
 

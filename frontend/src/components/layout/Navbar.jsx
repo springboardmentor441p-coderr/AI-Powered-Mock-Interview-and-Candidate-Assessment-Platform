@@ -1,6 +1,8 @@
 import React from "react";
 import { Link } from "react-router-dom";
 
+const candidateEmail = localStorage.getItem("candidateEmail");
+console.log("Navbar candidateEmail:", candidateEmail);
 function Navbar() {
 
   return (
@@ -35,10 +37,9 @@ function Navbar() {
             Interview
           </Link>
 
-
-          <Link to="/results">
-            Results
-          </Link>
+<Link to="/results">
+    Results
+</Link>
 
 
         </div>
