@@ -1,40 +1,50 @@
+import React from 'react';
 import './InterviewTypeSelector.css';
 
 export const interviewTypeOptions = [
   {
-    label: 'Technical Interview',
     value: 'technical',
-    description: 'Role-specific technical depth, projects, skills, and problem solving.',
+    label: 'Technical Interview',
+    description: 'Practical coding, system architecture, engineering trade-offs, and problem solving.',
   },
   {
-    label: 'HR Interview',
     value: 'hr',
-    description: 'Motivation, communication, teamwork, leadership, and company fit.',
+    label: 'HR Interview',
+    description: 'Behavioral scenarios, team communication, motivation, leadership, and culture fit.',
   },
 ];
 
-function InterviewTypeSelector({ name = 'interviewType', onChange, options = interviewTypeOptions, value }) {
+function InterviewTypeSelector({ value = 'technical', onChange }) {
   return (
-    <fieldset className="interview-type-selector">
-      <legend>Select Interview Type</legend>
-      <div className="interview-type-selector__options">
-        {options.map((option) => (
-          <label className="interview-type-option" key={option.value}>
-            <input
-              checked={value === option.value}
-              name={name}
-              onChange={() => onChange(option.value)}
-              type="radio"
-              value={option.value}
-            />
-            <span>
-              <strong>{option.label}</strong>
-              <small>{option.description}</small>
-            </span>
-          </label>
-        ))}
+    <div className="interview-type-selector">
+      <label className="type-selector__title">Interview Type</label>
+      <div className="type-selector__options">
+        {interviewTypeOptions.map((option) => {
+          const isSelected = value === option.value;
+          return (
+            <label
+              key={option.value}
+              className={`type-selector__card ${isSelected ? 'is-selected' : ''}`}
+            >
+              <input
+                type="radio"
+                name="interviewType"
+                value={option.value}
+                checked={isSelected}
+                onChange={() => onChange && onChange(option.value)}
+                className="type-selector__radio"
+              />
+              <div className="type-selector__content">
+                <div className="type-selector__header">
+                  <span className="type-selector__label">{option.label}</span>
+                </div>
+                <p className="type-selector__desc">{option.description}</p>
+              </div>
+            </label>
+          );
+        })}
       </div>
-    </fieldset>
+    </div>
   );
 }
 

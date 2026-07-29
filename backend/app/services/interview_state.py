@@ -48,6 +48,7 @@ class InterviewStateManager:
         interview_type: str = "technical",
         resume: dict,
         max_questions: int = 10,
+        interview_duration: int = 15,
     ) -> InterviewSession:
         """
         Create a new interview session.
@@ -60,7 +61,9 @@ class InterviewStateManager:
             interview_type=interview_type,
             resume=resume,
             max_questions=max_questions,
+            interview_duration=interview_duration,
         )
+        session.metrics.remaining_time = interview_duration * 60
 
         self._sessions[session.session_id] = session
 

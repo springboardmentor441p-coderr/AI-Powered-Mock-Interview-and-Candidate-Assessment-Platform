@@ -1,18 +1,25 @@
-.loader {
+.loader-container {
+  display: flex;
+  flex-direction: column;
   align-items: center;
-  color: var(--color-muted);
-  display: inline-flex;
-  gap: 10px;
-  font-weight: 700;
+  justify-content: center;
+  gap: 0.75rem;
+  padding: 1.5rem;
 }
 
-.loader__spinner {
-  animation: spin 800ms linear infinite;
-  border: 3px solid var(--color-border);
-  border-radius: 999px;
-  border-top-color: var(--color-primary);
-  height: 18px;
-  width: 18px;
+.loader-spinner {
+  width: 32px;
+  height: 32px;
+  border: 3px solid rgba(255, 255, 255, 0.1);
+  border-top-color: #6366f1;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+.loader-label {
+  color: #94a3b8;
+  font-size: 0.875rem;
+  font-weight: 500;
 }
 
 @keyframes spin {

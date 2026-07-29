@@ -16,12 +16,14 @@ import logging
 
 from app.services.interview_scorer import InterviewScorer
 from app.services.interview_state import interview_state
+from app.services.scoring_engine import ScoringEngine
+from app.services.time_manager import TimeManager
 from app.services.interview_prompts import (
     build_answer_evaluation_prompt,
     build_feedback_prompt,
 )
-from app.services.ollama_service import (
-    chat_with_ollama,
+from app.services.groq_service import (
+    chat_with_groq,
     parse_llm_json_response,
 )
 from app.services.prompt_builder import (
@@ -61,6 +63,7 @@ class InterviewAgent:
         job_role: str,
         interview_type: str = "technical",
         max_questions: int = 10,
+        interview_duration: int = 15,
     ) -> tuple[str, str]:
         """
         Start a new interview session.
@@ -82,6 +85,7 @@ class InterviewAgent:
             interview_type=normalized_type,
             resume=resume,
             max_questions=max_questions,
+            interview_duration=interview_duration,
         )
 
         # First stage
@@ -158,6 +162,16 @@ class InterviewAgent:
             evaluation,
         )
 
+        question_evaluation = ScoringEngine.evaluate_question(
+            session=session,
+            question=session.questions_asked[-1],
+            answer=answer,
+            llm_raw_eval=evaluation.model_dump(),
+        )
+        ScoringEngine.update_session_scores(session, question_evaluation)
+        self._update_difficulty(session, question_evaluation.overall_score)
+        TimeManager.update_session_time(session)
+
         # ---------------------------------------------------------
         # Check interview completion
         # ---------------------------------------------------------
@@ -181,14 +195,14 @@ class InterviewAgent:
                 "current_topic": session.current_topic,
                 "question": closing_question,
                 "completed": True,
+                **self._live_metrics(session),
             }
 
         # ---------------------------------------------------------
         # Decide whether to ask a follow-up question
         # ---------------------------------------------------------
         if evaluation.needs_followup:
-
-            next_question = self.generate_next_question(
+            next_question = self._generate_next_question_safely(
                 session=session,
                 candidate_answer=answer,
             )
@@ -197,7 +211,7 @@ class InterviewAgent:
 
             self._advance_stage(session)
 
-            next_question = self.generate_next_question(
+            next_question = self._generate_next_question_safely(
                 session=session,
                 candidate_answer=answer,
             )
@@ -227,7 +241,36 @@ class InterviewAgent:
             "current_topic": session.current_topic,
             "question": next_question,
             "completed": False,
+            **self._live_metrics(session),
         }
+
+    def _generate_next_question_safely(
+        self,
+        *,
+        session,
+        candidate_answer: str,
+    ) -> str:
+        """Keep an active interview moving when next-question generation fails."""
+        try:
+            return self.generate_next_question(
+                session=session,
+                candidate_answer=candidate_answer,
+            )
+        except Exception:  # noqa: BLE001 - the deterministic fallback is intentional
+            logger.exception(
+                "Next-question generation failed for session %s; using fallback.",
+                session.session_id,
+            )
+            topic = str(session.current_topic or session.current_stage).replace("_", " ").lower()
+            if topic:
+                return (
+                    f"Let's continue with {topic}. Can you describe a specific example "
+                    "from your experience and explain the result?"
+                )
+            return (
+                "Can you describe a specific example from your experience, "
+                "the approach you took, and the result?"
+            )
 
 
     def generate_next_question(
@@ -278,7 +321,7 @@ class InterviewAgent:
             session.session_id,
         )
 
-        response = chat_with_ollama(
+        response = chat_with_groq(
             messages=messages,
             temperature=0.4,
         )
@@ -343,7 +386,7 @@ class InterviewAgent:
         logger.info("Evaluating candidate answer...")
 
         try:
-            raw_response = chat_with_ollama(
+            raw_response = chat_with_groq(
                 messages=messages,
                 temperature=0,
                 json_output=True,
@@ -420,7 +463,7 @@ class InterviewAgent:
 
         try:
 
-            raw_response = chat_with_ollama(
+            raw_response = chat_with_groq(
                 messages=messages,
                 temperature=0,
                 json_output=True,
@@ -507,6 +550,28 @@ class InterviewAgent:
             session.current_stage,
         )
 
+    @staticmethod
+    def _update_difficulty(session, latest_score: float) -> None:
+        """Adjust the live difficulty label from backend evaluation only."""
+        if latest_score >= 80 and session.difficulty == "Easy":
+            session.difficulty = "Medium"
+        elif latest_score >= 85 and session.difficulty == "Medium":
+            session.difficulty = "Hard"
+        elif latest_score < 55 and session.difficulty == "Hard":
+            session.difficulty = "Medium"
+        elif latest_score < 45 and session.difficulty == "Medium":
+            session.difficulty = "Easy"
+
+    @staticmethod
+    def _live_metrics(session) -> dict[str, object]:
+        TimeManager.update_session_time(session)
+        return {
+            "remaining_time": session.metrics.remaining_time,
+            "interview_progress": session.metrics.interview_progress,
+            "difficulty": session.difficulty,
+            "interview_status": "completed" if session.completed else "in_progress",
+        }
+
 
     def _get_next_stage(self, current_stage: str) -> str:
         """
@@ -551,7 +616,7 @@ class InterviewAgent:
     def _conversation_to_messages(self, session) -> list[dict]:
             """
             Convert ConversationMessage objects to dictionaries
-            for sending to Ollama.
+            for sending to Groq.
             """
             return [
                 message.model_dump()

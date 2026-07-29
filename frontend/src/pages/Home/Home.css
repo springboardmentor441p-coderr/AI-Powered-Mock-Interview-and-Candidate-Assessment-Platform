@@ -1,24 +1,123 @@
-.home {
+.home-container {
+  display: flex;
+  flex-direction: column;
+  gap: 4rem;
+  padding: 2rem 0;
+}
+
+.home-hero {
+  display: flex;
+  flex-direction: column;
   align-items: center;
+  text-align: center;
+  gap: 1.5rem;
+  max-width: 850px;
+  margin: 0 auto;
+}
+
+.home-hero__badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.4rem 1rem;
+  border-radius: 9999px;
+  background: rgba(99, 102, 241, 0.12);
+  border: 1px solid rgba(99, 102, 241, 0.3);
+  color: #818cf8;
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+.home-hero__title {
+  font-size: 3.25rem;
+  font-weight: 800;
+  line-height: 1.15;
+  letter-spacing: -0.03em;
+}
+
+.text-gradient {
+  background: linear-gradient(135deg, #6366f1 0%, #38bdf8 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.home-hero__description {
+  font-size: 1.2rem;
+  color: #94a3b8;
+  line-height: 1.6;
+  max-width: 720px;
+}
+
+.home-hero__actions {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin-top: 1rem;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+.btn-secondary-custom {
+  background: rgba(255, 255, 255, 0.05);
+  color: #f8fafc;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  padding: 0.85rem 1.5rem;
+  border-radius: 10px;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.btn-secondary-custom:hover {
+  background: rgba(255, 255, 255, 0.1);
+  border-color: rgba(255, 255, 255, 0.3);
+}
+
+.features-section {
+  display: flex;
+  flex-direction: column;
+  gap: 2rem;
+  align-items: center;
+}
+
+.features-title {
+  font-size: 1.75rem;
+  font-weight: 700;
+  color: #f8fafc;
+}
+
+.features-grid {
   display: grid;
-  min-height: calc(100vh - 82px);
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 1.5rem;
+  width: 100%;
 }
 
-.home__content {
-  max-width: 760px;
+.feature-card {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
 }
 
-.home h1 {
-  color: var(--color-text);
-  font-size: clamp(2.4rem, 7vw, 5.5rem);
-  line-height: 1;
-  margin: 0;
+.feature-icon {
+  font-size: 2.2rem;
 }
 
-.home__description {
-  color: var(--color-muted);
+.feature-card h3 {
   font-size: 1.15rem;
-  line-height: 1.8;
-  margin: 24px 0 32px;
-  max-width: 680px;
+  font-weight: 700;
+  color: #f8fafc;
+}
+
+.feature-card p {
+  font-size: 0.9rem;
+  color: #94a3b8;
+  line-height: 1.5;
+}
+
+@media (max-width: 768px) {
+  .home-hero__title {
+    font-size: 2.25rem;
+  }
 }

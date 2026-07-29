@@ -1,5 +1,6 @@
 import { Route, Routes } from 'react-router-dom';
 
+import History from './pages/History/History.jsx';
 import Home from './pages/Home/Home.jsx';
 import Interview from './pages/Interview/Interview.jsx';
 import Results from './pages/Results/Results.jsx';
@@ -12,6 +13,7 @@ function AppRoutes() {
       <Route path="/resume-upload" element={<ResumeUpload />} />
       <Route path="/interview" element={<Interview />} />
       <Route path="/results" element={<Results />} />
+      <Route path="/history" element={<History />} />
     </Routes>
   );
 }

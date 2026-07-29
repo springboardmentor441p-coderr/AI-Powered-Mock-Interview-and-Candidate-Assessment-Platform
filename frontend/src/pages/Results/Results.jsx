@@ -1,14 +1,297 @@
+import React from 'react';
+import { useNavigate } from 'react-router-dom';
+import {
+  Area,
+  AreaChart,
+  Bar,
+  BarChart,
+  CartesianGrid,
+  Cell,
+  Legend,
+  PolarAngleAxis,
+  PolarGrid,
+  PolarRadiusAxis,
+  Radar,
+  RadarChart,
+  ResponsiveContainer,
+  Tooltip,
+  XAxis,
+  YAxis,
+} from 'recharts';
+import { Accordion } from '../../components/Accordion/Accordion.jsx';
+import { Badge, RatingBadge } from '../../components/Badge/Badge.jsx';
+import Button from '../../components/Button/Button.jsx';
+import { useInterview } from '../../context/InterviewContext.jsx';
 import './Results.css';
 
 function Results() {
-  return (
-    <section className="results page-grid">
-      <div>
-        <p className="page-kicker">Results</p>
-        <h1>Results Page</h1>
-        <p className="page-description">Interview Results will appear here.</p>
+  const navigate = useNavigate();
+  const { finalReport, jobRole, interviewType, resetSession } = useInterview();
+
+  if (!finalReport) {
+    return (
+      <div className="results-empty glass-card">
+        <h2>No Interview Report Found</h2>
+        <p>Complete an interview session to generate your comprehensive performance dashboard.</p>
+        <Button onClick={() => navigate('/resume-upload')}>Start Mock Interview</Button>
       </div>
-    </section>
+    );
+  }
+
+  const {
+    candidate_information,
+    communication_score,
+    confidence_score,
+    technical_score,
+    professionalism_score,
+    overall_score,
+    performance_rating,
+    strengths = [],
+    weaknesses = [],
+    recommendations = [],
+    learning_resources = [],
+    interview_summary = '',
+    question_wise_evaluation = [],
+    analytics = {},
+  } = finalReport;
+
+  const asScore = (value) => Number(value ?? 0);
+  const communicationScore = asScore(communication_score);
+  const confidenceScore = asScore(confidence_score);
+  const technicalScore = asScore(technical_score);
+  const professionalismScore = asScore(professionalism_score);
+  const overallScore = asScore(overall_score);
+
+  // Prepare chart data
+  const scoreBreakdownData = [
+    { category: 'Communication', score: communicationScore, fullMark: 100 },
+    { category: 'Technical', score: technicalScore, fullMark: 100 },
+    { category: 'Confidence', score: confidenceScore, fullMark: 100 },
+    { category: 'Professionalism', score: professionalismScore, fullMark: 100 },
+  ];
+
+  // Question trend data
+  const trendData = question_wise_evaluation.map((evalItem, idx) => ({
+    question: `Q${evalItem.question_number || idx + 1}`,
+    communication: asScore(evalItem.communication?.score),
+    technical: asScore(evalItem.technical?.score),
+    confidence: asScore(evalItem.confidence?.score),
+    overall: asScore(evalItem.overall_score),
+  }));
+
+  const weakAreas = analytics?.weak_areas || [];
+  const ranking = analytics?.candidate_ranking || {};
+  const percentile = analytics?.performance_tracking?.percentile_rank;
+
+  const handleStartNew = () => {
+    resetSession();
+    navigate('/resume-upload');
+  };
+
+  return (
+    <div className="results-page page-grid">
+      {/* Top Banner */}
+      <div className="results-header glass-card">
+        <div className="header-info">
+          <p className="page-kicker">Performance Analytics</p>
+          <h1>Interview Results Dashboard</h1>
+          <p className="page-description">
+            Candidate: <strong>{candidate_information?.name || 'Candidate'}</strong> | Role:{' '}
+            <strong>{jobRole}</strong> ({interviewType} interview)
+          </p>
+        </div>
+
+        <div className="header-overall-card">
+          <div className="overall-score-badge">
+            <span className="score-num">{overallScore.toFixed(1)}</span>
+            <span className="score-denom">/ 100</span>
+          </div>
+          <div className="rating-pill-wrap">
+            <span className="rating-label">Performance Rating</span>
+            <RatingBadge rating={performance_rating || 'Unrated'} />
+          </div>
+        </div>
+      </div>
+
+      {/* 4 Category Score Cards */}
+      <div className="score-cards-grid">
+        <div className="score-card glass-card">
+          <div className="score-card__icon">💬</div>
+          <div className="score-card__content">
+            <span className="score-card__title">Communication (30%)</span>
+            <span className="score-card__value">{communicationScore.toFixed(1)}</span>
+            <div className="progress-bar-track">
+              <div className="progress-bar-fill" style={{ width: `${communicationScore}%` }} />
+            </div>
+          </div>
+        </div>
+
+        <div className="score-card glass-card">
+          <div className="score-card__icon">⚙️</div>
+          <div className="score-card__content">
+            <span className="score-card__title">Technical Relevance (30%)</span>
+            <span className="score-card__value">{technicalScore.toFixed(1)}</span>
+            <div className="progress-bar-track">
+              <div className="progress-bar-fill" style={{ width: `${technicalScore}%` }} />
+            </div>
+          </div>
+        </div>
+
+        <div className="score-card glass-card">
+          <div className="score-card__icon">🔥</div>
+          <div className="score-card__content">
+            <span className="score-card__title">Confidence (25%)</span>
+            <span className="score-card__value">{confidenceScore.toFixed(1)}</span>
+            <div className="progress-bar-track">
+              <div className="progress-bar-fill" style={{ width: `${confidenceScore}%` }} />
+            </div>
+          </div>
+        </div>
+
+        <div className="score-card glass-card">
+          <div className="score-card__icon">👔</div>
+          <div className="score-card__content">
+            <span className="score-card__title">Professionalism (15%)</span>
+            <span className="score-card__value">{professionalismScore.toFixed(1)}</span>
+            <div className="progress-bar-track">
+              <div className="progress-bar-fill" style={{ width: `${professionalismScore}%` }} />
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Candidate Ranking & Weak Areas Summary */}
+      <div className="analytics-summary-grid">
+        <div className="ranking-card glass-card">
+          <h3>🏆 Candidate Ranking & Tier</h3>
+          <div className="ranking-details">
+            <div className="ranking-badge-box">
+              <span className="ranking-tier">{ranking.tier || performance_rating || 'Unrated'}</span>
+              {percentile !== undefined && (
+                <span className="ranking-percentile">Top {100 - percentile}% ({percentile}th Percentile)</span>
+              )}
+            </div>
+            <p className="ranking-desc">
+              Your overall score of {overallScore.toFixed(1)} ranks you among competitive candidates for{' '}
+              {jobRole}.
+            </p>
+          </div>
+        </div>
+
+        <div className="weak-areas-card glass-card">
+          <h3>⚠️ Key Focus & Weak Areas</h3>
+          <div className="weak-badges">
+            {weakAreas.map((area, idx) => (
+              <Badge key={idx} variant="warning">
+                {area}
+              </Badge>
+            ))}
+            {weakAreas.length === 0 && <span className="empty-note">No weak areas returned.</span>}
+          </div>
+        </div>
+      </div>
+
+      {/* Recharts Analytics Section */}
+      <div className="charts-grid">
+        {/* Question Score Progression Trend */}
+        <div className="chart-card glass-card">
+          <h3>📈 Score Progression Trend</h3>
+          <p className="chart-subtitle">Question-by-question trajectory across key dimensions</p>
+          <div className="chart-wrapper">
+            <ResponsiveContainer width="100%" height={280}>
+              <AreaChart data={trendData}>
+                <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.08)" />
+                <XAxis dataKey="question" stroke="#94a3b8" />
+                <YAxis domain={[0, 100]} stroke="#94a3b8" />
+                <Tooltip
+                  contentStyle={{ backgroundColor: '#0f172a', borderColor: '#6366f1', color: '#f8fafc' }}
+                />
+                <Legend />
+                <Area type="monotone" dataKey="overall" name="Overall" stroke="#38bdf8" fill="rgba(56, 189, 248, 0.2)" />
+                <Area type="monotone" dataKey="technical" name="Technical" stroke="#6366f1" fill="rgba(99, 102, 241, 0.1)" />
+                <Area type="monotone" dataKey="communication" name="Communication" stroke="#10b981" fill="none" />
+              </AreaChart>
+            </ResponsiveContainer>
+          </div>
+        </div>
+
+        {/* Skill Breakdown Radar Chart */}
+        <div className="chart-card glass-card">
+          <h3>🎯 Skill Breakdown Radar</h3>
+          <p className="chart-subtitle">Evaluation balance across candidate assessment dimensions</p>
+          <div className="chart-wrapper">
+            <ResponsiveContainer width="100%" height={280}>
+              <RadarChart data={scoreBreakdownData}>
+                <PolarGrid stroke="rgba(255,255,255,0.1)" />
+                <PolarAngleAxis dataKey="category" stroke="#cbd5e1" />
+                <PolarRadiusAxis angle={30} domain={[0, 100]} stroke="#94a3b8" />
+                <Radar name="Score" dataKey="score" stroke="#818cf8" fill="#6366f1" fillOpacity={0.4} />
+              </RadarChart>
+            </ResponsiveContainer>
+          </div>
+        </div>
+      </div>
+
+      {/* AI Feedback Cards */}
+      <div className="feedback-section-grid">
+        <div className="feedback-card glass-card border-green">
+          <h3>✅ Strengths</h3>
+          <ul className="feedback-list">
+            {strengths.map((item, idx) => (
+              <li key={idx}>{item}</li>
+            ))}
+          </ul>
+        </div>
+
+        <div className="feedback-card glass-card border-red">
+          <h3>❌ Weaknesses</h3>
+          <ul className="feedback-list">
+            {weaknesses.map((item, idx) => (
+              <li key={idx}>{item}</li>
+            ))}
+          </ul>
+        </div>
+
+        <div className="feedback-card glass-card border-blue">
+          <h3>💡 Recommendations</h3>
+          <ul className="feedback-list">
+            {recommendations.map((item, idx) => (
+              <li key={idx}>{item}</li>
+            ))}
+          </ul>
+        </div>
+
+        <div className="feedback-card glass-card border-purple">
+          <h3>📚 Learning Resources</h3>
+          <ul className="feedback-list">
+            {learning_resources.map((item, idx) => (
+              <li key={idx}>{item}</li>
+            ))}
+          </ul>
+        </div>
+      </div>
+
+      {/* Interview Summary Card */}
+      {interview_summary && (
+        <div className="interview-summary-card glass-card">
+          <h3>📝 Executive Interview Summary</h3>
+          <p>{interview_summary}</p>
+        </div>
+      )}
+
+      {/* Question-wise Accordion Breakdown */}
+      <div className="accordion-section glass-card">
+        <h2>Question-wise Evaluation Breakdown</h2>
+        <Accordion items={question_wise_evaluation} />
+      </div>
+
+      {/* Action Footer */}
+      <div className="results-actions">
+        <Button onClick={handleStartNew} size="large">
+          🔄 Start Another Mock Interview
+        </Button>
+      </div>
+    </div>
   );
 }
 

@@ -8,9 +8,12 @@ Run with:
 import logging
 
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
+
 from app.routers import interview
 from app.routers import resume
 from app.routers import voice
+from app.websocket import voice_ws
 
 logging.basicConfig(
     level=logging.INFO,
@@ -19,13 +22,23 @@ logging.basicConfig(
 
 app = FastAPI(
     title="Resume Parser API",
-    description="Parses PDF/DOCX resumes into structured JSON using a local Ollama LLM.",
+    description="Parses PDF/DOCX resumes into structured JSON using Groq.",
     version="1.0.0",
 )
 
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
 app.include_router(resume.router)
+app.include_router(resume.legacy_router)
 app.include_router(interview.router)
 app.include_router(voice.router)
+app.include_router(voice_ws.router)
 
 @app.get("/health", tags=["Health"])
 async def health_check() -> dict:

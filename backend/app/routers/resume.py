@@ -8,7 +8,7 @@ from pathlib import Path
 from fastapi import APIRouter, File, HTTPException, UploadFile, status
 
 from app.config import settings
-from app.services.ollama_service import OllamaConnectionError, OllamaInvalidResponseError
+from app.services.groq_service import GroqConnectionError, GroqInvalidResponseError
 from app.services.resume_parser import (
     UnsupportedFileTypeError,
     parse_resume,
@@ -18,7 +18,7 @@ from app.utils.pdf_utils import PDFExtractionError
 
 logger = logging.getLogger(__name__)
 
-router = APIRouter(prefix="/parse-resume", tags=["Resume Parser"])
+router = APIRouter(prefix="/resume", tags=["Resume Parser"])
 
 
 def _validate_upload(file: UploadFile, file_bytes: bytes) -> None:
@@ -66,11 +66,10 @@ def _validate_upload(file: UploadFile, file_bytes: bytes) -> None:
         )
 
 
-@router.post("", summary="Parse a resume file into structured JSON")
+@router.post("/parse", summary="Parse a resume file into structured JSON")
 async def parse_resume_endpoint(file: UploadFile = File(...)) -> dict:
     """
-    Parse an uploaded resume (.pdf or .docx) into structured JSON using
-    a local Ollama LLM.
+    Parse an uploaded resume (.pdf or .docx) into structured JSON using Groq.
 
     Args:
         file: The uploaded resume file, sent as multipart/form-data.
@@ -83,7 +82,7 @@ async def parse_resume_endpoint(file: UploadFile = File(...)) -> dict:
         HTTPException:
             400 - empty file, unsupported file type, or extraction failure.
             413 - file exceeds the maximum allowed size.
-            502 - could not reach or get a valid response from Ollama.
+            502 - could not reach or get a valid response from Groq.
             500 - unexpected internal error.
     """
     file_bytes = await file.read()
@@ -100,15 +99,15 @@ async def parse_resume_endpoint(file: UploadFile = File(...)) -> dict:
     except (PDFExtractionError, DOCXExtractionError) as exc:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc))
 
-    except OllamaConnectionError as exc:
-        logger.error("Ollama connection error: %s", exc)
+    except GroqConnectionError as exc:
+        logger.error("Groq connection error: %s", exc)
         raise HTTPException(
             status_code=status.HTTP_502_BAD_GATEWAY,
             detail=f"Failed to communicate with the LLM service: {exc}",
         )
 
-    except OllamaInvalidResponseError as exc:
-        logger.error("Invalid JSON from Ollama: %s", exc)
+    except GroqInvalidResponseError as exc:
+        logger.error("Invalid JSON from Groq: %s", exc)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to parse LLM response as JSON: {exc}",
@@ -120,3 +119,12 @@ async def parse_resume_endpoint(file: UploadFile = File(...)) -> dict:
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Unexpected error while parsing resume: {exc}",
         )
+
+
+legacy_router = APIRouter(prefix="/parse-resume", tags=["Resume Parser"])
+legacy_router.add_api_route(
+    "",
+    parse_resume_endpoint,
+    methods=["POST"],
+    summary="Parse a resume file into structured JSON",
+)

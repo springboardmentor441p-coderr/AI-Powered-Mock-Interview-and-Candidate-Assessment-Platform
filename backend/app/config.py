@@ -18,9 +18,6 @@ load_dotenv()
 class Settings:
     """Central place for all environment-driven configuration."""
 
-    OLLAMA_MODEL: str = os.getenv("OLLAMA_MODEL", "llama3.2")
-    OLLAMA_HOST: str = os.getenv("OLLAMA_HOST", "http://localhost:11434")
-
     # Max upload size in bytes (10 MB default, matches requirement #2)
     MAX_FILE_SIZE_BYTES: int = int(os.getenv("MAX_FILE_SIZE_MB", "10")) * 1024 * 1024
 
@@ -31,8 +28,17 @@ class Settings:
         "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
     }
 
-    # How long to wait for Ollama to respond before giving up (seconds)
-    OLLAMA_TIMEOUT_SECONDS: int = int(os.getenv("OLLAMA_TIMEOUT_SECONDS", "120"))
+    GROQ_API_KEY: str | None = os.getenv("GROQ_API_KEY")
+    GROQ_BASE_URL: str = os.getenv(
+        "GROQ_BASE_URL",
+        "https://api.groq.com/openai/v1",
+    )
+    GROQ_MODEL: str = os.getenv("GROQ_MODEL", "llama-3.1-8b-instant")
+    GROQ_TIMEOUT_SECONDS: float = float(os.getenv("GROQ_TIMEOUT_SECONDS", "60"))
+    GROQ_CONNECT_TIMEOUT_SECONDS: float = float(
+        os.getenv("GROQ_CONNECT_TIMEOUT_SECONDS", "10")
+    )
+    GROQ_MAX_TOKENS: int = int(os.getenv("GROQ_MAX_TOKENS", "2048"))
 
     # ==========================================================
     # Deepgram Voice AI Configuration

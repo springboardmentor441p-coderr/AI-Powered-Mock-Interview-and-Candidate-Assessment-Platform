@@ -2,6 +2,7 @@
 Pydantic models for the AI Interview Engine.
 """
 
+from datetime import datetime, timezone
 from typing import Any, Literal
 
 from pydantic import BaseModel, Field
@@ -19,7 +20,8 @@ class StartInterviewRequest(BaseModel):
     job_role: str = Field(..., min_length=2)
     interview_type: Literal["technical", "hr"] = "technical"
     resume: dict[str, Any]
-    max_questions: int = Field(default=10, ge=5, le=50)
+    max_questions: int = Field(default=10, ge=1, le=50)
+    interview_duration: int = Field(default=15, ge=1, le=180)
 
 
 class SubmitAnswerRequest(BaseModel):
@@ -50,6 +52,11 @@ class StartInterviewResponse(BaseModel):
 
     session_id: str
     question: str
+    current_stage: str = "WARM_UP"
+    remaining_time: int = 900
+    interview_progress: float = 0.0
+    difficulty: str = "Easy"
+    interview_status: str = "in_progress"
 
 
 class SubmitAnswerResponse(BaseModel):
@@ -59,6 +66,45 @@ class SubmitAnswerResponse(BaseModel):
     current_topic: str
     question: str
     completed: bool
+    remaining_time: int | None = None
+    interview_progress: float | None = None
+    difficulty: str | None = None
+    interview_status: str | None = None
+
+
+class EvaluationDimension(BaseModel):
+    """One scored evaluation dimension for a candidate answer."""
+
+    score: float = 0.0
+    reasoning: str = ""
+
+
+class QuestionEvaluation(BaseModel):
+    """Structured evaluation for one interview question and answer."""
+
+    question_number: int
+    question: str
+    answer: str
+    stage: str
+    difficulty: str = "Easy"
+    response_time_seconds: float = 0.0
+    communication: EvaluationDimension = Field(default_factory=EvaluationDimension)
+    technical: EvaluationDimension = Field(default_factory=EvaluationDimension)
+    confidence: EvaluationDimension = Field(default_factory=EvaluationDimension)
+    professionalism: EvaluationDimension = Field(default_factory=EvaluationDimension)
+    overall_score: float = 0.0
+    performance_rating: str = "Good"
+    needs_followup: bool = False
+
+
+class InterviewMetrics(BaseModel):
+    """Live metrics returned to the frontend during an interview."""
+
+    remaining_time: int = 900
+    interview_progress: float = 0.0
+    answered_questions: int = 0
+    followup_questions: int = 0
+    average_response_time: float = 0.0
 
 
 # ==========================================================
@@ -87,6 +133,8 @@ class InterviewScores(BaseModel):
     communication: float = 0.0
     confidence: float = 0.0
     problem_solving: float = 0.0
+    professionalism: float = 0.0
+    total_evaluations: int = 0
 
 
 # ==========================================================
@@ -120,9 +168,23 @@ class InterviewSession(BaseModel):
 
     max_questions: int = 10
 
+    interview_duration: int = 15
+
+    interview_start_time: datetime = Field(
+        default_factory=lambda: datetime.now(timezone.utc)
+    )
+
+    difficulty: str = "Easy"
+
     completed: bool = False
 
     scores: InterviewScores = Field(default_factory=InterviewScores)
+
+    metrics: InterviewMetrics = Field(default_factory=InterviewMetrics)
+
+    question_evaluations: list[QuestionEvaluation] = Field(default_factory=list)
+
+    average_answer_time: float = 0.0
 
 
 # ==========================================================
@@ -160,6 +222,7 @@ class InterviewFeedback(BaseModel):
     """
 
     overall_score: float
+    performance_rating: str = "Good"
 
     strengths: list[str]
 
@@ -170,3 +233,30 @@ class InterviewFeedback(BaseModel):
     technical_knowledge: str
 
     suggested_improvements: list[str]
+
+    practice_recommendations: list[str] = Field(default_factory=list)
+
+    learning_resources: list[str] = Field(default_factory=list)
+
+
+class InterviewReport(BaseModel):
+    """Dashboard-ready final interview report."""
+
+    candidate_information: dict[str, Any]
+    interview_type: str
+    job_role: str
+    interview_duration: dict[str, Any]
+    questions_asked: list[str]
+    question_wise_evaluation: list[QuestionEvaluation]
+    communication_score: float
+    confidence_score: float
+    technical_score: float
+    professionalism_score: float
+    overall_score: float
+    performance_rating: str
+    strengths: list[str]
+    weaknesses: list[str]
+    recommendations: list[str]
+    learning_resources: list[str]
+    interview_summary: str
+    analytics: dict[str, Any]

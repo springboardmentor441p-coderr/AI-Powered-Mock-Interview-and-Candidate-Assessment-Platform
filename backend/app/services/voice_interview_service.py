@@ -70,7 +70,7 @@ class VoiceInterviewService:
             )
 
         try:
-            # InterviewAgent is currently synchronous and may call Ollama, so run
+            # InterviewAgent is currently synchronous and may call Groq, so run
             # it off the event loop while keeping the existing API unchanged.
             interview_result = await run_in_threadpool(
                 self.interview_agent.submit_answer,
@@ -81,7 +81,7 @@ class VoiceInterviewService:
             raise
         except ValueError as exc:
             raise VoiceInterviewEngineError(str(exc)) from exc
-        except Exception as exc:  # noqa: BLE001 - hide Ollama/internal details
+        except Exception as exc:  # noqa: BLE001 - hide LLM/internal details
             logger.exception("Interview agent failed during voice interview")
             raise VoiceInterviewEngineError(
                 "The interview engine could not process this answer."
@@ -109,10 +109,16 @@ class VoiceInterviewService:
             "session_id": interview_result.get("session_id", cleaned_session_id),
             "candidate_transcript": transcript,
             "next_question": next_question,
+            "question": next_question,
             "question_number": interview_result.get("question_number"),
             "current_stage": interview_result.get("current_stage"),
             "current_topic": interview_result.get("current_topic"),
             "completed": interview_result.get("completed", False),
+            "remaining_time": interview_result.get("remaining_time"),
+            "interview_progress": interview_result.get("interview_progress"),
+            "difficulty": interview_result.get("difficulty"),
+            "interview_status": interview_result.get("interview_status"),
+            "report": interview_result.get("report"),
             "audio_file": audio_filename,
             "audio_path": str(audio_path),
             "audio_url": f"/voice/audio/{audio_filename}",

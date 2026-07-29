@@ -6,11 +6,13 @@ version, request options are passed directly to resource methods instead of
 using the older PrerecordedOptions / SpeakOptions helper classes.
 """
 
+import asyncio
 import logging
 from contextlib import AbstractAsyncContextManager
 from pathlib import Path
 from typing import Any
 
+import httpx
 from deepgram.client import AsyncDeepgramClient
 from deepgram.core.api_error import ApiError
 
@@ -74,20 +76,142 @@ class DeepgramService:
             raise DeepgramServiceError("Audio payload is empty.")
 
         try:
-            response = await self.client.listen.v1.media.transcribe_file(
-                request=audio_bytes,
-                model=model or settings.DEEPGRAM_STT_MODEL,
-                language=language or settings.DEEPGRAM_LANGUAGE,
-                smart_format=smart_format,
-                punctuate=punctuate,
-            )
-            return self._extract_transcript(response)
-        except ApiError as exc:
-            logger.warning("Deepgram STT API error: %s", exc)
-            raise DeepgramServiceError(self._format_api_error(exc)) from exc
+            content_type = self._detect_audio_content_type(audio_bytes)
+            async with httpx.AsyncClient(timeout=httpx.Timeout(60.0, connect=10.0)) as client:
+                for attempt in range(3):
+                    response = await client.post(
+                        "https://api.deepgram.com/v1/listen",
+                        params={
+                            "model": model or settings.DEEPGRAM_STT_MODEL,
+                            "language": language or settings.DEEPGRAM_LANGUAGE,
+                            "smart_format": str(smart_format).lower(),
+                            "punctuate": str(punctuate).lower(),
+                        },
+                        headers={
+                            "Authorization": f"Token {self.api_key}",
+                            "Content-Type": content_type,
+                            "Content-Length": str(len(audio_bytes)),
+                        },
+                        content=audio_bytes,
+                    )
+                    if response.status_code not in {408, 429, 500, 502, 503, 504}:
+                        break
+                    if response.status_code == 408:
+                        # SLOW_UPLOAD is a route-level failure; retrying the same
+                        # body only delays the working fallback.
+                        break
+                    logger.warning(
+                        "Transient Deepgram STT response %s on attempt %s/3",
+                        response.status_code,
+                        attempt + 1,
+                    )
+                    if attempt < 2:
+                        await asyncio.sleep(0.5 * (2 ** attempt))
+            if response.is_error:
+                request_id = response.headers.get("dg-request-id", "unknown")
+                try:
+                    detail = response.json()
+                except ValueError:
+                    detail = response.text[:500]
+                if settings.GROQ_API_KEY:
+                    logger.warning(
+                        "Deepgram STT failed with HTTP %s; falling back to Groq Whisper.",
+                        response.status_code,
+                    )
+                    return await self._transcribe_with_groq(
+                        audio_bytes,
+                        content_type=content_type,
+                        language=language or settings.DEEPGRAM_LANGUAGE,
+                    )
+                raise DeepgramServiceError(
+                    f"Deepgram HTTP {response.status_code} "
+                    f"(request {request_id}): {detail}"
+                )
+            return self._extract_transcript(response.json())
+        except DeepgramServiceError:
+            raise
+        except httpx.TimeoutException as exc:
+            logger.warning("Deepgram STT request timed out", exc_info=True)
+            if settings.GROQ_API_KEY:
+                return await self._transcribe_with_groq(
+                    audio_bytes,
+                    content_type=self._detect_audio_content_type(audio_bytes),
+                    language=language or settings.DEEPGRAM_LANGUAGE,
+                )
+            raise DeepgramServiceError("Deepgram transcription timed out.") from exc
+        except httpx.HTTPError as exc:
+            logger.warning("Deepgram STT network error", exc_info=True)
+            if settings.GROQ_API_KEY:
+                return await self._transcribe_with_groq(
+                    audio_bytes,
+                    content_type=self._detect_audio_content_type(audio_bytes),
+                    language=language or settings.DEEPGRAM_LANGUAGE,
+                )
+            raise DeepgramServiceError(
+                f"Could not connect to Deepgram: {type(exc).__name__}: {exc}"
+            ) from exc
         except Exception as exc:  # noqa: BLE001 - normalize SDK/network errors
             logger.exception("Unexpected Deepgram STT failure")
-            raise DeepgramServiceError("Deepgram speech-to-text failed.") from exc
+            raise DeepgramServiceError(
+                f"Deepgram speech-to-text failed: {type(exc).__name__}: {exc}"
+            ) from exc
+
+    async def _transcribe_with_groq(
+        self,
+        audio_bytes: bytes,
+        *,
+        content_type: str,
+        language: str,
+    ) -> str:
+        """Use Groq Whisper when the configured Deepgram route is unavailable."""
+        extension = {
+            "audio/wav": ".wav",
+            "audio/mp4": ".m4a",
+            "audio/ogg": ".ogg",
+            "audio/webm": ".webm",
+            "audio/mpeg": ".mp3",
+        }.get(content_type, ".wav")
+        url = settings.GROQ_BASE_URL.rstrip("/") + "/audio/transcriptions"
+
+        try:
+            async with httpx.AsyncClient(
+                timeout=httpx.Timeout(120.0, connect=10.0)
+            ) as client:
+                response = await client.post(
+                    url,
+                    headers={"Authorization": f"Bearer {settings.GROQ_API_KEY}"},
+                    files={
+                        "file": (
+                            f"candidate_answer{extension}",
+                            audio_bytes,
+                            content_type,
+                        ),
+                    },
+                    data={
+                        "model": "whisper-large-v3-turbo",
+                        "language": language,
+                        "response_format": "json",
+                    },
+                )
+            if response.is_error:
+                raise DeepgramServiceError(
+                    f"Fallback transcription HTTP {response.status_code}: "
+                    f"{response.text[:500]}"
+                )
+            transcript = str(response.json().get("text") or "").strip()
+            if not transcript:
+                raise DeepgramServiceError(
+                    "Fallback transcription returned an empty transcript."
+                )
+            logger.info("Groq Whisper fallback transcription succeeded.")
+            return transcript
+        except DeepgramServiceError:
+            raise
+        except Exception as exc:  # noqa: BLE001 - normalize fallback failures
+            logger.exception("Groq Whisper fallback transcription failed")
+            raise DeepgramServiceError(
+                f"Fallback transcription failed: {type(exc).__name__}: {exc}"
+            ) from exc
 
     async def text_to_speech(
         self,
@@ -184,11 +308,30 @@ class DeepgramService:
 
     @staticmethod
     def _extract_transcript(response: Any) -> str:
+        if isinstance(response, dict):
+            channels = response.get("results", {}).get("channels", [])
+            alternatives = channels[0].get("alternatives", []) if channels else []
+            return str(alternatives[0].get("transcript") or "") if alternatives else ""
+
         channels = response.results.channels
         if not channels or not channels[0].alternatives:
             return ""
 
         return channels[0].alternatives[0].transcript or ""
+
+    @staticmethod
+    def _detect_audio_content_type(audio: bytes) -> str:
+        if audio.startswith(b"RIFF") and audio[8:12] == b"WAVE":
+            return "audio/wav"
+        if audio.startswith(b"OggS"):
+            return "audio/ogg"
+        if audio.startswith(b"\x1a\x45\xdf\xa3"):
+            return "audio/webm"
+        if len(audio) >= 12 and audio[4:8] == b"ftyp":
+            return "audio/mp4"
+        if audio.startswith((b"ID3", b"\xff\xfb", b"\xff\xf3", b"\xff\xf2")):
+            return "audio/mpeg"
+        return "application/octet-stream"
 
     @staticmethod
     def _format_api_error(exc: ApiError) -> str:
