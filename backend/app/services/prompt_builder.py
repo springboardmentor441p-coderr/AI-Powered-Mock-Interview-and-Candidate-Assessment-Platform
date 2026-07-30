@@ -190,7 +190,8 @@ Previous Conversation
 Generate the next interviewer question.
 
 Rules:
-1. Return only the question text.
+1. Return only the question text. Do not explain why you selected it, announce
+   that it is a follow-up, or add labels such as "Question:".
 2. Ask exactly one question.
 3. Use resume-specific projects, skills, or experience when relevant.
 4. Do not invent resume details, project details, company facts, metrics, or tools.

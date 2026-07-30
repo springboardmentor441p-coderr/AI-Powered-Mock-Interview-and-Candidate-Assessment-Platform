@@ -125,4 +125,46 @@ def test_final_two_minutes_asks_one_closing_question(client):
         },
     )
     assert closing_answer.json()["completed"] is True
+
+
+def test_detailed_scoring_failure_does_not_abort_interview(client, monkeypatch):
+    from app.services.scoring_engine import ScoringEngine
+
+    start = client.post(
+        "/interview/start",
+        json={
+            "job_role": "Backend Developer",
+            "resume": {"name": "John Doe"},
+        },
+    )
+
+    monkeypatch.setattr(
+        ScoringEngine,
+        "evaluate_question",
+        lambda **kwargs: (_ for _ in ()).throw(RuntimeError("Analyzer failed")),
+    )
+
+    answer = client.post(
+        "/interview/answer",
+        json={
+            "session_id": start.json()["session_id"],
+            "answer": "I designed and tested a FastAPI backend service.",
+        },
+    )
+
+    assert answer.status_code == 200
+    assert answer.json()["completed"] is False
+
+
+def test_generated_question_removes_model_narration():
+    from app.services.interview_agent import InterviewAgent
+
+    response = (
+        "Based on the current interview state, I'll ask a follow-up question. "
+        '"Can you elaborate on the technologies you used?"'
+    )
+
+    assert InterviewAgent._clean_generated_question(response) == (
+        "Can you elaborate on the technologies you used?"
+    )
 from datetime import timedelta

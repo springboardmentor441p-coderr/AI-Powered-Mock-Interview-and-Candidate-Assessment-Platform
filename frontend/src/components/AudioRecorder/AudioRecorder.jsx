@@ -7,51 +7,6 @@ import './AudioRecorder.css';
 const SILENCE_THRESHOLD = 0.025;
 const SILENCE_MS = 1400;
 const MIN_SPEECH_MS = 600;
-const CHUNK_MS = 250;
-
-function encodePcmWav(audioBuffer) {
-  const channelCount = audioBuffer.numberOfChannels;
-  const sampleCount = audioBuffer.length;
-  const bytesPerSample = 2;
-  const dataSize = sampleCount * channelCount * bytesPerSample;
-  const buffer = new ArrayBuffer(44 + dataSize);
-  const view = new DataView(buffer);
-
-  const writeText = (offset, value) => {
-    for (let index = 0; index < value.length; index += 1) {
-      view.setUint8(offset + index, value.charCodeAt(index));
-    }
-  };
-
-  writeText(0, 'RIFF');
-  view.setUint32(4, 36 + dataSize, true);
-  writeText(8, 'WAVE');
-  writeText(12, 'fmt ');
-  view.setUint32(16, 16, true);
-  view.setUint16(20, 1, true);
-  view.setUint16(22, channelCount, true);
-  view.setUint32(24, audioBuffer.sampleRate, true);
-  view.setUint32(28, audioBuffer.sampleRate * channelCount * bytesPerSample, true);
-  view.setUint16(32, channelCount * bytesPerSample, true);
-  view.setUint16(34, 16, true);
-  writeText(36, 'data');
-  view.setUint32(40, dataSize, true);
-
-  const channels = Array.from(
-    { length: channelCount },
-    (_, index) => audioBuffer.getChannelData(index),
-  );
-  let offset = 44;
-  for (let frame = 0; frame < sampleCount; frame += 1) {
-    for (let channel = 0; channel < channelCount; channel += 1) {
-      const sample = Math.max(-1, Math.min(1, channels[channel][frame]));
-      view.setInt16(offset, sample < 0 ? sample * 0x8000 : sample * 0x7fff, true);
-      offset += bytesPerSample;
-    }
-  }
-
-  return buffer;
-}
 
 function AudioRecorder({
   sessionId,
@@ -195,14 +150,10 @@ function AudioRecorder({
 
       try {
         const recordedBlob = new Blob(chunks, { type: mediaRecorder.mimeType });
-        const audioContext = audioContextRef.current;
-        if (!audioContext || recordedBlob.size === 0) {
-          throw new Error('No decodable audio was recorded.');
+        if (recordedBlob.size === 0) {
+          throw new Error('No audio was recorded.');
         }
-        const decodedAudio = await audioContext.decodeAudioData(
-          await recordedBlob.arrayBuffer(),
-        );
-        activeSocket.send(new Blob([encodePcmWav(decodedAudio)], { type: 'audio/wav' }));
+        activeSocket.send(recordedBlob);
         sendControl({ type: 'end_utterance' });
       } catch (err) {
         isAiThinkingRef.current = false;
@@ -216,9 +167,12 @@ function AudioRecorder({
 
     sendControl({
       type: 'start_utterance',
-      mime_type: 'audio/wav',
+      mime_type: mediaRecorder.mimeType || supportedMimeType || 'audio/webm',
     });
-    mediaRecorder.start(CHUNK_MS);
+    // With no timeslice, the browser emits one finalized media file on stop.
+    // Concatenating periodic MediaRecorder fragments is not portable across
+    // browsers and can produce a blob that transcription APIs cannot decode.
+    mediaRecorder.start();
   };
 
   const monitorSilence = () => {

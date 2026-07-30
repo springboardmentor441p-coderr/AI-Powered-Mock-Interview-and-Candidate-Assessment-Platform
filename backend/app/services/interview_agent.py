@@ -13,6 +13,7 @@ Responsible for:
 from __future__ import annotations
 
 import logging
+import re
 
 from app.services.interview_scorer import InterviewScorer
 from app.services.interview_state import interview_state
@@ -35,7 +36,9 @@ from app.services.prompt_builder import (
 )
 from app.models.interview_models import (
     AnswerEvaluation,
+    EvaluationDimension,
     InterviewFeedback,
+    QuestionEvaluation,
 )
 
 
@@ -171,13 +174,12 @@ class InterviewAgent:
             evaluation,
         )
 
-        question_evaluation = ScoringEngine.evaluate_question(
+        question_evaluation = self._record_question_evaluation_safely(
             session=session,
             question=session.questions_asked[-1],
             answer=answer,
-            llm_raw_eval=evaluation.model_dump(),
+            evaluation=evaluation,
         )
-        ScoringEngine.update_session_scores(session, question_evaluation)
         self._update_difficulty(session, question_evaluation.overall_score)
         TimeManager.update_session_time(session)
 
@@ -248,6 +250,71 @@ class InterviewAgent:
             "completed": False,
             **self._live_metrics(session),
         }
+
+    @staticmethod
+    def _record_question_evaluation_safely(
+        *,
+        session,
+        question: str,
+        answer: str,
+        evaluation: AnswerEvaluation,
+    ) -> QuestionEvaluation:
+        """Record a usable evaluation even if an optional analyzer fails."""
+        try:
+            question_evaluation = ScoringEngine.evaluate_question(
+                session=session,
+                question=question,
+                answer=answer,
+                llm_raw_eval=evaluation.model_dump(),
+            )
+        except Exception:  # noqa: BLE001 - scoring must not abort the interview
+            logger.exception(
+                "Detailed scoring failed for session %s; using LLM score fallback.",
+                session.session_id,
+            )
+            technical = max(0.0, min(100.0, float(evaluation.technical * 10)))
+            communication = max(0.0, min(100.0, float(evaluation.communication * 10)))
+            confidence = max(0.0, min(100.0, float(evaluation.confidence * 10)))
+            professionalism = max(
+                0.0,
+                min(100.0, float(evaluation.problem_solving * 10)),
+            )
+            overall = ScoringEngine.calculate_overall_score(
+                communication=communication,
+                technical=technical,
+                confidence=confidence,
+                professionalism=professionalism,
+            )
+            reasoning = evaluation.reason or "Fallback evaluation."
+            question_evaluation = QuestionEvaluation(
+                question_number=session.question_count,
+                question=question,
+                answer=answer,
+                stage=session.current_stage,
+                difficulty=session.difficulty,
+                communication=EvaluationDimension(
+                    score=communication,
+                    reasoning=reasoning,
+                ),
+                technical=EvaluationDimension(
+                    score=technical,
+                    reasoning=reasoning,
+                ),
+                confidence=EvaluationDimension(
+                    score=confidence,
+                    reasoning=reasoning,
+                ),
+                professionalism=EvaluationDimension(
+                    score=professionalism,
+                    reasoning=reasoning,
+                ),
+                overall_score=overall,
+                performance_rating=ScoringEngine.classify_performance_rating(overall),
+                needs_followup=evaluation.needs_followup,
+            )
+
+        ScoringEngine.update_session_scores(session, question_evaluation)
+        return question_evaluation
 
     def _complete_interview(self, session, message: str) -> dict[str, object]:
         """Mark a session complete and return its final interviewer turn."""
@@ -348,20 +415,7 @@ class InterviewAgent:
             temperature=0.4,
         )
 
-        question = response.strip()
-
-        # Defensive cleanup if the model accidentally returns markdown
-        if question.startswith("```"):
-            question = (
-                question.replace("```", "")
-                .replace("markdown", "")
-                .replace("text", "")
-                .strip()
-            )
-
-        # Remove surrounding quotes if present
-        if question.startswith('"') and question.endswith('"'):
-            question = question[1:-1].strip()
+        question = self._clean_generated_question(response)
 
         # Prevent empty responses
         if not question:
@@ -381,6 +435,43 @@ class InterviewAgent:
         logger.info("Generated Question: %s", question)
 
         return question
+
+    @staticmethod
+    def _clean_generated_question(response: str) -> str:
+        """Remove model narration and return only one interviewer question."""
+        cleaned = response.strip()
+        if cleaned.startswith("```"):
+            cleaned = re.sub(r"^```(?:markdown|text)?\s*", "", cleaned, flags=re.IGNORECASE)
+            cleaned = re.sub(r"\s*```$", "", cleaned).strip()
+
+        quoted_questions = re.findall(
+            r'["\u201c]([^"\u201d]*\?)["\u201d]',
+            cleaned,
+            flags=re.DOTALL,
+        )
+        if quoted_questions:
+            return quoted_questions[-1].strip()
+
+        lines = [line.strip() for line in cleaned.splitlines() if line.strip()]
+        question_lines = [line for line in lines if line.endswith("?")]
+        if question_lines:
+            cleaned = question_lines[-1]
+
+        cleaned = re.sub(
+            r"^(?:next\s+)?(?:interviewer\s+)?question\s*:\s*",
+            "",
+            cleaned,
+            flags=re.IGNORECASE,
+        ).strip().strip('"\'\u201c\u201d')
+
+        if "?" in cleaned:
+            # Drop prose before the final sentence that contains the question.
+            sentences = re.split(r"(?<=[.!])\s+", cleaned)
+            question_sentences = [sentence.strip() for sentence in sentences if "?" in sentence]
+            if question_sentences:
+                cleaned = question_sentences[-1]
+
+        return cleaned.strip()
 
 
     def evaluate_answer(

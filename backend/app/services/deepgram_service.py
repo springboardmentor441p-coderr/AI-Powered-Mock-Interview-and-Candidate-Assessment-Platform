@@ -75,8 +75,19 @@ class DeepgramService:
         if not audio_bytes:
             raise DeepgramServiceError("Audio payload is empty.")
 
+        content_type = self._detect_audio_content_type(audio_bytes)
+        if settings.VOICE_STT_PROVIDER == "groq":
+            if not settings.GROQ_API_KEY:
+                raise DeepgramConfigurationError(
+                    "VOICE_STT_PROVIDER is 'groq', but GROQ_API_KEY is not configured."
+                )
+            return await self._transcribe_with_groq(
+                audio_bytes,
+                content_type=content_type,
+                language=language or settings.DEEPGRAM_LANGUAGE,
+            )
+
         try:
-            content_type = self._detect_audio_content_type(audio_bytes)
             async with httpx.AsyncClient(timeout=httpx.Timeout(60.0, connect=10.0)) as client:
                 for attempt in range(3):
                     response = await client.post(

@@ -15,7 +15,7 @@ from uuid import uuid4
 from starlette.concurrency import run_in_threadpool
 
 from app.config import settings
-from app.services.deepgram_service import DeepgramService
+from app.services.deepgram_service import DeepgramService, DeepgramServiceError
 from app.services.interview_agent import InterviewAgent
 from app.services.interview_state import InterviewSessionNotFound
 from app.services.time_manager import TimeManager
@@ -80,14 +80,20 @@ class VoiceInterviewService:
                 session_id=cleaned_session_id,
                 answer=transcript,
             )
-        except (InterviewSessionNotFound, VoiceInterviewValidationError):
+        except (
+            InterviewSessionNotFound,
+            VoiceInterviewValidationError,
+            DeepgramServiceError,
+        ):
             raise
         except ValueError as exc:
             raise VoiceInterviewEngineError(str(exc)) from exc
         except Exception as exc:  # noqa: BLE001 - hide LLM/internal details
             logger.exception("Interview agent failed during voice interview")
+            reason = str(exc).strip() or "No additional details were provided."
             raise VoiceInterviewEngineError(
-                "The interview engine could not process this answer."
+                "The interview engine could not process this answer: "
+                f"{type(exc).__name__}: {reason}"
             ) from exc
         finally:
             TimeManager.resume(session)
