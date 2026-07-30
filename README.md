@@ -280,123 +280,63 @@ The evaluation generates:
 
 ---
 
-# ⚙️ End-to-End Project Workflow
-
-The overall execution flow of SmartHire AI is shown below.
-
-```text
-Candidate Opens Website
-            │
-            ▼
-Upload Resume
-            │
-            ▼
-Resume Parsing
-            │
-            ▼
-Candidate Information Stored
-            │
-            ▼
-Start Interview
-            │
-            ▼
-Ultravox AI Voice Interview
-            │
-            ▼
-Speech-to-Text
-            │
-            ▼
-Interview Transcript
-            │
-            ▼
-Groq AI Evaluation
-            │
-            ▼
-Overall Score Generated
-            │
-            ▼
-AI Feedback Generated
-            │
-            ▼
-Results Saved in Database
-            │
-            ▼
-Candidate Dashboard
-            │
-            ▼
-Recruiter Dashboard
-```
-
----
-
 # 👨‍💼 Candidate Workflow
 
-The candidate journey consists of multiple stages.
-
-### Step 1
-
-Open SmartHire AI.
-
-↓
-
-### Step 2
-
-Upload resume.
-
-↓
-
-### Step 3
-
-Resume is parsed.
-
-↓
-
-### Step 4
-
-Candidate details are extracted.
-
-↓
-
-### Step 5
-
-Interview session begins.
-
-↓
-
-### Step 6
-
-Ultravox conducts the interview.
-
-↓
-
-### Step 7
-
-Candidate answers using voice.
-
-↓
-
-### Step 8
-
-Responses are converted into text.
-
-↓
-
-### Step 9
-
-Groq evaluates the transcript.
-
-↓
-
-### Step 10
-
-Results are displayed.
-
-↓
-
-### Step 11
-
-Candidate downloads interview report.
-
+```text
+Candidate Opens SmartHire AI
+            │
+            ▼
+Uploads Resume (PDF)
+            │
+            ▼
+Resume Parsed Using
+PyMuPDF + Regex
+            │
+            ▼
+Candidate Profile Stored
+in SQLite Database
+            │
+            ▼
+Starts AI Voice Interview
+            │
+            ▼
+Ultravox Conducts
+Voice Interview
+            │
+            ▼
+Candidate Responds
+Using Voice
+            │
+            ▼
+Speech-to-Text (STT)
+Generates Transcript
+            │
+            ▼
+Interview Transcript Sent
+to Groq LLM
+            │
+            ▼
+AI Evaluates Candidate
+Performance
+            │
+            ▼
+Overall Score,
+Technical Score,
+Communication Score,
+Feedback & Recommendation
+Generated
+            │
+            ▼
+Results Stored
+in SQLite Database
+            │
+            ▼
+Candidate Views
+Assessment Report
+            │
+            ▼
+Downloads PDF Report
+```
 ---
 
 # 👩‍💼 Recruiter Workflow
@@ -828,7 +768,7 @@ Possible Values
 
 # 📂 Project Folder Structure
 
-```
+```text
 SmartHire-AI
 │
 ├── backend
@@ -839,7 +779,8 @@ SmartHire-AI
 │   ├── llm_service.py
 │   ├── requirements.txt
 │   ├── uploads/
-│   └── smarthire.db
+│   ├── smarthire.db
+│   └── .env
 │
 ├── frontend
 │   │
@@ -848,23 +789,33 @@ SmartHire-AI
 │   │   │
 │   │   ├── components/
 │   │   ├── pages/
-│   │   │      Home.jsx
-│   │   │      Upload.jsx
-│   │   │      Interview.jsx
-│   │   │      Results.jsx
-│   │   │      Dashboard.jsx
-│   │   │      RecruiterDashboard.jsx
+│   │   │   ├── Home.jsx
+│   │   │   ├── Upload.jsx
+│   │   │   ├── Interview.jsx
+│   │   │   ├── Results.jsx
+│   │   │   ├── Dashboard.jsx
+│   │   │   └── RecruiterDashboard.jsx
 │   │   │
 │   │   ├── App.jsx
 │   │   └── main.jsx
 │   │
 │   ├── package.json
+│   ├── package-lock.json
 │   └── vite.config.js
 │
+├── screenshots
+│   ├── home.png
+│   ├── upload.png
+│   ├── interview.png
+│   ├── results.png
+│   ├── recruiter-dashboard.png
+│   ├── architecture.png
+│   └── workflow.png
+│
 ├── README.md
-└── .env
+├── LICENSE
+└── .gitignore
 ```
-
 ---
 
 # ⚡ Installation Guide
@@ -920,31 +871,6 @@ Activate the virtual environment.
 ```bash
 venv\Scripts\activate
 ```
-
-### Linux / macOS
-
-```bash
-source venv/bin/activate
-```
-
-Install all required dependencies.
-
-```bash
-pip install -r requirements.txt
-```
-
-Start the Flask server.
-
-```bash
-python app.py
-```
-
-Backend runs on
-
-```
-http://localhost:5000
-```
-
 ---
 
 # Frontend Setup
