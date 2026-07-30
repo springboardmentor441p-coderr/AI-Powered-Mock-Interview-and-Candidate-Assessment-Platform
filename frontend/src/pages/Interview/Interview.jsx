@@ -31,6 +31,7 @@ function Interview() {
     saveFinalReport,
     resetSession,
     addNotification,
+    setTimerPaused,
   } = useInterview();
 
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -91,6 +92,7 @@ function Interview() {
     }
 
     setIsSubmitting(true);
+    setTimerPaused(true);
     setError('');
 
     try {
@@ -104,6 +106,7 @@ function Interview() {
       setError(getApiErrorMessage(err, err.message || 'Failed to submit answer.'));
     } finally {
       setIsSubmitting(false);
+      setTimerPaused(false);
     }
   };
 
@@ -121,6 +124,30 @@ function Interview() {
       setIsSubmitting(false);
     }
   };
+
+  useEffect(() => {
+    if (
+      remainingTime > 0 ||
+      interviewStatus !== 'in_progress' ||
+      !sessionId ||
+      isGeneratingReportRef.current
+    ) {
+      return;
+    }
+
+    isGeneratingReportRef.current = true;
+    setIsSubmitting(true);
+    endInterview({ sessionId })
+      .then((report) => {
+        saveFinalReport(report);
+        navigate('/results');
+      })
+      .catch((err) => {
+        isGeneratingReportRef.current = false;
+        setError(getApiErrorMessage(err, 'Time ended, but report generation failed.'));
+      })
+      .finally(() => setIsSubmitting(false));
+  }, [remainingTime, interviewStatus, sessionId, navigate, saveFinalReport]);
 
   if (!sessionId && !currentQuestion) {
     return (
@@ -235,6 +262,7 @@ function Interview() {
               sessionId={sessionId}
               onVoiceStreamResponse={handleVoiceStreamResponse}
               onTextSubmit={handleTextSubmit}
+              onProcessingChange={setTimerPaused}
               isSubmitting={isSubmitting}
             />
 

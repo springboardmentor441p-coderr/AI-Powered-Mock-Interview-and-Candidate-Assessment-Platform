@@ -57,6 +57,7 @@ function AudioRecorder({
   sessionId,
   onVoiceStreamResponse,
   onTextSubmit,
+  onProcessingChange,
   isSubmitting = false,
 }) {
   const mediaRecorderRef = useRef(null);
@@ -124,6 +125,7 @@ function AudioRecorder({
     setIsSpeaking(false);
     setIsAiThinking(false);
     isAiThinkingRef.current = false;
+    onProcessingChange?.(false);
     setPermissionStatus('Microphone ready');
   };
 
@@ -140,6 +142,7 @@ function AudioRecorder({
     setHasOpenTurn(false);
     isAiThinkingRef.current = true;
     setIsAiThinking(true);
+    onProcessingChange?.(true);
     setIsSpeaking(false);
     setPermissionStatus('Answer captured. AI is thinking...');
     if (mediaRecorderRef.current?.state === 'recording') {
@@ -204,6 +207,7 @@ function AudioRecorder({
       } catch (err) {
         isAiThinkingRef.current = false;
         setIsAiThinking(false);
+        onProcessingChange?.(false);
         setError('The recorded audio could not be prepared. Please try the answer again.');
         setPermissionStatus('Ready for another answer.');
         sendControl({ type: 'cancel_utterance' });
@@ -284,6 +288,7 @@ function AudioRecorder({
         if (data.type === 'error') {
           isAiThinkingRef.current = false;
           setIsAiThinking(false);
+          onProcessingChange?.(false);
           setError(data.message || 'Realtime voice interview failed.');
           setPermissionStatus('Listening paused after an error.');
           return;
@@ -291,6 +296,7 @@ function AudioRecorder({
         if (data.type === 'interviewer_turn') {
           isAiThinkingRef.current = false;
           setIsAiThinking(false);
+          onProcessingChange?.(false);
           setPermissionStatus('AI responded. Speak when you are ready.');
           if (onVoiceStreamResponse) {
             await onVoiceStreamResponse(data);
@@ -309,6 +315,7 @@ function AudioRecorder({
         setIsSpeaking(false);
         setIsAiThinking(false);
         isAiThinkingRef.current = false;
+        onProcessingChange?.(false);
         setPermissionStatus('Realtime voice disconnected.');
       };
 

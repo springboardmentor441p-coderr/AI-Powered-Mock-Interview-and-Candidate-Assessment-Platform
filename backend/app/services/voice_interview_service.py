@@ -18,6 +18,7 @@ from app.config import settings
 from app.services.deepgram_service import DeepgramService
 from app.services.interview_agent import InterviewAgent
 from app.services.interview_state import InterviewSessionNotFound
+from app.services.time_manager import TimeManager
 
 logger = logging.getLogger(__name__)
 
@@ -63,13 +64,15 @@ class VoiceInterviewService:
         if not cleaned_session_id:
             raise VoiceInterviewValidationError("session_id is required.")
 
-        transcript = (await self.deepgram.speech_to_text(audio_path)).strip()
-        if not transcript:
-            raise VoiceInterviewValidationError(
-                "Deepgram did not return a transcript for this audio."
-            )
-
+        session = self.interview_agent.state.get_session(cleaned_session_id)
+        TimeManager.pause(session)
         try:
+            transcript = (await self.deepgram.speech_to_text(audio_path)).strip()
+            if not transcript:
+                raise VoiceInterviewValidationError(
+                    "Speech recognition did not return a transcript for this audio."
+                )
+
             # InterviewAgent is currently synchronous and may call Groq, so run
             # it off the event loop while keeping the existing API unchanged.
             interview_result = await run_in_threadpool(
@@ -77,7 +80,7 @@ class VoiceInterviewService:
                 session_id=cleaned_session_id,
                 answer=transcript,
             )
-        except InterviewSessionNotFound:
+        except (InterviewSessionNotFound, VoiceInterviewValidationError):
             raise
         except ValueError as exc:
             raise VoiceInterviewEngineError(str(exc)) from exc
@@ -86,6 +89,8 @@ class VoiceInterviewService:
             raise VoiceInterviewEngineError(
                 "The interview engine could not process this answer."
             ) from exc
+        finally:
+            TimeManager.resume(session)
 
         next_question = str(interview_result.get("question") or "").strip()
         if not next_question:
@@ -100,10 +105,14 @@ class VoiceInterviewService:
         audio_path = self.generated_audio_dir / audio_filename
 
         self.generated_audio_dir.mkdir(parents=True, exist_ok=True)
-        await self.deepgram.text_to_speech(
-            next_question,
-            output_path=audio_path,
-        )
+        TimeManager.pause(session)
+        try:
+            await self.deepgram.text_to_speech(
+                next_question,
+                output_path=audio_path,
+            )
+        finally:
+            TimeManager.resume(session)
 
         return {
             "session_id": interview_result.get("session_id", cleaned_session_id),

@@ -27,13 +27,14 @@ class TimeManager:
     # Time thresholds in seconds
     DETAILED_THRESHOLD_SECONDS: float = 480.0  # 8 minutes
     WRAP_UP_THRESHOLD_SECONDS: float = 120.0   # 2 minutes
+    MIN_QUESTION_TIME_SECONDS: float = 30.0
 
     @classmethod
     def calculate_timing(cls, session: InterviewSession) -> dict[str, float]:
         """
         Calculate current elapsed time, remaining time, and progress percentage.
         """
-        now = datetime.now(timezone.utc)
+        now = session.processing_started_at or datetime.now(timezone.utc)
         start_time = session.interview_start_time
         if start_time.tzinfo is None:
             start_time = start_time.replace(tzinfo=timezone.utc)
@@ -59,6 +60,24 @@ class TimeManager:
             "total_duration_seconds": total_duration_seconds,
             "progress_percentage": overall_progress,
         }
+
+    @staticmethod
+    def pause(session: InterviewSession) -> None:
+        """Freeze interview elapsed time while the system processes an answer."""
+        if session.processing_started_at is None:
+            session.processing_started_at = datetime.now(timezone.utc)
+
+    @staticmethod
+    def resume(session: InterviewSession) -> None:
+        """Exclude the current processing interval from interview elapsed time."""
+        if session.processing_started_at is None:
+            return
+        now = datetime.now(timezone.utc)
+        started_at = session.processing_started_at
+        if started_at.tzinfo is None:
+            started_at = started_at.replace(tzinfo=timezone.utc)
+        session.interview_start_time += now - started_at
+        session.processing_started_at = None
 
     @classmethod
     def update_session_time(

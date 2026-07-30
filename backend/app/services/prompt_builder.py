@@ -198,6 +198,10 @@ Rules:
 6. If the answer is detailed, move naturally to the current stage or next topic.
 7. Never repeat any question listed in interview_state.questions_asked.
 8. Keep the tone conversational, realistic, and professional.
+9. Follow interview_state.time_mode:
+   - DETAILED: allow a normal depth question.
+   - CONCISE: ask a focused question that can be answered briefly.
+   - WRAP_UP: ask only a short closing question and do not open a new topic.
 """
 
     return [

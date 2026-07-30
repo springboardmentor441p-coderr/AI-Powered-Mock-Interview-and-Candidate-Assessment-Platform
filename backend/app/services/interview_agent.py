@@ -138,6 +138,15 @@ class InterviewAgent:
         if session.completed:
             raise ValueError("Interview has already been completed.")
 
+        TimeManager.update_session_time(session)
+        if TimeManager.is_time_expired(session):
+            return self._complete_interview(
+                session,
+                "The allotted interview time has ended. Thank you for your time.",
+            )
+
+        answering_closing_question = session.current_stage == "CLOSING"
+
         # ---------------------------------------------------------
         # Save candidate answer
         # ---------------------------------------------------------
@@ -175,33 +184,29 @@ class InterviewAgent:
         # ---------------------------------------------------------
         # Check interview completion
         # ---------------------------------------------------------
-        if self.state.reached_question_limit(session_id):
-            self.state.mark_completed(session_id)
-
-            closing_question = (
-                "Thank you for your time. "
-                "The interview has been completed."
+        remaining = TimeManager.calculate_timing(session)["remaining_seconds"]
+        if (
+            self.state.reached_question_limit(session_id)
+            or answering_closing_question
+            or remaining <= TimeManager.MIN_QUESTION_TIME_SECONDS
+        ):
+            return self._complete_interview(
+                session,
+                "Thank you for your time. The interview has been completed.",
             )
 
-            self.state.add_assistant_message(
-                session_id,
-                closing_question,
+        if TimeManager.get_time_mode(remaining) == "WRAP_UP":
+            session.current_stage = "CLOSING"
+            session.current_topic = get_stage_topic("CLOSING")
+            next_question = (
+                "Before we conclude, what is the most important strength or experience "
+                "you would like the interviewer to remember?"
             )
-
-            return {
-                "session_id": session.session_id,
-                "question_number": session.question_count,
-                "current_stage": session.current_stage,
-                "current_topic": session.current_topic,
-                "question": closing_question,
-                "completed": True,
-                **self._live_metrics(session),
-            }
 
         # ---------------------------------------------------------
         # Decide whether to ask a follow-up question
         # ---------------------------------------------------------
-        if evaluation.needs_followup:
+        elif evaluation.needs_followup:
             next_question = self._generate_next_question_safely(
                 session=session,
                 candidate_answer=answer,
@@ -241,6 +246,21 @@ class InterviewAgent:
             "current_topic": session.current_topic,
             "question": next_question,
             "completed": False,
+            **self._live_metrics(session),
+        }
+
+    def _complete_interview(self, session, message: str) -> dict[str, object]:
+        """Mark a session complete and return its final interviewer turn."""
+        self.state.mark_completed(session.session_id)
+        TimeManager.update_session_time(session)
+        self.state.add_assistant_message(session.session_id, message)
+        return {
+            "session_id": session.session_id,
+            "question_number": session.question_count,
+            "current_stage": session.current_stage,
+            "current_topic": session.current_topic,
+            "question": message,
+            "completed": True,
             **self._live_metrics(session),
         }
 
@@ -303,6 +323,8 @@ class InterviewAgent:
             "candidate_answer": candidate_answer,
             "max_questions": session.max_questions,
             "question_count": session.question_count,
+            "remaining_time_seconds": session.metrics.remaining_time,
+            "time_mode": TimeManager.get_time_mode(session.metrics.remaining_time),
         }
 
         messages = build_prompt(

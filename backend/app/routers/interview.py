@@ -80,7 +80,10 @@ def submit_answer(request: SubmitAnswerRequest):
     Submit a candidate answer.
     """
 
+    session = None
     try:
+        session = agent.state.get_session(request.session_id)
+        TimeManager.pause(session)
 
         response = agent.submit_answer(
             session_id=request.session_id,
@@ -94,12 +97,14 @@ def submit_answer(request: SubmitAnswerRequest):
             status_code=404,
             detail=str(exc),
         )
-
     except Exception as exc:
         raise HTTPException(
             status_code=500,
             detail=str(exc),
         )
+    finally:
+        if session is not None:
+            TimeManager.resume(session)
 
 
 # ==========================================================

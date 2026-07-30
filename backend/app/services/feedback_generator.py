@@ -30,13 +30,30 @@ class FeedbackGenerator:
         Generate structured feedback for the interview session.
         """
         evaluations = session.question_evaluations
+        if not evaluations:
+            return InterviewFeedback(
+                overall_score=0.0,
+                performance_rating="Not Evaluated",
+                strengths=[],
+                weaknesses=["No interview answers were submitted for evaluation."],
+                suggested_improvements=[
+                    "Complete at least one interview answer to receive performance feedback."
+                ],
+                practice_recommendations=[
+                    "Restart the mock interview and respond to each question before ending it."
+                ],
+                learning_resources=[],
+                communication="Not evaluated because no answers were submitted.",
+                technical_knowledge="Not evaluated because no answers were submitted.",
+            )
+
         count = max(1, len(evaluations))
 
         # Calculate averages from question evaluations
-        avg_comm = sum(e.communication.score for e in evaluations) / count if evaluations else 70.0
-        avg_tech = sum(e.technical.score for e in evaluations) / count if evaluations else 70.0
-        avg_conf = sum(e.confidence.score for e in evaluations) / count if evaluations else 70.0
-        avg_prof = sum(e.professionalism.score for e in evaluations) / count if evaluations else 70.0
+        avg_comm = sum(e.communication.score for e in evaluations) / count
+        avg_tech = sum(e.technical.score for e in evaluations) / count
+        avg_conf = sum(e.confidence.score for e in evaluations) / count
+        avg_prof = sum(e.professionalism.score for e in evaluations) / count
 
         overall_score = round(
             0.30 * avg_comm + 0.30 * avg_tech + 0.25 * avg_conf + 0.15 * avg_prof, 1

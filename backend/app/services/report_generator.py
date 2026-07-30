@@ -30,25 +30,25 @@ class ReportGenerator:
         count = max(1, len(evaluations))
 
         # Category scores
-        comm_score = round(sum(e.communication.score for e in evaluations) / count, 1) if evaluations else 70.0
-        tech_score = round(sum(e.technical.score for e in evaluations) / count, 1) if evaluations else 70.0
-        conf_score = round(sum(e.confidence.score for e in evaluations) / count, 1) if evaluations else 70.0
-        prof_score = round(sum(e.professionalism.score for e in evaluations) / count, 1) if evaluations else 70.0
+        comm_score = round(sum(e.communication.score for e in evaluations) / count, 1)
+        tech_score = round(sum(e.technical.score for e in evaluations) / count, 1)
+        conf_score = round(sum(e.confidence.score for e in evaluations) / count, 1)
+        prof_score = round(sum(e.professionalism.score for e in evaluations) / count, 1)
 
         overall_score = round(
             0.30 * comm_score + 0.30 * tech_score + 0.25 * conf_score + 0.15 * prof_score, 1
         )
 
-        rating = "Good"
-        if overall_score >= 90:
+        rating = "Not Evaluated" if not evaluations else "Poor"
+        if evaluations and overall_score >= 90:
             rating = "Excellent"
-        elif overall_score >= 75:
+        elif evaluations and overall_score >= 75:
             rating = "Good"
-        elif overall_score >= 60:
+        elif evaluations and overall_score >= 60:
             rating = "Average"
-        elif overall_score >= 40:
+        elif evaluations and overall_score >= 40:
             rating = "Needs Improvement"
-        else:
+        elif evaluations:
             rating = "Poor"
 
         # Generate feedback text & recommendations
@@ -70,7 +70,9 @@ class ReportGenerator:
             weak_areas.append("Confidence & Hesitation Reduction")
         if prof_score < 70:
             weak_areas.append("Response Organization & Time Management")
-        if not weak_areas:
+        if not evaluations:
+            weak_areas = ["No answers submitted"]
+        elif not weak_areas:
             weak_areas.append("Advanced Edge-Case Technical Handling")
 
         analytics: dict[str, Any] = {
@@ -108,6 +110,7 @@ class ReportGenerator:
                 "tier": rating,
                 "score": overall_score,
             },
+            "answered_questions": len(evaluations),
         }
 
         candidate_info = {
@@ -122,13 +125,14 @@ class ReportGenerator:
             "elapsed_seconds": int(timing["elapsed_seconds"]),
             "remaining_seconds": int(timing["remaining_seconds"]),
             "total_questions": session.question_count,
+            "answered_questions": len(evaluations),
             "average_response_time": session.average_answer_time,
         }
 
         summary_text = (
             f"Candidate {session.candidate_name} completed a {session.interview_duration}-minute "
             f"{session.interview_type} mock interview for the {session.job_role} role, answering "
-            f"{session.question_count} questions with an overall score of {overall_score}/100 ({rating})."
+            f"{len(evaluations)} questions with an overall score of {overall_score}/100 ({rating})."
         )
 
         return InterviewReport(

@@ -55,6 +55,7 @@ export function InterviewProvider({ children }) {
   const [remainingTime, setRemainingTime] = useState(savedSession?.remainingTime ?? 900);
   const [interviewProgress, setInterviewProgress] = useState(savedSession?.interviewProgress ?? 0);
   const [interviewStatus, setInterviewStatus] = useState(savedSession?.interviewStatus || 'idle');
+  const [isTimerPaused, setTimerPaused] = useState(false);
 
   const [transcriptHistory, setTranscriptHistory] = useState(savedSession?.transcriptHistory || []);
   const [lastCandidateTranscript, setLastCandidateTranscript] = useState(
@@ -120,14 +121,14 @@ export function InterviewProvider({ children }) {
 
   // Local timer tick — decrements only between backend syncs
   useEffect(() => {
-    if (interviewStatus !== 'in_progress' || remainingTime <= 0) return;
+    if (interviewStatus !== 'in_progress' || remainingTime <= 0 || isTimerPaused) return;
 
     const interval = setInterval(() => {
       setRemainingTime((prev) => (prev <= 1 ? 0 : prev - 1));
     }, 1000);
 
     return () => clearInterval(interval);
-  }, [interviewStatus, remainingTime > 0]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [interviewStatus, remainingTime > 0, isTimerPaused]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const saveResume = (resumeData) => {
     setParsedResume(resumeData);
@@ -306,6 +307,7 @@ export function InterviewProvider({ children }) {
         remainingTime,
         interviewProgress,
         interviewStatus,
+        isTimerPaused,
         transcriptHistory,
         lastCandidateTranscript,
         notifications,
@@ -321,6 +323,7 @@ export function InterviewProvider({ children }) {
         saveFinalReport,
         addNotification,
         resetSession,
+        setTimerPaused,
       }}
     >
       {children}

@@ -174,6 +174,8 @@ class InterviewSession(BaseModel):
         default_factory=lambda: datetime.now(timezone.utc)
     )
 
+    processing_started_at: datetime | None = None
+
     difficulty: str = "Easy"
 
     completed: bool = False
