@@ -33,7 +33,6 @@ function AudioRecorder({
   const [isStreaming, setIsStreaming] = useState(false);
   const [isSpeaking, setIsSpeaking] = useState(false);
   const [isAiThinking, setIsAiThinking] = useState(false);
-  const [hasOpenTurn, setHasOpenTurn] = useState(false);
   const [permissionStatus, setPermissionStatus] = useState('Microphone ready');
   const [textAnswer, setTextAnswer] = useState('');
   const [mode, setMode] = useState('voice');
@@ -58,7 +57,6 @@ function AudioRecorder({
     audioContextRef.current = null;
     analyserRef.current = null;
     isTurnOpenRef.current = false;
-    setHasOpenTurn(false);
     speakingStartedAtRef.current = null;
     silenceStartedAtRef.current = null;
     recordedChunksRef.current = [];
@@ -94,7 +92,6 @@ function AudioRecorder({
   const endCurrentTurn = () => {
     if (!isTurnOpenRef.current || isAiThinkingRef.current) return;
     isTurnOpenRef.current = false;
-    setHasOpenTurn(false);
     isAiThinkingRef.current = true;
     setIsAiThinking(true);
     onProcessingChange?.(true);
@@ -125,7 +122,6 @@ function AudioRecorder({
       : new MediaRecorder(stream);
 
     isTurnOpenRef.current = true;
-    setHasOpenTurn(true);
     speakingStartedAtRef.current = null;
     silenceStartedAtRef.current = null;
     recordedChunksRef.current = [];
@@ -248,12 +244,18 @@ function AudioRecorder({
           return;
         }
         if (data.type === 'interviewer_turn') {
-          isAiThinkingRef.current = false;
-          setIsAiThinking(false);
-          onProcessingChange?.(false);
-          setPermissionStatus('AI responded. Speak when you are ready.');
-          if (onVoiceStreamResponse) {
-            await onVoiceStreamResponse(data);
+          setPermissionStatus('Interviewer is speaking...');
+          try {
+            if (onVoiceStreamResponse) {
+              await onVoiceStreamResponse(data);
+            }
+          } finally {
+            isAiThinkingRef.current = false;
+            setIsAiThinking(false);
+            onProcessingChange?.(false);
+            speakingStartedAtRef.current = null;
+            silenceStartedAtRef.current = null;
+            setPermissionStatus('Your turn. Speak naturally when you are ready.');
           }
         }
       };
@@ -359,17 +361,12 @@ function AudioRecorder({
           <div className="audio-recorder__actions">
             {!isStreaming ? (
               <Button disabled={isSubmitting} onClick={startStreaming}>
-                Start Realtime Interview
+                Join Voice Interview
               </Button>
             ) : (
-              <>
-                <Button onClick={endCurrentTurn} disabled={isAiThinking || !hasOpenTurn}>
-                  Finish Answer
-                </Button>
-                <Button onClick={stopStreaming} variant="danger">
-                  Stop Voice
-                </Button>
-              </>
+              <Button onClick={stopStreaming} variant="danger">
+                Leave Voice Interview
+              </Button>
             )}
           </div>
         </div>

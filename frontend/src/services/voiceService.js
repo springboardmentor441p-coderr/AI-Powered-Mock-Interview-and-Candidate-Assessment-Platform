@@ -49,15 +49,19 @@ export function resolveAudioUrl(response) {
 /**
  * Play AI question audio from a voice response.
  */
-export function playAiAudio(response) {
+export async function playAiAudio(response) {
   const url = resolveAudioUrl(response);
-  if (!url) return null;
+  if (!url) return;
 
   const audio = new Audio(url);
-  audio.play().catch(() => {
-    // Autoplay may be blocked; user can still read the question text.
+  await new Promise((resolve) => {
+    audio.addEventListener('ended', resolve, { once: true });
+    audio.addEventListener('error', resolve, { once: true });
+    audio.play().catch(() => {
+      // Autoplay may be blocked; user can still read the question text.
+      resolve();
+    });
   });
-  return audio;
 }
 
 export { getApiErrorMessage };

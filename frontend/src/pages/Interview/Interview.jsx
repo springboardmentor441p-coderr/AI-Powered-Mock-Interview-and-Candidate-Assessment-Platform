@@ -78,7 +78,7 @@ function Interview() {
     setError('');
 
     updateSessionFromResponse(response, response.candidate_transcript || 'Voice answer recorded');
-    playAiAudio(response);
+    await playAiAudio(response);
 
     if (response.completed || response.interview_status === 'completed') {
       addNotification('Interview completed. Generating your report...', 'info');
