@@ -1070,7 +1070,6 @@ The following screenshots showcase the major modules and user interfaces of Smar
 <p align="center">
   <img src="screenshots/Upload.png" width="900">
 </p>
-
 ---
 
 ## 🎤 AI Voice Interview
@@ -1093,24 +1092,6 @@ The following screenshots showcase the major modules and user interfaces of Smar
 
 <p align="center">
   <img src="screenshots/Recruiter-dashboard.png" width="900">
-</p>
-
----
-
-## 🖼️ Complete UI Gallery
-
-<p align="center">
-  <img src="screenshots/home.png" width="45%">
-  <img src="screenshots/upload.png" width="45%">
-</p>
-
-<p align="center">
-  <img src="screenshots/interview.png" width="45%">
-  <img src="screenshots/results.png" width="45%">
-</p>
-
-<p align="center">
-  <img src="screenshots/recruiter-dashboard.png" width="45%">
 </p>
 
 ---
