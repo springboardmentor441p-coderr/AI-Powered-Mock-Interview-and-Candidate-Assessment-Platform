@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { motion } from "framer-motion";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 
@@ -119,29 +120,118 @@ function Results() {
         );
 
     }
+    const overall = result.overall_score * 10;
+    const technical = result.technical_score * 10;
+    const communication = result.communication_score * 10;
+
+    const circleRadius = 80;
+    const circumference = 2 * Math.PI * circleRadius;
+    const offset = circumference - (overall / 100) * circumference;
         return (
 
         <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-white">
 
             <div className="max-w-6xl mx-auto px-6 py-10">
 
-                {/* Header */}
+                <motion.div
 
-                <div className="bg-white rounded-3xl shadow-xl p-8 mb-8">
+initial={{ opacity: 0, y: -30 }}
 
-                    <h1 className="text-4xl font-bold text-blue-700">
+animate={{ opacity: 1, y: 0 }}
 
-                        SmartHire AI Assessment Report
+transition={{ duration: 0.7 }}
 
-                    </h1>
+className="bg-white rounded-3xl shadow-xl p-10 mb-8"
 
-                    <p className="text-gray-500 mt-3">
+>
 
-                        Your AI-powered interview evaluation is complete.
+<div className="flex flex-col lg:flex-row justify-between items-center">
 
-                    </p>
+<div>
 
-                </div>
+<h1 className="text-4xl font-bold text-blue-700">
+
+SmartHire AI Assessment Report
+
+</h1>
+
+<p className="text-gray-500 mt-3">
+
+Your interview has been successfully evaluated.
+
+</p>
+
+</div>
+
+<div className="relative w-52 h-52 mt-8 lg:mt-0">
+
+<svg className="w-full h-full -rotate-90">
+
+<circle
+
+cx="104"
+
+cy="104"
+
+r={circleRadius}
+
+stroke="#E5E7EB"
+
+strokeWidth="12"
+
+fill="none"
+
+/>
+
+<motion.circle
+
+cx="104"
+
+cy="104"
+
+r={circleRadius}
+
+stroke="#2563EB"
+
+strokeWidth="12"
+
+fill="none"
+
+strokeLinecap="round"
+
+strokeDasharray={circumference}
+
+initial={{ strokeDashoffset: circumference }}
+
+animate={{ strokeDashoffset: offset }}
+
+transition={{ duration: 1.8 }}
+
+ />
+
+</svg>
+
+<div className="absolute inset-0 flex flex-col justify-center items-center">
+
+<h1 className="text-5xl font-bold text-blue-700">
+
+{overall}
+
+</h1>
+
+<p className="text-gray-500">
+
+Overall Score
+
+</p>
+
+</div>
+
+</div>
+
+</div>
+
+</motion.div>
 
 
 
@@ -195,61 +285,187 @@ function Results() {
 
 
 
-                {/* Scores */}
+                {/* Professional Score Cards */}
 
-                <div className="grid md:grid-cols-3 gap-6 mb-8">
+<div className="grid md:grid-cols-3 gap-6 mb-8">
 
-                    <div className="bg-white rounded-3xl shadow-lg p-8 text-center">
+    {/* Overall */}
 
-                        <p className="text-gray-500">
+    <motion.div
+        whileHover={{ y: -8, scale: 1.03 }}
+        transition={{ duration: 0.25 }}
+        className="bg-white rounded-3xl shadow-xl border border-blue-100 p-8 text-center"
+    >
 
-                            Overall Score
+        <div className="text-5xl mb-4">
+            ⭐
+        </div>
 
-                        </p>
+        <p className="text-gray-500 font-medium">
+            Overall Score
+        </p>
 
-                        <h1 className="text-6xl font-bold text-blue-700 mt-3">
+        <h1 className="text-5xl font-bold text-blue-700 mt-3">
+            {overall}/100
+        </h1>
 
-                            {result.overall_score * 10}/100
+    </motion.div>
 
-                        </h1>
+    {/* Technical */}
 
-                    </div>
+    <motion.div
+        whileHover={{ y: -8, scale: 1.03 }}
+        transition={{ duration: 0.25 }}
+        className="bg-white rounded-3xl shadow-xl border border-green-100 p-8 text-center"
+    >
 
-                    <div className="bg-white rounded-3xl shadow-lg p-8 text-center">
+        <div className="text-5xl mb-4">
+            💻
+        </div>
 
-                        <p className="text-gray-500">
+        <p className="text-gray-500 font-medium">
+            Technical Score
+        </p>
 
-                            Technical Score
+        <h1 className="text-5xl font-bold text-green-600 mt-3">
+            {technical}/100
+        </h1>
 
-                        </p>
+    </motion.div>
 
-                        <h1 className="text-6xl font-bold text-green-600 mt-3">
+    {/* Communication */}
 
-                            {result.technical_score * 10}/100
+    <motion.div
+        whileHover={{ y: -8, scale: 1.03 }}
+        transition={{ duration: 0.25 }}
+        className="bg-white rounded-3xl shadow-xl border border-purple-100 p-8 text-center"
+    >
 
-                        </h1>
+        <div className="text-5xl mb-4">
+            🗣️
+        </div>
 
-                    </div>
+        <p className="text-gray-500 font-medium">
+            Communication Score
+        </p>
 
-                    <div className="bg-white rounded-3xl shadow-lg p-8 text-center">
+        <h1 className="text-5xl font-bold text-purple-600 mt-3">
+            {communication}/100
+        </h1>
 
-                        <p className="text-gray-500">
+    </motion.div>
 
-                            Communication Score
+</div>
 
-                        </p>
+{/* Performance Breakdown */}
 
-                        <h1 className="text-6xl font-bold text-purple-600 mt-3">
+<motion.div
+    initial={{ opacity: 0, y: 25 }}
+    whileInView={{ opacity: 1, y: 0 }}
+    viewport={{ once: true }}
+    transition={{ duration: 0.7 }}
+    className="bg-white rounded-3xl shadow-xl p-8 mb-8"
+>
 
-                            {result.communication_score * 10}/100
+    <h2 className="text-2xl font-bold mb-8 text-gray-800">
+        Performance Breakdown
+    </h2>
 
-                        </h1>
+    <div className="space-y-8">
 
-                    </div>
+        {/* Overall */}
 
-                </div>
+        <div>
 
+            <div className="flex justify-between mb-2">
 
+                <span className="font-semibold text-gray-700">
+                    ⭐ Overall Performance
+                </span>
+
+                <span className="font-bold text-blue-600">
+                    {overall}%
+                </span>
+
+            </div>
+
+            <div className="w-full h-4 bg-gray-200 rounded-full overflow-hidden">
+
+                <motion.div
+                    initial={{ width: 0 }}
+                    whileInView={{ width: `${overall}%` }}
+                    viewport={{ once: true }}
+                    transition={{ duration: 1.2 }}
+                    className="h-full rounded-full bg-gradient-to-r from-blue-500 to-blue-700"
+                />
+
+            </div>
+
+        </div>
+
+        {/* Technical */}
+
+        <div>
+
+            <div className="flex justify-between mb-2">
+
+                <span className="font-semibold text-gray-700">
+                    💻 Technical Knowledge
+                </span>
+
+                <span className="font-bold text-green-600">
+                    {technical}%
+                </span>
+
+            </div>
+
+            <div className="w-full h-4 bg-gray-200 rounded-full overflow-hidden">
+
+                <motion.div
+                    initial={{ width: 0 }}
+                    whileInView={{ width: `${technical}%` }}
+                    viewport={{ once: true }}
+                    transition={{ duration: 1.4 }}
+                    className="h-full rounded-full bg-gradient-to-r from-green-400 to-green-600"
+                />
+
+            </div>
+
+        </div>
+
+        {/* Communication */}
+
+        <div>
+
+            <div className="flex justify-between mb-2">
+
+                <span className="font-semibold text-gray-700">
+                    🗣️ Communication Skills
+                </span>
+
+                <span className="font-bold text-purple-600">
+                    {communication}%
+                </span>
+
+            </div>
+
+            <div className="w-full h-4 bg-gray-200 rounded-full overflow-hidden">
+
+                <motion.div
+                    initial={{ width: 0 }}
+                    whileInView={{ width: `${communication}%` }}
+                    viewport={{ once: true }}
+                    transition={{ duration: 1.6 }}
+                    className="h-full rounded-full bg-gradient-to-r from-purple-400 to-purple-700"
+                />
+
+            </div>
+
+        </div>
+
+    </div>
+
+</motion.div>
 
                 {/* AI Feedback */}
 
