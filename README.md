@@ -1134,7 +1134,7 @@ The following screenshots showcase the major modules and user interfaces of Smar
 ## 🏠 Home Page
 
 <p align="center">
-  <img src="screenshots/home.png" width="900">
+  <img src="screenshots/Home.png" width="900">
 </p>
 
 ---
@@ -1142,7 +1142,7 @@ The following screenshots showcase the major modules and user interfaces of Smar
 ## 📄 Resume Upload Page
 
 <p align="center">
-  <img src="screenshots/upload.png" width="900">
+  <img src="screenshots/Upload.png" width="900">
 </p>
 
 ---
@@ -1150,7 +1150,7 @@ The following screenshots showcase the major modules and user interfaces of Smar
 ## 🎤 AI Voice Interview
 
 <p align="center">
-  <img src="screenshots/interview.png" width="900">
+  <img src="screenshots/Interview.png" width="900">
 </p>
 
 ---
@@ -1158,7 +1158,7 @@ The following screenshots showcase the major modules and user interfaces of Smar
 ## 📊 Candidate Results Dashboard
 
 <p align="center">
-  <img src="screenshots/results.png" width="900">
+  <img src="screenshots/Results.png" width="900">
 </p>
 
 ---
@@ -1166,7 +1166,7 @@ The following screenshots showcase the major modules and user interfaces of Smar
 ## 👨‍💼 Recruiter Dashboard
 
 <p align="center">
-  <img src="screenshots/recruiter-dashboard.png" width="900">
+  <img src="screenshots/Recruiter-dashboard.png" width="900">
 </p>
 
 ---
