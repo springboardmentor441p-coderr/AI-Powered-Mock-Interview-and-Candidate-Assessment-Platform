@@ -80,7 +80,7 @@ The primary objectives of SmartHire AI are:
           │                                │
           └──────────────┬─────────────────┘
                          ▼
-                 Speech Processing
+              Ultravox Speech Processing
                   (STT & TTS)
                          ▼
                Interview Transcript
@@ -137,10 +137,9 @@ SmartHire AI follows a modern full-stack architecture that combines a responsive
 
 | Technology | Purpose |
 |------------|---------|
-| Ultravox AI | AI interviewer, voice conversation, interview question generation, STT and TTS |
-| Groq API | Candidate evaluation and AI feedback generation |
-| Llama 3.1 8B Instant | Large Language Model used through Groq |
-
+| Ultravox AI | AI voice interviewer, real-time conversation, question delivery, Speech-to-Text (STT), and Text-to-Speech (TTS) |
+| Groq API | Interview transcript evaluation and AI feedback generation |
+| Llama 3.1 8B Instant | Large Language Model used by Groq to evaluate interview transcripts |
 ---
 
 ## Resume Processing Technologies
@@ -167,7 +166,11 @@ SmartHire AI follows a modern full-stack architecture that combines a responsive
 # 🧠 Artificial Intelligence Components
 
 SmartHire AI integrates multiple AI services to automate different stages of the recruitment process.
+Ultravox and Groq are used for different responsibilities in the AI pipeline:
 
+- **Ultravox AI** is responsible for real-time voice interaction, including conducting the interview, converting AI questions into speech (TTS), and converting candidate responses into text (STT).
+
+- **Groq LLM** is responsible for analyzing the completed interview transcript and generating candidate evaluation results such as scores, feedback, and recommendations.
 ---
 
 ## 1. Resume Parsing
@@ -312,8 +315,8 @@ Speech-to-Text (STT)
 Generates Transcript
             │
             ▼
-Interview Transcript Sent
-to Groq LLM
+Completed Interview Transcript
+Sent to Groq LLM for Evaluation
             │
             ▼
 AI Evaluates Candidate
@@ -346,9 +349,7 @@ Recruiters can monitor all candidate interviews from a centralized dashboard.
 Workflow:
 
 ```text
-Recruiter Login
-        │
-        ▼
+
 Recruiter Dashboard
         │
         ▼
@@ -431,9 +432,6 @@ Interview Transcript
         │
         ▼
 Groq API
-        │
-        ▼
-Llama 3.1 8B Instant
         │
         ▼
 Candidate Analysis
@@ -675,8 +673,80 @@ Fields
 - Recruiter Status
 
 ---
+# 🔄 AI Pipeline Overview
 
-# 🔗 REST API Documentation
+SmartHire AI follows this pipeline:
+
+1. Resume Processing
+   - Candidate uploads resume.
+   - PyMuPDF extracts text.
+   - Regex identifies candidate details.
+
+2. AI Interview Generation
+   - Candidate information is used to create interview context.
+   - Ultravox conducts the voice interview.
+
+3. Voice Processing
+   - AI questions are converted into speech using TTS.
+   - Candidate responses are converted into text using STT.
+
+4. Interview Evaluation
+   - Transcript is sent to Groq LLM.
+   - LLM analyzes technical skills, communication, and relevance.
+
+5. Result Generation
+   - Scores, feedback, and recommendations are stored.
+   - Results are displayed on candidate and recruiter dashboards.
+   
+### Complete AI Pipeline Flow
+
+```text
+Resume Upload
+      |
+      ↓
+Resume Parser (PyMuPDF + Regex)
+      |
+      ↓
+Candidate Profile Creation
+      |
+      ↓
+Ultravox AI Voice Agent
+      |
+      ↓
+AI Conducts Interview
+      |
+      ↓
+Ultravox TTS
+(AI Question Converted Into Voice)
+      |
+      ↓
+Candidate Answers 
+      |
+      ↓
+Ultravox STT
+(Candidate Speech Converted Into Text)
+      |
+      ↓
+Interview Transcript Generation
+      |
+      ↓
+Groq LLM Evaluation
+      |
+      ↓
+Candidate Performance Analysis
+      |
+      ↓
+Score + Feedback + Recommendation Generation
+      |
+      ↓
+SQLite Database Storage
+      |
+      ↓
+Candidate Report + Recruiter Dashboard
+
+---
+
+### 🔗 REST API Documentation
 
 ---
 
@@ -766,43 +836,93 @@ Possible Values
 
 ---
 
-# 📂 Project Folder Structure
+### 📂 Project Folder Structure
 
 ```text
 SmartHire-AI
 │
-├── backend
-│   │
-│   ├── app.py
-│   ├── evaluator.py
-│   ├── database.py
-│   ├── llm_service.py
-│   ├── requirements.txt
-│   ├── uploads/
-│   ├── smarthire.db
-│   └── .env
+backend/
 │
-├── frontend
-│   │
-│   ├── public/
-│   ├── src/
-│   │   │
-│   │   ├── components/
-│   │   ├── pages/
-│   │   │   ├── Home.jsx
-│   │   │   ├── Upload.jsx
-│   │   │   ├── Interview.jsx
-│   │   │   ├── Results.jsx
-│   │   │   ├── Dashboard.jsx
-│   │   │   └── RecruiterDashboard.jsx
-│   │   │
-│   │   ├── App.jsx
-│   │   └── main.jsx
-│   │
-│   ├── package.json
-│   ├── package-lock.json
-│   └── vite.config.js
+├── app.py
+│   Main Flask application that connects frontend requests with backend services.
+│   Handles API routes for resume upload, interview sessions, results retrieval,
+│   candidate management, and recruiter actions.
 │
+├── evaluator.py
+│   Contains LLM-based interview evaluation logic.
+│   Sends completed interview transcripts to Groq LLM and generates candidate
+│   scores, feedback, and hiring recommendations.
+│
+├── answer_evaluator.py
+│   Evaluates individual candidate answers in detail.
+│   Analyzes answer quality and generates scores, strengths, weaknesses,
+│   improvement suggestions, and ideal answers.
+│
+├── database.py
+│   Handles SQLite database connection and database operations.
+│   Manages candidate information, interview results, recruiter decisions,
+│   and application data storage.
+│
+├── ultravox_service.py
+│   Handles integration with the Ultravox AI voice platform.
+│   Creates AI interview sessions and manages voice-based communication,
+│   including speech interaction between AI interviewer and candidate.
+│
+├── resume_parser.py
+│   Handles resume processing and information extraction.
+│   Uses PyMuPDF to extract PDF text and Regex to identify structured details
+│   such as name, email, skills, education, experience, and certifications.
+│
+├── smarthire.db
+│   SQLite database file used for storing application data.
+│   Stores candidate profiles, interview results, scores, feedback,
+│   recommendations, and recruiter decisions.
+│
+├── .env
+│   Stores sensitive environment variables and API keys.
+│   Contains configuration values such as Groq API key and Ultravox API key.
+│
+├── requirements.txt
+│   Contains all Python dependencies required to run the backend.
+│   Used to install required libraries and packages for project execution.
+
+
+frontend
+│
+└── src
+    │
+    ├── App.jsx
+    │   Defines frontend routing and overall application structure.
+    │
+    ├── main.jsx
+    │   Entry point of the React application that renders the root component.
+    │
+    ├── components/
+    │   Contains reusable React UI components shared across different pages.
+    │
+    └── pages/
+        │
+        ├── Home.jsx
+        │   Landing page that introduces SmartHire AI and provides navigation.
+        │
+        ├── Upload.jsx
+        │   Handles resume upload functionality and communicates with backend APIs
+        │   for resume processing.
+        │
+        ├── Interview.jsx
+        │   Manages the AI voice interview workflow, Ultravox connection,
+        │   microphone handling, and interview completion.
+        │
+        ├── Results.jsx
+        │   Displays AI-generated interview scores, feedback,
+        │   recommendations, and candidate reports.
+        │
+        ├── Dashboard.jsx
+        │   Displays candidate interview history and assessment details.
+        │
+        └── RecruiterDashboard.jsx
+            Provides recruiter access to candidate analysis,
+            interview results, shortlisting, and rejection actions.
 ├── screenshots
 │   ├── home.png
 │   ├── upload.png
@@ -839,7 +959,7 @@ Make sure the following software is installed before running the project.
 # Clone the Repository
 
 ```bash
-git clone https://github.com/your-username/AI-Powered-Mock-Interview-and-Candidate-Assessment-Platform.git
+git clone https://github.com/Deepthi0511/AI-Powered-Mock-Interview-and-Candidate-Assessment-Platform.git
 ```
 
 Move into the project folder.
@@ -870,6 +990,18 @@ Activate the virtual environment.
 
 ```bash
 venv\Scripts\activate
+```
+
+Install dependencies.
+
+```bash
+pip install -r requirements.txt
+```
+
+Run the Flask application.
+
+```bash
+python app.py
 ```
 ---
 
