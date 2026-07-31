@@ -1,0 +1,1072 @@
+/* ==========================================================
+   SmartHire AI
+   Interview Module
+========================================================== */
+
+/* ==========================================================
+   Page Layout
+========================================================== */
+
+.dashboard-content{
+
+    display:flex;
+
+    flex-direction:column;
+
+    gap:30px;
+
+}
+
+/* ==========================================================
+   Interview Header
+========================================================== */
+
+.interview-header{
+
+    background:linear-gradient(
+        135deg,
+        #2563eb,
+        #4f46e5
+    );
+
+    color:#ffffff;
+
+    padding:40px;
+
+    border-radius:24px;
+
+    position:relative;
+
+    overflow:hidden;
+
+}
+
+.interview-header::before{
+
+    content:"";
+
+    position:absolute;
+
+    width:280px;
+
+    height:280px;
+
+    top:-90px;
+
+    right:-90px;
+
+    border-radius:50%;
+
+    background:rgba(255,255,255,.08);
+
+}
+
+.interview-header h1{
+
+    font-size:34px;
+
+    margin-bottom:12px;
+
+    position:relative;
+
+    z-index:2;
+
+}
+
+.interview-header p{
+
+    max-width:760px;
+
+    line-height:1.8;
+
+    font-size:16px;
+
+    opacity:.95;
+
+    position:relative;
+
+    z-index:2;
+
+}
+
+/* ==========================================================
+   Interview Grid
+========================================================== */
+
+.interview-grid{
+
+    display:grid;
+
+    grid-template-columns:repeat(2,1fr);
+
+    gap:28px;
+
+}
+
+/* ==========================================================
+   Setup Form
+========================================================== */
+
+.setup-grid{
+
+    display:grid;
+
+    grid-template-columns:repeat(2,1fr);
+
+    gap:24px;
+
+    margin-top:20px;
+
+}
+
+.form-group{
+
+    display:flex;
+
+    flex-direction:column;
+
+}
+
+.form-group label{
+
+    font-weight:600;
+
+    color:#374151;
+
+    margin-bottom:8px;
+
+}
+
+.form-group select{
+
+    width:100%;
+
+    padding:14px 16px;
+
+    border:1px solid #d1d5db;
+
+    border-radius:12px;
+
+    font-size:15px;
+
+    background:#ffffff;
+
+    transition:.3s;
+
+}
+
+.form-group select:focus{
+
+    outline:none;
+
+    border-color:#4f46e5;
+
+    box-shadow:0 0 0 3px rgba(79,70,229,.15);
+
+}
+
+/* ==========================================================
+   Camera Preview
+========================================================== */
+
+.video-container{
+
+    position:relative;
+
+    width:100%;
+
+    height:340px;
+
+    background:#0f172a;
+
+    border-radius:18px;
+
+    overflow:hidden;
+
+    display:flex;
+
+    justify-content:center;
+
+    align-items:center;
+
+}
+
+.video-container video{
+
+    width:100%;
+
+    height:100%;
+
+    object-fit:cover;
+
+    display:none;
+
+}
+
+.video-placeholder{
+
+    display:flex;
+
+    flex-direction:column;
+
+    align-items:center;
+
+    justify-content:center;
+
+    color:#cbd5e1;
+
+}
+
+.video-placeholder i{
+
+    font-size:64px;
+
+    margin-bottom:16px;
+
+}
+
+.video-placeholder p{
+
+    font-size:18px;
+
+}
+
+/* ==========================================================
+   Device Status
+========================================================== */
+
+.device-status{
+
+    display:grid;
+
+    grid-template-columns:repeat(2,1fr);
+
+    gap:18px;
+
+    margin-top:22px;
+
+}
+
+.status-item{
+
+    display:flex;
+
+    align-items:center;
+
+    gap:12px;
+
+    padding:16px;
+
+    background:#f8fafc;
+
+    border-radius:14px;
+
+}
+
+.status-item i{
+
+    color:#4f46e5;
+
+    font-size:22px;
+
+}
+
+.status-item span{
+
+    color:#374151;
+
+    font-weight:500;
+
+}
+
+/* ==========================================================
+   Device Buttons
+========================================================== */
+
+.device-actions{
+
+    display:flex;
+
+    gap:15px;
+
+    margin-top:24px;
+
+    flex-wrap:wrap;
+
+}
+
+.device-actions .btn{
+
+    flex:1;
+
+    min-width:180px;
+
+}
+/* ==========================================================
+   Interview Status Cards
+========================================================== */
+
+.status-grid{
+
+    display:grid;
+
+    grid-template-columns:repeat(2,1fr);
+
+    gap:20px;
+
+    margin-top:20px;
+
+}
+
+.status-card{
+
+    background:#f8fafc;
+
+    border:1px solid #e5e7eb;
+
+    border-radius:16px;
+
+    padding:24px;
+
+    text-align:center;
+
+    transition:.3s ease;
+
+}
+
+.status-card:hover{
+
+    transform:translateY(-4px);
+
+    box-shadow:0 10px 24px rgba(0,0,0,.08);
+
+}
+
+.status-card h3{
+
+    font-size:32px;
+
+    font-weight:700;
+
+    color:#4f46e5;
+
+    margin-bottom:8px;
+
+}
+
+.status-card span{
+
+    color:#64748b;
+
+    font-size:14px;
+
+}
+
+/* ==========================================================
+   Interview Controls
+========================================================== */
+
+.interview-controls{
+
+    display:flex;
+
+    flex-wrap:wrap;
+
+    gap:15px;
+
+    margin-top:28px;
+
+}
+
+.interview-controls .btn{
+
+    flex:1;
+
+    min-width:170px;
+
+}
+
+/* ==========================================================
+   AI Question Panel
+========================================================== */
+
+.question-box{
+
+    margin-top:18px;
+
+    padding:30px;
+
+    border-radius:18px;
+
+    background:#eef2ff;
+
+    border-left:6px solid #4f46e5;
+
+}
+
+.question-badge{
+
+    display:inline-block;
+
+    padding:8px 18px;
+
+    border-radius:999px;
+
+    background:#4f46e5;
+
+    color:#ffffff;
+
+    font-size:13px;
+
+    font-weight:600;
+
+    margin-bottom:18px;
+
+}
+
+.question-box h3{
+
+    font-size:24px;
+
+    line-height:1.8;
+
+    color:#111827;
+
+    font-weight:600;
+
+}
+
+/* ==========================================================
+   Transcript Box
+========================================================== */
+
+.transcript-box{
+
+    min-height:260px;
+
+    max-height:420px;
+
+    overflow-y:auto;
+
+    padding:20px;
+
+    border:1px solid #e5e7eb;
+
+    border-radius:16px;
+
+    background:#ffffff;
+
+    line-height:1.8;
+
+    color:#374151;
+
+    white-space:pre-wrap;
+
+}
+
+/* ==========================================================
+   Answer Textarea
+========================================================== */
+
+#answerInput{
+
+    width:100%;
+
+    min-height:260px;
+
+    resize:vertical;
+
+    border:1px solid #d1d5db;
+
+    border-radius:16px;
+
+    padding:18px;
+
+    font-size:15px;
+
+    line-height:1.7;
+
+    transition:.3s ease;
+
+    background:#ffffff;
+
+}
+
+#answerInput:focus{
+
+    outline:none;
+
+    border-color:#4f46e5;
+
+    box-shadow:0 0 0 3px rgba(79,70,229,.15);
+
+}
+
+/* ==========================================================
+   Answer Controls
+========================================================== */
+
+.answer-controls{
+
+    display:flex;
+
+    flex-wrap:wrap;
+
+    gap:15px;
+
+    margin-top:22px;
+
+}
+
+.answer-controls .btn{
+
+    flex:1;
+
+    min-width:170px;
+
+}
+
+/* ==========================================================
+   Progress Section
+========================================================== */
+
+.progress{
+
+    width:100%;
+
+    height:12px;
+
+    border-radius:999px;
+
+    background:#e5e7eb;
+
+    overflow:hidden;
+
+    margin-top:20px;
+
+}
+
+.progress-bar{
+
+    width:0;
+
+    height:100%;
+
+    border-radius:999px;
+
+    background:linear-gradient(
+        90deg,
+        #4f46e5,
+        #2563eb
+    );
+
+    transition:width .4s ease;
+
+}
+
+.progress-footer{
+
+    display:flex;
+
+    justify-content:space-between;
+
+    align-items:center;
+
+    margin-top:14px;
+
+    color:#64748b;
+
+    font-size:14px;
+
+    flex-wrap:wrap;
+
+    gap:10px;
+
+}
+
+/* ==========================================================
+   AI Interview Tips
+========================================================== */
+
+.tips-list{
+
+    margin-top:18px;
+
+    padding-left:22px;
+
+    display:flex;
+
+    flex-direction:column;
+
+    gap:14px;
+
+}
+
+.tips-list li{
+
+    color:#374151;
+
+    line-height:1.7;
+
+    font-size:15px;
+
+}
+
+.tips-list li::marker{
+
+    color:#4f46e5;
+
+}
+
+/* ==========================================================
+   Button States
+========================================================== */
+
+.btn:disabled{
+
+    opacity:.6;
+
+    cursor:not-allowed;
+
+    pointer-events:none;
+
+}
+
+.btn i{
+
+    margin-right:8px;
+
+}
+/* ==========================================================
+   Responsive Design
+========================================================== */
+
+/* ---------- Large Tablets ---------- */
+
+@media (max-width:1200px){
+
+    .interview-grid{
+
+        grid-template-columns:1fr;
+
+    }
+
+}
+
+/* ---------- Tablets ---------- */
+
+@media (max-width:992px){
+
+    .interview-header{
+
+        padding:32px;
+
+    }
+
+    .interview-header h1{
+
+        font-size:30px;
+
+    }
+
+    .setup-grid{
+
+        grid-template-columns:1fr 1fr;
+
+    }
+
+    .status-grid{
+
+        grid-template-columns:repeat(2,1fr);
+
+    }
+
+}
+
+/* ---------- Mobile ---------- */
+
+@media (max-width:768px){
+
+    .dashboard-content{
+
+        padding:20px;
+
+        gap:20px;
+
+    }
+
+    .interview-header{
+
+        padding:26px;
+
+    }
+
+    .interview-header h1{
+
+        font-size:26px;
+
+    }
+
+    .interview-header p{
+
+        font-size:15px;
+
+    }
+
+    .setup-grid{
+
+        grid-template-columns:1fr;
+
+    }
+
+    .status-grid{
+
+        grid-template-columns:1fr;
+
+    }
+
+    .device-status{
+
+        grid-template-columns:1fr;
+
+    }
+
+    .device-actions{
+
+        flex-direction:column;
+
+    }
+
+    .device-actions .btn{
+
+        width:100%;
+
+    }
+
+    .interview-controls{
+
+        flex-direction:column;
+
+    }
+
+    .interview-controls .btn{
+
+        width:100%;
+
+    }
+
+    .answer-controls{
+
+        flex-direction:column;
+
+    }
+
+    .answer-controls .btn{
+
+        width:100%;
+
+    }
+
+    .video-container{
+
+        height:260px;
+
+    }
+
+}
+
+/* ---------- Small Mobile ---------- */
+
+@media (max-width:576px){
+
+    .question-box{
+
+        padding:22px;
+
+    }
+
+    .question-box h3{
+
+        font-size:20px;
+
+    }
+
+    .status-card{
+
+        padding:18px;
+
+    }
+
+    .status-card h3{
+
+        font-size:28px;
+
+    }
+
+    .progress-footer{
+
+        flex-direction:column;
+
+        align-items:flex-start;
+
+    }
+
+}
+
+/* ==========================================================
+   Camera Animation
+========================================================== */
+
+.video-container.active{
+
+    animation:cameraFade .5s ease;
+
+}
+
+@keyframes cameraFade{
+
+    from{
+
+        opacity:0;
+
+        transform:scale(.98);
+
+    }
+
+    to{
+
+        opacity:1;
+
+        transform:scale(1);
+
+    }
+
+}
+
+/* ==========================================================
+   Recording Animation
+========================================================== */
+
+.recording{
+
+    animation:recordPulse 1.2s infinite;
+
+}
+
+@keyframes recordPulse{
+
+    0%{
+
+        transform:scale(1);
+
+        box-shadow:0 0 0 0 rgba(239,68,68,.45);
+
+    }
+
+    70%{
+
+        transform:scale(1.03);
+
+        box-shadow:0 0 0 16px rgba(239,68,68,0);
+
+    }
+
+    100%{
+
+        transform:scale(1);
+
+        box-shadow:0 0 0 0 rgba(239,68,68,0);
+
+    }
+
+}
+
+/* ==========================================================
+   Card Animation
+========================================================== */
+
+.card{
+
+    animation:fadeUp .45s ease;
+
+}
+
+@keyframes fadeUp{
+
+    from{
+
+        opacity:0;
+
+        transform:translateY(20px);
+
+    }
+
+    to{
+
+        opacity:1;
+
+        transform:translateY(0);
+
+    }
+
+}
+
+/* ==========================================================
+   Loading Skeleton
+========================================================== */
+
+.skeleton{
+
+    position:relative;
+
+    overflow:hidden;
+
+    border-radius:12px;
+
+    background:#e5e7eb;
+
+}
+
+.skeleton::after{
+
+    content:"";
+
+    position:absolute;
+
+    top:0;
+
+    left:-150px;
+
+    width:150px;
+
+    height:100%;
+
+    background:linear-gradient(
+
+        90deg,
+
+        transparent,
+
+        rgba(255,255,255,.65),
+
+        transparent
+
+    );
+
+    animation:skeletonLoading 1.3s infinite;
+
+}
+
+@keyframes skeletonLoading{
+
+    from{
+
+        left:-150px;
+
+    }
+
+    to{
+
+        left:100%;
+
+    }
+
+}
+
+/* ==========================================================
+   Transcript Scrollbar
+========================================================== */
+
+.transcript-box::-webkit-scrollbar{
+
+    width:8px;
+
+}
+
+.transcript-box::-webkit-scrollbar-track{
+
+    background:#f1f5f9;
+
+}
+
+.transcript-box::-webkit-scrollbar-thumb{
+
+    background:#cbd5e1;
+
+    border-radius:10px;
+
+}
+
+.transcript-box::-webkit-scrollbar-thumb:hover{
+
+    background:#94a3b8;
+
+}
+
+/* ==========================================================
+   Accessibility
+========================================================== */
+
+button:focus,
+
+textarea:focus,
+
+select:focus{
+
+    outline:none;
+
+}
+
+.btn:focus-visible,
+
+textarea:focus-visible,
+
+select:focus-visible{
+
+    box-shadow:0 0 0 4px rgba(79,70,229,.18);
+
+}
+
+button{
+
+    -webkit-tap-highlight-color:transparent;
+
+}
+
+/* ==========================================================
+   Utility States
+========================================================== */
+
+.hidden{
+
+    display:none !important;
+
+}
+
+.visible{
+
+    display:block !important;
+
+}
+
+.text-success{
+
+    color:#16a34a;
+
+}
+
+.text-warning{
+
+    color:#f59e0b;
+
+}
+
+.text-danger{
+
+    color:#dc2626;
+
+}
+
+/* ==========================================================
+   End of Interview Styles
+========================================================== */

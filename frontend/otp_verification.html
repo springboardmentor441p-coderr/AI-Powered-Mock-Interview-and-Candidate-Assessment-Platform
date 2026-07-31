@@ -1,0 +1,459 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+
+    <meta charset="UTF-8">
+
+    <meta name="viewport"
+          content="width=device-width, initial-scale=1.0">
+
+    <title>OTP Verification | SmartHire AI</title>
+
+    <!-- Google Font -->
+
+    <link rel="preconnect"
+          href="https://fonts.googleapis.com">
+
+    <link rel="preconnect"
+          href="https://fonts.gstatic.com"
+          crossorigin>
+
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap"
+          rel="stylesheet">
+
+    <!-- Font Awesome -->
+
+    <link rel="stylesheet"
+          href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.6.0/css/all.min.css">
+
+    <!-- Main CSS -->
+
+    <link rel="stylesheet"
+          href="assets/css/style.css">
+
+</head>
+
+<body>
+
+    <!-- Animated Background -->
+
+    <div class="background-animation">
+
+        <span></span>
+        <span></span>
+        <span></span>
+        <span></span>
+        <span></span>
+
+    </div>
+
+    <!-- Navbar -->
+
+    <header class="navbar">
+
+        <div class="logo">
+
+            <i class="fa-solid fa-user-graduate"></i>
+
+            <span>SmartHire AI</span>
+
+        </div>
+
+        <nav>
+
+            <a href="index.html">Home</a>
+
+            <a href="#">Features</a>
+
+            <a href="#">About</a>
+
+            <a href="#">Contact</a>
+
+            <a href="login.html"
+               class="login-btn">
+
+                Login
+
+            </a>
+
+        </nav>
+
+    </header>
+
+    <!-- Main -->
+
+    <main class="auth-container">
+
+        <div class="auth-card">
+
+            <!-- Left Section -->
+
+            <div class="card-left">
+
+                <h2>
+
+                    OTP Verification
+
+                </h2>
+
+                <p>
+
+                    We have sent a One-Time Password (OTP)
+                    to your registered email address.
+
+                    Enter the 6-digit verification code below
+                    to continue securely.
+
+                </p>
+
+                <img src="assets/images/otp.svg"
+                     alt="OTP Verification">
+
+            </div>
+
+            <!-- Right Section -->
+
+            <div class="card-right">
+
+                <h1>
+
+                    Verify OTP
+
+                </h1>
+
+                <p class="subtitle">
+
+                    Enter the 6-digit code
+
+                </p>
+
+                <div class="otp-email">
+
+                    OTP sent to
+
+                    <strong id="userEmail">
+
+                        Loading...
+
+                    </strong>
+
+                </div>
+
+                <form id="otpForm">
+
+                    <!-- OTP -->
+
+                    <div class="input-group">
+
+                        <label>
+
+                            Verification Code
+
+                        </label>
+
+                        <div class="input-field">
+
+                            <i class="fa-solid fa-shield-halved"></i>
+
+                            <input
+                                type="text"
+                                id="otp"
+                                maxlength="6"
+                                placeholder="Enter 6-digit OTP"
+                                required>
+
+                        </div>
+
+                        <small
+                            class="error"
+                            id="otpError">
+
+                        </small>
+
+                    </div>
+
+                    <!-- Verify Button -->
+
+                    <button
+                        type="submit"
+                        class="primary-btn"
+                        id="verifyOTPBtn">
+
+                        <span>
+
+                            Verify OTP
+
+                        </span>
+
+                        <i class="fa-solid fa-check"></i>
+
+                    </button>
+
+                    <!-- Resend -->
+
+                    <div class="bottom-link">
+
+                        Didn't receive the OTP?
+
+                        <a href="#"
+                           id="resendOTP">
+
+                            Resend OTP
+
+                        </a>
+
+                    </div>
+                                    </form>
+
+            </div>
+
+        </div>
+
+    </main>
+
+    <!-- Footer -->
+
+    <footer class="footer">
+
+        <p>
+
+            © 2026 SmartHire AI. All Rights Reserved.
+
+        </p>
+
+    </footer>
+
+    <script>
+
+        // ===========================================
+        // DOM Elements
+        // ===========================================
+
+        const otpForm = document.getElementById("otpForm");
+
+        const otp =
+            document.getElementById("otp");
+
+        const otpError =
+            document.getElementById("otpError");
+
+        const verifyOTPBtn =
+            document.getElementById("verifyOTPBtn");
+
+        const resendOTP =
+            document.getElementById("resendOTP");
+
+        const userEmail =
+            document.getElementById("userEmail");
+
+        // ===========================================
+        // Load Email
+        // ===========================================
+
+        const email =
+            localStorage.getItem("otp_email");
+
+        if (email) {
+
+            userEmail.innerText = email;
+
+        }
+        else {
+
+            userEmail.innerText = "Unknown Email";
+
+        }
+
+        // ===========================================
+        // OTP Validation
+        // ===========================================
+
+        function validateOTP(code) {
+
+            return /^[0-9]{6}$/.test(code);
+
+        }
+
+        // ===========================================
+        // Verify OTP
+        // ===========================================
+
+        otpForm.addEventListener("submit", async (e) => {
+
+            e.preventDefault();
+
+            otpError.innerHTML = "";
+
+            if (!validateOTP(otp.value.trim())) {
+
+                otpError.innerHTML =
+                    "Enter a valid 6-digit OTP.";
+
+                return;
+
+            }
+
+            verifyOTPBtn.disabled = true;
+
+            verifyOTPBtn.innerHTML = `
+                <i class="fa-solid fa-spinner fa-spin"></i>
+                Verifying...
+            `;
+
+            try {
+
+                const response = await fetch(
+
+                    "http://127.0.0.1:5000/api/auth/verify-otp",
+
+                    {
+
+                        method: "POST",
+
+                        headers: {
+
+                            "Content-Type": "application/json"
+
+                        },
+
+                        body: JSON.stringify({
+
+                            email: email,
+
+                            otp: otp.value.trim()
+
+                        })
+
+                    }
+
+                );
+
+                const data = await response.json();
+
+                if (response.ok) {
+
+                    alert(
+
+                        data.message ||
+
+                        "OTP Verified Successfully."
+
+                    );
+
+                    window.location.href =
+                        "reset-password.html";
+
+                }
+                else {
+
+                    otpError.innerHTML =
+                        data.message ||
+                        "Invalid OTP.";
+
+                }
+
+            }
+            catch (error) {
+
+                console.error(error);
+
+                alert(
+
+                    "Unable to connect to server."
+
+                );
+
+            }
+            finally {
+
+                verifyOTPBtn.disabled = false;
+
+                verifyOTPBtn.innerHTML = `
+
+                    <span>
+
+                        Verify OTP
+
+                    </span>
+
+                    <i class="fa-solid fa-check"></i>
+
+                `;
+
+            }
+
+        });
+
+        // ===========================================
+        // Resend OTP
+        // ===========================================
+
+        resendOTP.addEventListener("click", async (e) => {
+
+            e.preventDefault();
+
+            if (!email) {
+
+                alert("Email not found.");
+
+                return;
+
+            }
+
+            try {
+
+                const response = await fetch(
+
+                    "http://127.0.0.1:5000/api/auth/resend-otp",
+
+                    {
+
+                        method: "POST",
+
+                        headers: {
+
+                            "Content-Type": "application/json"
+
+                        },
+
+                        body: JSON.stringify({
+
+                            email: email
+
+                        })
+
+                    }
+
+                );
+
+                const data = await response.json();
+
+                alert(
+
+                    data.message ||
+
+                    "OTP Sent Successfully."
+
+                );
+
+            }
+            catch (error) {
+
+                console.error(error);
+
+                alert(
+
+                    "Unable to resend OTP."
+
+                );
+
+            }
+
+        });
+
+    </script>
+
+</body>
+
+</html>

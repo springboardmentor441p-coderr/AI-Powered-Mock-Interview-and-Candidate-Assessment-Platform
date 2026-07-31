@@ -1,0 +1,935 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+
+    <meta charset="UTF-8">
+
+    <meta name="viewport"
+          content="width=device-width, initial-scale=1.0">
+
+    <title>Resume Analyzer | SmartHire AI</title>
+
+    <!-- Google Fonts -->
+
+    <link rel="preconnect"
+          href="https://fonts.googleapis.com">
+
+    <link rel="preconnect"
+          href="https://fonts.gstatic.com"
+          crossorigin>
+
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap"
+          rel="stylesheet">
+
+    <!-- Font Awesome -->
+
+    <link rel="stylesheet"
+          href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css">
+
+    <!-- CSS -->
+
+    <link rel="stylesheet"
+          href="assets/css/style.css">
+
+    <link rel="stylesheet"
+          href="assets/css/components.css">
+
+    <link rel="stylesheet"
+          href="assets/css/resume.css">
+
+    <link rel="stylesheet"
+          href="assets/css/responsive.css">
+
+</head>
+
+<body>
+
+<div class="dashboard-wrapper">
+
+    <!-- ===================================
+            Sidebar
+    ==================================== -->
+
+    <aside class="sidebar">
+
+        <div class="sidebar-logo">
+
+            <i class="fa-solid fa-user-graduate"></i>
+
+            <span>SmartHire AI</span>
+
+        </div>
+
+        <ul class="sidebar-menu">
+
+            <li>
+
+                <a href="dashboard.html">
+
+                    <i class="fa-solid fa-house"></i>
+
+                    Dashboard
+
+                </a>
+
+            </li>
+
+            <li>
+
+                <a href="profile.html">
+
+                    <i class="fa-solid fa-user"></i>
+
+                    My Profile
+
+                </a>
+
+            </li>
+
+            <li class="active">
+
+                <a href="resume.html">
+
+                    <i class="fa-solid fa-file-arrow-up"></i>
+
+                    Resume
+
+                </a>
+
+            </li>
+
+            <li>
+
+                <a href="interview.html">
+
+                    <i class="fa-solid fa-video"></i>
+
+                    AI Interview
+
+                </a>
+
+            </li>
+
+            <li>
+
+                <a href="reports.html">
+
+                    <i class="fa-solid fa-chart-line"></i>
+
+                    Reports
+
+                </a>
+
+            </li>
+
+            <li>
+
+                <a href="#">
+
+                    <i class="fa-solid fa-gear"></i>
+
+                    Settings
+
+                </a>
+
+            </li>
+
+        </ul>
+
+        <div class="sidebar-bottom">
+
+            <button
+                id="logoutBtn"
+                class="btn btn-danger">
+
+                <i class="fa-solid fa-right-from-bracket"></i>
+
+                Logout
+
+            </button>
+
+        </div>
+
+    </aside>
+
+    <!-- ===================================
+            Main Content
+    ==================================== -->
+
+    <main class="dashboard-main">
+
+        <!-- Top Navigation -->
+
+        <header class="topbar">
+
+            <div class="topbar-left">
+
+                <button
+                    id="menuToggle"
+                    class="menu-toggle">
+
+                    <i class="fa-solid fa-bars"></i>
+
+                </button>
+
+                <h2>
+
+                    Resume Analyzer
+
+                </h2>
+
+            </div>
+
+            <div class="topbar-right">
+
+                <div class="search-box">
+
+                    <i class="fa-solid fa-search"></i>
+
+                    <input
+                        type="text"
+                        placeholder="Search...">
+
+                </div>
+
+                <button class="notification-btn">
+
+                    <i class="fa-solid fa-bell"></i>
+
+                    <span class="notification-count">
+
+                        2
+
+                    </span>
+
+                </button>
+
+                <div class="profile-menu">
+
+                    <img
+                        src="assets/images/default-profile.png"
+                        alt="Profile"
+                        class="avatar">
+
+                    <div>
+
+                        <h4 id="headerUserName">
+
+                            Loading...
+
+                        </h4>
+
+                        <small>
+
+                            Candidate
+
+                        </small>
+
+                    </div>
+
+                </div>
+
+            </div>
+
+        </header>
+
+        <!-- ===================================
+                Resume Content
+        ==================================== -->
+
+        <section class="dashboard-content">
+
+            <!-- ===================================
+                    Page Header
+            ==================================== -->
+
+            <section class="card resume-header">
+
+                <div>
+
+                    <h1>
+
+                        Resume Upload & ATS Analysis
+
+                    </h1>
+
+                    <p>
+
+                        Upload your latest resume to receive an AI-powered ATS score, keyword analysis, and improvement recommendations.
+
+                    </p>
+
+                </div>
+
+            </section>
+
+            <!-- ===================================
+                    Upload Card
+            ==================================== -->
+
+            <section class="card">
+
+                <div class="section-title">
+
+                    <div>
+
+                        <h2>
+
+                            Upload Resume
+
+                        </h2>
+
+                        <p>
+
+                            Supported formats: PDF and DOCX (Maximum 10 MB)
+
+                        </p>
+
+                    </div>
+
+                </div>
+
+                <div
+                    id="dropZone"
+                    class="upload-zone">
+
+                    <div class="upload-icon">
+
+                        <i class="fa-solid fa-cloud-arrow-up"></i>
+
+                    </div>
+
+                    <h3>
+
+                        Drag & Drop Resume Here
+
+                    </h3>
+
+                    <p>
+
+                        or click below to browse your files
+
+                    </p>
+
+                    <input
+                        type="file"
+                        id="resumeFile"
+                        accept=".pdf,.doc,.docx"
+                        hidden>
+
+                    <button
+                        id="browseResumeBtn"
+                        class="btn btn-primary">
+
+                        <i class="fa-solid fa-folder-open"></i>
+
+                        Choose Resume
+
+                    </button>
+
+                </div>
+
+            </section>
+
+            <!-- Continue in Part 2 -->
+                         <!-- ===================================
+                    Upload Progress
+            ==================================== -->
+
+            <section class="card">
+
+                <div class="section-title">
+
+                    <div>
+
+                        <h2>
+
+                            Upload Status
+
+                        </h2>
+
+                        <p>
+
+                            Track your resume upload and AI analysis progress.
+
+                        </p>
+
+                    </div>
+
+                </div>
+
+                <div class="upload-progress-container">
+
+                    <div class="progress">
+
+                        <div
+                            class="progress-bar"
+                            id="uploadProgressBar">
+
+                        </div>
+
+                    </div>
+
+                    <div class="progress-info">
+
+                        <span id="uploadStatus">
+
+                            Waiting for upload...
+
+                        </span>
+
+                        <span id="uploadPercentage">
+
+                            0%
+
+                        </span>
+
+                    </div>
+
+                </div>
+
+            </section>
+
+            <!-- ===================================
+                    Resume Information
+            ==================================== -->
+
+            <div class="resume-grid">
+
+                <!-- Resume Details -->
+
+                <section class="card">
+
+                    <div class="section-title">
+
+                        <div>
+
+                            <h2>
+
+                                Uploaded Resume
+
+                            </h2>
+
+                            <p>
+
+                                Details of your latest uploaded resume.
+
+                            </p>
+
+                        </div>
+
+                    </div>
+
+                    <div class="resume-file-card">
+
+                        <div class="resume-icon">
+
+                            <i class="fa-solid fa-file-pdf"></i>
+
+                        </div>
+
+                        <div class="resume-details">
+
+                            <h3 id="resumeFileName">
+
+                                No Resume Uploaded
+
+                            </h3>
+
+                            <p id="resumeFileSize">
+
+                                --
+
+                            </p>
+
+                            <small id="resumeUploadDate">
+
+                                Upload a resume to begin analysis
+
+                            </small>
+
+                        </div>
+
+                    </div>
+
+                    <div class="resume-actions">
+
+                        <button
+                            id="downloadResumeBtn"
+                            class="btn btn-secondary">
+
+                            <i class="fa-solid fa-download"></i>
+
+                            Download
+
+                        </button>
+
+                        <button
+                            id="replaceResumeBtn"
+                            class="btn btn-primary">
+
+                            <i class="fa-solid fa-rotate"></i>
+
+                            Replace
+
+                        </button>
+
+                        <button
+                            id="deleteResumeBtn"
+                            class="btn btn-danger">
+
+                            <i class="fa-solid fa-trash"></i>
+
+                            Delete
+
+                        </button>
+
+                    </div>
+
+                </section>
+
+                <!-- ATS Score -->
+
+                <section class="card">
+
+                    <div class="section-title">
+
+                        <div>
+
+                            <h2>
+
+                                ATS Score
+
+                            </h2>
+
+                            <p>
+
+                                AI evaluation based on ATS standards.
+
+                            </p>
+
+                        </div>
+
+                    </div>
+
+                    <div class="ats-score-container">
+
+                        <div class="score-circle">
+
+                            <svg width="180"
+                                 height="180">
+
+                                <circle
+                                    cx="90"
+                                    cy="90"
+                                    r="72"
+                                    class="score-bg">
+
+                                </circle>
+
+                                <circle
+                                    cx="90"
+                                    cy="90"
+                                    r="72"
+                                    class="score-progress"
+                                    id="scoreProgress">
+
+                                </circle>
+
+                            </svg>
+
+                            <div class="score-text">
+
+                                <h2 id="atsScore">
+
+                                    0%
+
+                                </h2>
+
+                                <span>
+
+                                    ATS Match
+
+                                </span>
+
+                            </div>
+
+                        </div>
+
+                        <div class="ats-summary">
+
+                            <div class="summary-item">
+
+                                <span>
+
+                                    Resume Quality
+
+                                </span>
+
+                                <strong id="resumeQuality">
+
+                                    -
+
+                                </strong>
+
+                            </div>
+
+                            <div class="summary-item">
+
+                                <span>
+
+                                    Keywords Found
+
+                                </span>
+
+                                <strong id="keywordCount">
+
+                                    0
+
+                                </strong>
+
+                            </div>
+
+                            <div class="summary-item">
+
+                                <span>
+
+                                    Missing Keywords
+
+                                </span>
+
+                                <strong id="missingKeywordCount">
+
+                                    0
+
+                                </strong>
+
+                            </div>
+
+                            <div class="summary-item">
+
+                                <span>
+
+                                    Overall Rating
+
+                                </span>
+
+                                <strong id="resumeRating">
+
+                                    -
+
+                                </strong>
+
+                            </div>
+
+                        </div>
+
+                    </div>
+
+                </section>
+
+            </div>
+
+            <!-- Continue in Part 3 -->
+                         <!-- ===================================
+                    AI Resume Analysis
+            ==================================== -->
+
+            <div class="resume-grid">
+
+                <!-- Matched Keywords -->
+
+                <section class="card">
+
+                    <div class="section-title">
+
+                        <div>
+
+                            <h2>
+
+                                Matched Keywords
+
+                            </h2>
+
+                            <p>
+
+                                Skills and keywords detected in your resume.
+
+                            </p>
+
+                        </div>
+
+                    </div>
+
+                    <div
+                        id="matchedKeywords"
+                        class="keyword-container">
+
+                        <!-- Loaded by resume.js -->
+
+                    </div>
+
+                </section>
+
+                <!-- Missing Keywords -->
+
+                <section class="card">
+
+                    <div class="section-title">
+
+                        <div>
+
+                            <h2>
+
+                                Missing Keywords
+
+                            </h2>
+
+                            <p>
+
+                                Recommended keywords to improve your ATS score.
+
+                            </p>
+
+                        </div>
+
+                    </div>
+
+                    <div
+                        id="missingKeywords"
+                        class="keyword-container">
+
+                        <!-- Loaded by resume.js -->
+
+                    </div>
+
+                </section>
+
+            </div>
+
+            <!-- ===================================
+                    AI Recommendations
+            ==================================== -->
+
+            <section class="card">
+
+                <div class="section-title">
+
+                    <div>
+
+                        <h2>
+
+                            AI Resume Recommendations
+
+                        </h2>
+
+                        <p>
+
+                            Personalized suggestions generated after analyzing your resume.
+
+                        </p>
+
+                    </div>
+
+                </div>
+
+                <div
+                    id="recommendationList"
+                    class="recommendation-list">
+
+                    <!-- Loaded dynamically -->
+
+                </div>
+
+            </section>
+
+            <!-- ===================================
+                    Resume Statistics
+            ==================================== -->
+
+            <section class="card">
+
+                <div class="section-title">
+
+                    <div>
+
+                        <h2>
+
+                            Resume Statistics
+
+                        </h2>
+
+                        <p>
+
+                            Overall metrics extracted from your uploaded resume.
+
+                        </p>
+
+                    </div>
+
+                </div>
+
+                <div class="stats-grid">
+
+                    <div class="stat-card">
+
+                        <h3 id="wordCount">
+
+                            0
+
+                        </h3>
+
+                        <span>
+
+                            Total Words
+
+                        </span>
+
+                    </div>
+
+                    <div class="stat-card">
+
+                        <h3 id="pageCount">
+
+                            0
+
+                        </h3>
+
+                        <span>
+
+                            Pages
+
+                        </span>
+
+                    </div>
+
+                    <div class="stat-card">
+
+                        <h3 id="skillsCount">
+
+                            0
+
+                        </h3>
+
+                        <span>
+
+                            Skills Found
+
+                        </span>
+
+                    </div>
+
+                    <div class="stat-card">
+
+                        <h3 id="experienceYears">
+
+                            0
+
+                        </h3>
+
+                        <span>
+
+                            Experience (Years)
+
+                        </span>
+
+                    </div>
+
+                </div>
+
+            </section>
+
+            <!-- ===================================
+                    Previous Analysis History
+            ==================================== -->
+
+            <section class="card">
+
+                <div class="section-title">
+
+                    <div>
+
+                        <h2>
+
+                            Analysis History
+
+                        </h2>
+
+                        <p>
+
+                            Previous resume analyses performed by SmartHire AI.
+
+                        </p>
+
+                    </div>
+
+                </div>
+
+                <div class="table-responsive">
+
+                    <table class="history-table">
+
+                        <thead>
+
+                            <tr>
+
+                                <th>
+
+                                    Date
+
+                                </th>
+
+                                <th>
+
+                                    Resume
+
+                                </th>
+
+                                <th>
+
+                                    ATS Score
+
+                                </th>
+
+                                <th>
+
+                                    Status
+
+                                </th>
+
+                            </tr>
+
+                        </thead>
+
+                        <tbody id="historyTableBody">
+
+                            <!-- Dynamic -->
+
+                        </tbody>
+
+                    </table>
+
+                </div>
+
+            </section>
+
+        </section>
+
+    </main>
+
+</div>
+
+<!-- ===================================
+        JavaScript
+=================================== -->
+
+<script src="assets/js/config.js"></script>
+
+<script src="assets/js/utils.js"></script>
+
+<script src="assets/js/resume.js"></script>
+
+</body>
+
+</html>

@@ -1,0 +1,1008 @@
+/* =====================================================
+                SMARTHIRE AI
+===================================================== */
+
+*{
+    margin:0;
+    padding:0;
+    box-sizing:border-box;
+}
+
+html{
+    scroll-behavior:smooth;
+}
+
+body{
+
+    font-family:'Poppins',sans-serif;
+
+    background:#f6f8fc;
+
+    color:#222;
+
+    overflow-x:hidden;
+
+    line-height:1.7;
+
+}
+
+/* =====================================================
+                    LINKS
+===================================================== */
+
+a{
+
+    text-decoration:none;
+
+    transition:.3s;
+
+}
+
+img{
+
+    max-width:100%;
+
+    display:block;
+
+}
+
+/* =====================================================
+                    COLORS
+===================================================== */
+
+:root{
+
+    --primary:#2563eb;
+
+    --primary-dark:#1d4ed8;
+
+    --secondary:#0f172a;
+
+    --light:#ffffff;
+
+    --gray:#64748b;
+
+    --border:#e5e7eb;
+
+    --bg:#f8fafc;
+
+    --shadow:0 10px 30px rgba(0,0,0,.08);
+
+    --radius:16px;
+
+}
+
+/* =====================================================
+                    NAVBAR
+===================================================== */
+
+.glass-nav{
+
+    background:rgba(255,255,255,.92);
+
+    backdrop-filter:blur(15px);
+
+    box-shadow:0 4px 20px rgba(0,0,0,.05);
+
+    padding:15px 0;
+
+    transition:.4s;
+
+}
+
+.navbar-brand{
+
+    font-size:28px;
+
+    font-weight:700;
+
+}
+
+.nav-link{
+
+    color:#222 !important;
+
+    font-weight:500;
+
+    margin-left:20px;
+
+}
+
+.nav-link:hover{
+
+    color:var(--primary)!important;
+
+}
+
+.navbar .btn{
+
+    border-radius:30px;
+
+    padding:10px 24px;
+
+    font-weight:600;
+
+}
+
+/* =====================================================
+                    BUTTONS
+===================================================== */
+
+.btn-primary{
+
+    background:var(--primary);
+
+    border:none;
+
+    border-radius:30px;
+
+    padding:14px 32px;
+
+    transition:.35s;
+
+}
+
+.btn-primary:hover{
+
+    background:var(--primary-dark);
+
+    transform:translateY(-3px);
+
+    box-shadow:0 15px 30px rgba(37,99,235,.25);
+
+}
+
+.btn-outline-primary{
+
+    border-radius:30px;
+
+    padding:14px 30px;
+
+    font-weight:600;
+
+}
+
+.btn-outline-primary:hover{
+
+    transform:translateY(-3px);
+
+}
+
+/* =====================================================
+                    HERO
+===================================================== */
+
+.hero-section{
+
+    padding-top:150px;
+
+    padding-bottom:100px;
+
+    background:linear-gradient(135deg,#eef5ff,#ffffff);
+
+}
+
+.hero-section h1{
+
+    font-size:60px;
+
+    font-weight:700;
+
+    color:#111827;
+
+    line-height:1.2;
+
+}
+
+.hero-section p{
+
+    font-size:19px;
+
+    color:var(--gray);
+
+}
+
+.hero-image{
+
+    animation:floatImage 4s ease-in-out infinite;
+
+    max-width:90%;
+
+    margin:auto;
+
+}
+
+/* =====================================================
+                    BADGE
+===================================================== */
+
+.badge{
+
+    padding:12px 18px;
+
+    font-size:15px;
+
+    border-radius:30px;
+
+}
+
+/* =====================================================
+                    STATS
+===================================================== */
+
+.hero-section h2{
+
+    font-size:40px;
+
+    margin-bottom:0;
+
+}
+
+.hero-section small{
+
+    color:var(--gray);
+
+}
+
+/* =====================================================
+                    SECTION
+===================================================== */
+
+section{
+
+    position:relative;
+
+}
+
+.container{
+
+    position:relative;
+
+}
+
+/* =====================================================
+                SECTION TITLE
+===================================================== */
+
+section h2{
+
+    font-size:42px;
+
+    font-weight:700;
+
+    margin-bottom:20px;
+
+}
+
+section p{
+
+    color:#64748b;
+
+}
+
+/* =====================================================
+                FEATURE CARD
+===================================================== */
+
+.feature-card{
+
+    background:#fff;
+
+    border-radius:18px;
+
+    padding:35px;
+
+    text-align:center;
+
+    transition:.35s;
+
+    box-shadow:var(--shadow);
+
+    border:1px solid transparent;
+
+    height:100%;
+
+}
+
+.feature-card:hover{
+
+    transform:translateY(-10px);
+
+    border-color:var(--primary);
+
+}
+
+.feature-card i{
+
+    font-size:58px;
+
+}
+
+.feature-card h4{
+
+    font-weight:600;
+
+    margin-top:20px;
+
+    margin-bottom:15px;
+
+}
+
+.feature-card p{
+
+    color:var(--gray);
+
+}
+
+/* =====================================================
+                IMAGE
+===================================================== */
+
+.about-section img{
+
+    width:90%;
+
+    margin:auto;
+
+}
+/* =====================================================
+                    ABOUT SECTION
+===================================================== */
+
+.about-section{
+
+    background:#ffffff;
+
+    padding:100px 0;
+
+}
+
+.about-section .badge{
+
+    background:var(--primary);
+
+}
+
+.about-section h2{
+
+    color:var(--secondary);
+
+}
+
+.about-section p{
+
+    font-size:17px;
+
+    color:var(--gray);
+
+}
+
+.about-section ul{
+
+    padding-left:0;
+
+}
+
+.about-section li{
+
+    list-style:none;
+
+    margin-bottom:15px;
+
+    font-size:17px;
+
+    font-weight:500;
+
+}
+
+.about-section li i{
+
+    margin-right:10px;
+
+    color:var(--primary);
+
+}
+
+/* =====================================================
+                WORKFLOW
+===================================================== */
+
+#workflow{
+
+    background:var(--bg);
+
+    padding:100px 0;
+
+}
+
+.workflow-card{
+
+    background:#fff;
+
+    border-radius:20px;
+
+    padding:40px 30px;
+
+    text-align:center;
+
+    transition:.35s;
+
+    box-shadow:var(--shadow);
+
+    height:100%;
+
+}
+
+.workflow-card:hover{
+
+    transform:translateY(-10px);
+
+}
+
+.number-circle{
+
+    width:70px;
+
+    height:70px;
+
+    border-radius:50%;
+
+    background:var(--primary);
+
+    color:#fff;
+
+    display:flex;
+
+    justify-content:center;
+
+    align-items:center;
+
+    font-size:28px;
+
+    font-weight:700;
+
+    margin:0 auto 25px;
+
+}
+
+.workflow-card h5{
+
+    font-weight:600;
+
+    margin-bottom:15px;
+
+}
+
+.workflow-card p{
+
+    color:var(--gray);
+
+}
+
+/* =====================================================
+                STATS
+===================================================== */
+
+.stats-section{
+
+    background:linear-gradient(135deg,#2563eb,#1e3a8a);
+
+    color:#fff;
+
+    padding:90px 0;
+
+}
+
+.stats-section h2{
+
+    color:#fff;
+
+    margin-bottom:10px;
+
+}
+
+.stats-section p{
+
+    color:#dbeafe;
+
+    font-size:18px;
+
+}
+
+/* =====================================================
+                COUNTER
+===================================================== */
+
+.counter{
+
+    font-weight:700;
+
+    letter-spacing:1px;
+
+}
+
+/* =====================================================
+                CTA SECTION
+===================================================== */
+
+.cta-section{
+
+    background:#fff;
+
+    padding:100px 0;
+
+}
+
+.cta-section h2{
+
+    font-size:48px;
+
+    font-weight:700;
+
+    color:var(--secondary);
+
+}
+
+.cta-section p{
+
+    max-width:700px;
+
+    margin:auto;
+
+    color:var(--gray);
+
+}
+
+.cta-section .btn{
+
+    margin-top:30px;
+
+    padding:16px 45px;
+
+    font-size:18px;
+
+}
+
+/* =====================================================
+                UTILITIES
+===================================================== */
+
+.shadow-card{
+
+    box-shadow:var(--shadow);
+
+}
+
+.rounded-xl{
+
+    border-radius:20px;
+
+}
+
+.text-primary{
+
+    color:var(--primary)!important;
+
+}
+
+.bg-primary{
+
+    background:var(--primary)!important;
+
+}
+
+.mt-80{
+
+    margin-top:80px;
+
+}
+
+.mb-80{
+
+    margin-bottom:80px;
+
+}
+
+.py-100{
+
+    padding-top:100px;
+
+    padding-bottom:100px;
+
+}
+
+/* =====================================================
+                ANIMATION PREP
+===================================================== */
+
+.fade-up{
+
+    opacity:0;
+
+    transform:translateY(40px);
+
+    transition:all .7s ease;
+
+}
+
+.fade-up.show{
+
+    opacity:1;
+
+    transform:translateY(0);
+
+}
+/* =====================================================
+                    FOOTER
+===================================================== */
+
+.footer{
+
+    background:#0f172a;
+
+    color:#ffffff;
+
+    padding:70px 0 25px;
+
+}
+
+.footer h4,
+.footer h5{
+
+    color:#ffffff;
+
+    font-weight:600;
+
+    margin-bottom:20px;
+
+}
+
+.footer p{
+
+    color:#cbd5e1;
+
+    font-size:15px;
+
+}
+
+.footer ul{
+
+    padding:0;
+
+}
+
+.footer ul li{
+
+    list-style:none;
+
+    margin-bottom:12px;
+
+}
+
+.footer ul li a{
+
+    color:#cbd5e1;
+
+    transition:.3s;
+
+}
+
+.footer ul li a:hover{
+
+    color:#ffffff;
+
+    padding-left:6px;
+
+}
+
+.footer hr{
+
+    border-color:rgba(255,255,255,.15);
+
+    margin:40px 0 20px;
+
+}
+
+.footer .social-icons{
+
+    display:flex;
+
+    gap:15px;
+
+    margin-top:20px;
+
+}
+
+.footer .social-icons a{
+
+    width:45px;
+
+    height:45px;
+
+    border-radius:50%;
+
+    background:rgba(255,255,255,.08);
+
+    color:#fff;
+
+    display:flex;
+
+    align-items:center;
+
+    justify-content:center;
+
+    font-size:20px;
+
+    transition:.3s;
+
+}
+
+.footer .social-icons a:hover{
+
+    background:var(--primary);
+
+    transform:translateY(-5px);
+
+}
+
+/* =====================================================
+                CARD HOVER EFFECTS
+===================================================== */
+
+.feature-card,
+.workflow-card{
+
+    transition:all .35s ease;
+
+}
+
+.feature-card:hover,
+.workflow-card:hover{
+
+    box-shadow:0 20px 45px rgba(0,0,0,.12);
+
+}
+
+/* =====================================================
+                HERO IMAGE
+===================================================== */
+
+@keyframes floatImage{
+
+    0%{
+
+        transform:translateY(0px);
+
+    }
+
+    50%{
+
+        transform:translateY(-18px);
+
+    }
+
+    100%{
+
+        transform:translateY(0px);
+
+    }
+
+}
+
+/* =====================================================
+                FADE ANIMATION
+===================================================== */
+
+@keyframes fadeUp{
+
+    from{
+
+        opacity:0;
+
+        transform:translateY(40px);
+
+    }
+
+    to{
+
+        opacity:1;
+
+        transform:translateY(0);
+
+    }
+
+}
+
+.animate{
+
+    animation:fadeUp .8s ease forwards;
+
+}
+
+/* =====================================================
+                SCROLLBAR
+===================================================== */
+
+::-webkit-scrollbar{
+
+    width:10px;
+
+}
+
+::-webkit-scrollbar-track{
+
+    background:#eef2f7;
+
+}
+
+::-webkit-scrollbar-thumb{
+
+    background:var(--primary);
+
+    border-radius:10px;
+
+}
+
+::-webkit-scrollbar-thumb:hover{
+
+    background:var(--primary-dark);
+
+}
+
+/* =====================================================
+                SELECTION
+===================================================== */
+
+::selection{
+
+    background:var(--primary);
+
+    color:#ffffff;
+
+}
+
+/* =====================================================
+                RESPONSIVE
+===================================================== */
+
+@media(max-width:1200px){
+
+    .hero-section h1{
+
+        font-size:52px;
+
+    }
+
+}
+
+@media(max-width:992px){
+
+    .hero-section{
+
+        text-align:center;
+
+        padding-top:120px;
+
+    }
+
+    .hero-image{
+
+        margin-top:50px;
+
+        width:80%;
+
+    }
+
+    .navbar .btn{
+
+        margin-top:10px;
+
+    }
+
+    .about-section img{
+
+        margin-bottom:40px;
+
+    }
+
+    .cta-section h2{
+
+        font-size:38px;
+
+    }
+
+}
+
+@media(max-width:768px){
+
+    .hero-section h1{
+
+        font-size:40px;
+
+    }
+
+    section h2{
+
+        font-size:32px;
+
+    }
+
+    .feature-card,
+
+    .workflow-card{
+
+        padding:25px;
+
+    }
+
+    .stats-section h2{
+
+        font-size:34px;
+
+    }
+
+    .footer{
+
+        text-align:center;
+
+    }
+
+    .footer .social-icons{
+
+        justify-content:center;
+
+    }
+
+}
+
+@media(max-width:576px){
+
+    .hero-section{
+
+        padding-top:100px;
+
+    }
+
+    .hero-section h1{
+
+        font-size:32px;
+
+    }
+
+    .hero-section p{
+
+        font-size:16px;
+
+    }
+
+    .btn-primary,
+
+    .btn-outline-primary{
+
+        width:100%;
+
+        margin-bottom:12px;
+
+    }
+
+    .feature-card i{
+
+        font-size:46px;
+
+    }
+
+    .number-circle{
+
+        width:60px;
+
+        height:60px;
+
+        font-size:24px;
+
+    }
+
+}
+
+/* =====================================================
+                END OF FILE
+===================================================== */

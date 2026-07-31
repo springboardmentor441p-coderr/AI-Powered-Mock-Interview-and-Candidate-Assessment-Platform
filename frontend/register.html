@@ -1,0 +1,1103 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+
+    <meta charset="UTF-8">
+    <meta name="viewport"
+          content="width=device-width, initial-scale=1.0">
+
+    <title>Register | SmartHire AI</title>
+
+    <!-- Google Font -->
+    <link rel="preconnect"
+          href="https://fonts.googleapis.com">
+
+    <link rel="preconnect"
+          href="https://fonts.gstatic.com"
+          crossorigin>
+
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap"
+          rel="stylesheet">
+
+    <!-- Font Awesome -->
+
+    <link rel="stylesheet"
+          href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.6.0/css/all.min.css">
+
+    <!-- CSS -->
+
+    <link rel="stylesheet"
+          href="assets/css/style.css">
+
+</head>
+
+<body>
+
+    <!-- Background -->
+
+    <div class="background-animation">
+
+        <span></span>
+        <span></span>
+        <span></span>
+        <span></span>
+        <span></span>
+
+    </div>
+
+    <!-- Navbar -->
+
+    <header class="navbar">
+
+        <div class="logo">
+
+            <i class="fa-solid fa-user-graduate"></i>
+
+            <span>SmartHire AI</span>
+
+        </div>
+
+        <nav>
+
+            <a href="index.html">Home</a>
+
+            <a href="#">Features</a>
+
+            <a href="#">About</a>
+
+            <a href="#">Contact</a>
+
+            <a href="login.html" class="login-btn">
+
+                Login
+
+            </a>
+
+        </nav>
+
+    </header>
+
+    <!-- Main -->
+
+    <main class="auth-container">
+
+        <div class="auth-card register-card">
+
+            <div class="card-left">
+
+                <h2>Create Account</h2>
+
+                <p>
+
+                    Join SmartHire AI and begin your AI-powered interview
+                    journey with personalized assessments, resume analysis,
+                    performance reports, and real-time interview practice.
+
+                </p>
+
+                <img src="assets/images/register.svg"
+                     alt="Register">
+
+            </div>
+
+            <div class="card-right">
+
+                <h1>
+
+                    Register
+
+                </h1>
+
+                <p class="subtitle">
+
+                    Fill all details carefully
+
+                </p>
+
+                <form id="registerForm">
+
+                    <!-- Full Name -->
+
+                    <div class="input-group">
+
+                        <label>
+
+                            Full Name
+
+                        </label>
+
+                        <div class="input-field">
+
+                            <i class="fa-solid fa-user"></i>
+
+                            <input
+                                   type="text"
+                                   id="fullname"
+                                   placeholder="Enter Full Name"
+                                   required>
+
+                        </div>
+
+                        <small class="error"
+                               id="fullnameError"></small>
+
+                    </div>
+
+                    <!-- Email -->
+
+                    <div class="input-group">
+
+                        <label>
+
+                            Email Address
+
+                        </label>
+
+                        <div class="input-field">
+
+                            <i class="fa-solid fa-envelope"></i>
+
+                            <input
+                                   type="email"
+                                   id="email"
+                                   placeholder="Enter Email Address"
+                                   required>
+
+                        </div>
+
+                        <small class="error"
+                               id="emailError"></small>
+
+                    </div>
+
+                    <!-- Mobile -->
+
+                    <div class="input-group">
+
+                        <label>
+
+                            Mobile Number
+
+                        </label>
+
+                        <div class="input-field">
+
+                            <i class="fa-solid fa-phone"></i>
+
+                            <input
+                                   type="tel"
+                                   id="phone"
+                                   maxlength="10"
+                                   placeholder="Enter Mobile Number"
+                                   required>
+
+                        </div>
+
+                        <small class="error"
+                               id="phoneError"></small>
+
+                    </div>
+
+                    <!-- College -->
+
+                    <div class="input-group">
+
+                        <label>
+
+                            College Name
+
+                        </label>
+
+                        <div class="input-field">
+
+                            <i class="fa-solid fa-building-columns"></i>
+
+                            <input
+                                   type="text"
+                                   id="college"
+                                   placeholder="Enter College Name"
+                                   required>
+
+                        </div>
+
+                        <small class="error"
+                               id="collegeError"></small>
+
+                    </div>
+
+                    <!-- Degree -->
+
+                    <div class="input-group">
+
+                        <label>
+
+                            Degree
+
+                        </label>
+
+                        <div class="input-field">
+
+                            <i class="fa-solid fa-graduation-cap"></i>
+
+                            <select id="degree">
+
+                                <option value="">
+                                    Select Degree
+                                </option>
+
+                                <option>
+                                    B.Tech
+                                </option>
+
+                                <option>
+                                    M.Tech
+                                </option>
+
+                                <option>
+                                    MCA
+                                </option>
+
+                                <option>
+                                    MBA
+                                </option>
+
+                                <option>
+                                    B.Sc
+                                </option>
+
+                                <option>
+                                    M.Sc
+                                </option>
+
+                            </select>
+
+                        </div>
+
+                        <small class="error"
+                               id="degreeError"></small>
+
+                    </div>
+                                        <!-- Year of Study -->
+
+                    <div class="input-group">
+
+                        <label>
+
+                            Year of Study
+
+                        </label>
+
+                        <div class="input-field">
+
+                            <i class="fa-solid fa-calendar"></i>
+
+                            <select id="year">
+
+                                <option value="">
+                                    Select Year
+                                </option>
+
+                                <option>
+                                    1st Year
+                                </option>
+
+                                <option>
+                                    2nd Year
+                                </option>
+
+                                <option>
+                                    3rd Year
+                                </option>
+
+                                <option>
+                                    Final Year
+                                </option>
+
+                                <option>
+                                    Graduate
+                                </option>
+
+                            </select>
+
+                        </div>
+
+                        <small class="error"
+                               id="yearError"></small>
+
+                    </div>
+
+                    <!-- Branch -->
+
+                    <div class="input-group">
+
+                        <label>
+
+                            Branch / Specialization
+
+                        </label>
+
+                        <div class="input-field">
+
+                            <i class="fa-solid fa-code-branch"></i>
+
+                            <input
+                                   type="text"
+                                   id="branch"
+                                   placeholder="Computer Science Engineering"
+                                   required>
+
+                        </div>
+
+                        <small class="error"
+                               id="branchError"></small>
+
+                    </div>
+
+                    <!-- Skills -->
+
+                    <div class="input-group">
+
+                        <label>
+
+                            Skills
+
+                        </label>
+
+                        <div class="input-field">
+
+                            <i class="fa-solid fa-laptop-code"></i>
+
+                            <input
+                                   type="text"
+                                   id="skills"
+                                   placeholder="HTML, CSS, JavaScript, Python"
+                                   required>
+
+                        </div>
+
+                        <small class="error"
+                               id="skillsError"></small>
+
+                    </div>
+
+                    <!-- Password -->
+
+                    <div class="input-group">
+
+                        <label>
+
+                            Password
+
+                        </label>
+
+                        <div class="input-field">
+
+                            <i class="fa-solid fa-lock"></i>
+
+                            <input
+                                   type="password"
+                                   id="password"
+                                   placeholder="Create Password"
+                                   required>
+
+                            <i class="fa-solid fa-eye toggle-password"
+                               data-target="password"></i>
+
+                        </div>
+
+                        <div class="password-strength">
+
+                            <div id="strengthBar"></div>
+
+                        </div>
+
+                        <small id="strengthText">
+
+                            Password Strength
+
+                        </small>
+
+                        <small class="error"
+                               id="passwordError"></small>
+
+                    </div>
+
+                    <!-- Confirm Password -->
+
+                    <div class="input-group">
+
+                        <label>
+
+                            Confirm Password
+
+                        </label>
+
+                        <div class="input-field">
+
+                            <i class="fa-solid fa-lock"></i>
+
+                            <input
+                                   type="password"
+                                   id="confirmPassword"
+                                   placeholder="Confirm Password"
+                                   required>
+
+                            <i class="fa-solid fa-eye toggle-password"
+                               data-target="confirmPassword"></i>
+
+                        </div>
+
+                        <small class="error"
+                               id="confirmPasswordError"></small>
+
+                    </div>
+
+                    <!-- Terms -->
+
+                    <div class="remember-section">
+
+                        <label class="checkbox">
+
+                            <input
+                                   type="checkbox"
+                                   id="terms">
+
+                            <span>
+
+                                I agree to the
+
+                                <a href="#">
+
+                                    Terms & Conditions
+
+                                </a>
+
+                                and
+
+                                <a href="#">
+
+                                    Privacy Policy
+
+                                </a>
+
+                            </span>
+
+                        </label>
+
+                    </div>
+
+                    <!-- Register Button -->
+
+                    <button type="submit"
+                            class="primary-btn"
+                            id="registerBtn">
+
+                        <span>
+
+                            Create Account
+
+                        </span>
+
+                        <i class="fa-solid fa-user-plus"></i>
+
+                    </button>
+
+                    <!-- Divider -->
+
+                    <div class="divider">
+
+                        <span>
+
+                            OR
+
+                        </span>
+
+                    </div>
+
+                    <!-- Social Login -->
+
+                    <div class="social-login">
+
+                        <button
+                                type="button"
+                                class="google-btn">
+
+                            <i class="fa-brands fa-google"></i>
+
+                            Continue with Google
+
+                        </button>
+
+                        <button
+                                type="button"
+                                class="github-btn">
+
+                            <i class="fa-brands fa-github"></i>
+
+                            Continue with GitHub
+
+                        </button>
+
+                    </div>
+
+                    <!-- Login Redirect -->
+
+                    <div class="bottom-link">
+
+                        Already have an account?
+
+                        <a href="login.html">
+
+                            Login Here
+
+                        </a>
+
+                    </div>
+
+                </form>
+
+            </div>
+                    </div>
+    </main>
+
+    <!-- Footer -->
+
+    <footer class="footer">
+
+        <p>
+
+            © 2026 SmartHire AI. All Rights Reserved.
+
+        </p>
+
+    </footer>
+
+    <script>
+
+        // ================================
+        // DOM Elements
+        // ================================
+
+        const registerForm = document.getElementById("registerForm");
+
+        const fullname = document.getElementById("fullname");
+        const email = document.getElementById("email");
+        const phone = document.getElementById("phone");
+        const college = document.getElementById("college");
+        const degree = document.getElementById("degree");
+        const year = document.getElementById("year");
+        const branch = document.getElementById("branch");
+        const skills = document.getElementById("skills");
+
+        const password = document.getElementById("password");
+        const confirmPassword =
+            document.getElementById("confirmPassword");
+
+        const terms =
+            document.getElementById("terms");
+
+        const registerBtn =
+            document.getElementById("registerBtn");
+
+        // ================================
+        // Error Elements
+        // ================================
+
+        const fullnameError =
+            document.getElementById("fullnameError");
+
+        const emailError =
+            document.getElementById("emailError");
+
+        const phoneError =
+            document.getElementById("phoneError");
+
+        const collegeError =
+            document.getElementById("collegeError");
+
+        const degreeError =
+            document.getElementById("degreeError");
+
+        const yearError =
+            document.getElementById("yearError");
+
+        const branchError =
+            document.getElementById("branchError");
+
+        const skillsError =
+            document.getElementById("skillsError");
+
+        const passwordError =
+            document.getElementById("passwordError");
+
+        const confirmPasswordError =
+            document.getElementById("confirmPasswordError");
+
+        // ================================
+        // Password Strength
+        // ================================
+
+        const strengthBar =
+            document.getElementById("strengthBar");
+
+        const strengthText =
+            document.getElementById("strengthText");
+
+        // ================================
+        // Password Toggle
+        // ================================
+
+        document
+            .querySelectorAll(".toggle-password")
+            .forEach(icon => {
+
+                icon.addEventListener("click", () => {
+
+                    const target =
+                        document.getElementById(
+                            icon.dataset.target
+                        );
+
+                    if (target.type === "password") {
+
+                        target.type = "text";
+
+                        icon.classList.remove("fa-eye");
+
+                        icon.classList.add("fa-eye-slash");
+
+                    } else {
+
+                        target.type = "password";
+
+                        icon.classList.remove("fa-eye-slash");
+
+                        icon.classList.add("fa-eye");
+
+                    }
+
+                });
+
+            });
+
+        // ================================
+        // Password Strength Meter
+        // ================================
+
+        password.addEventListener("input", () => {
+
+            const value = password.value;
+
+            let strength = 0;
+
+            if (value.length >= 8)
+                strength++;
+
+            if (/[A-Z]/.test(value))
+                strength++;
+
+            if (/[a-z]/.test(value))
+                strength++;
+
+            if (/[0-9]/.test(value))
+                strength++;
+
+            if (/[^A-Za-z0-9]/.test(value))
+                strength++;
+
+            switch (strength) {
+
+                case 0:
+
+                case 1:
+
+                    strengthBar.style.width = "20%";
+                    strengthBar.style.background = "#ff4d4d";
+                    strengthText.innerText = "Weak";
+                    break;
+
+                case 2:
+
+                    strengthBar.style.width = "40%";
+                    strengthBar.style.background = "#ff914d";
+                    strengthText.innerText = "Fair";
+                    break;
+
+                case 3:
+
+                    strengthBar.style.width = "60%";
+                    strengthBar.style.background = "#ffd54f";
+                    strengthText.innerText = "Good";
+                    break;
+
+                case 4:
+
+                    strengthBar.style.width = "80%";
+                    strengthBar.style.background = "#66bb6a";
+                    strengthText.innerText = "Strong";
+                    break;
+
+                case 5:
+
+                    strengthBar.style.width = "100%";
+                    strengthBar.style.background = "#2ecc71";
+                    strengthText.innerText = "Very Strong";
+                    break;
+
+            }
+
+        });
+
+        // ================================
+        // Clear Error Helper
+        // ================================
+
+        function clearErrors() {
+
+            fullnameError.innerHTML = "";
+            emailError.innerHTML = "";
+            phoneError.innerHTML = "";
+            collegeError.innerHTML = "";
+            degreeError.innerHTML = "";
+            yearError.innerHTML = "";
+            branchError.innerHTML = "";
+            skillsError.innerHTML = "";
+            passwordError.innerHTML = "";
+            confirmPasswordError.innerHTML = "";
+
+        }
+                // ================================
+        // Validation Functions
+        // ================================
+
+        function isValidEmail(emailAddress) {
+
+            const emailPattern =
+                /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+            return emailPattern.test(emailAddress);
+
+        }
+
+        function isValidPhone(phoneNumber) {
+
+            const phonePattern =
+                /^[6-9]\d{9}$/;
+
+            return phonePattern.test(phoneNumber);
+
+        }
+
+        function isStrongPassword(pass) {
+
+            return /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&^#])[A-Za-z\d@$!%*?&^#]{8,}$/
+                .test(pass);
+
+        }
+
+        // ================================
+        // Register Form Validation
+        // ================================
+
+        registerForm.addEventListener("submit", async function (e) {
+
+            e.preventDefault();
+
+            clearErrors();
+
+            let valid = true;
+
+            // --------------------------
+            // Full Name
+            // --------------------------
+
+            if (fullname.value.trim() === "") {
+
+                fullnameError.innerText =
+                    "Full Name is required.";
+
+                valid = false;
+
+            }
+
+            // --------------------------
+            // Email
+            // --------------------------
+
+            if (email.value.trim() === "") {
+
+                emailError.innerText =
+                    "Email is required.";
+
+                valid = false;
+
+            }
+            else if (!isValidEmail(email.value.trim())) {
+
+                emailError.innerText =
+                    "Enter a valid email address.";
+
+                valid = false;
+
+            }
+
+            // --------------------------
+            // Phone
+            // --------------------------
+
+            if (phone.value.trim() === "") {
+
+                phoneError.innerText =
+                    "Mobile Number is required.";
+
+                valid = false;
+
+            }
+            else if (!isValidPhone(phone.value.trim())) {
+
+                phoneError.innerText =
+                    "Enter a valid 10-digit mobile number.";
+
+                valid = false;
+
+            }
+
+            // --------------------------
+            // College
+            // --------------------------
+
+            if (college.value.trim() === "") {
+
+                collegeError.innerText =
+                    "College Name is required.";
+
+                valid = false;
+
+            }
+
+            // --------------------------
+            // Degree
+            // --------------------------
+
+            if (degree.value === "") {
+
+                degreeError.innerText =
+                    "Select your degree.";
+
+                valid = false;
+
+            }
+
+            // --------------------------
+            // Year
+            // --------------------------
+
+            if (year.value === "") {
+
+                yearError.innerText =
+                    "Select your year.";
+
+                valid = false;
+
+            }
+
+            // --------------------------
+            // Branch
+            // --------------------------
+
+            if (branch.value.trim() === "") {
+
+                branchError.innerText =
+                    "Branch is required.";
+
+                valid = false;
+
+            }
+
+            // --------------------------
+            // Skills
+            // --------------------------
+
+            if (skills.value.trim() === "") {
+
+                skillsError.innerText =
+                    "Please enter at least one skill.";
+
+                valid = false;
+
+            }
+
+            // --------------------------
+            // Password
+            // --------------------------
+
+            if (password.value === "") {
+
+                passwordError.innerText =
+                    "Password is required.";
+
+                valid = false;
+
+            }
+            else if (!isStrongPassword(password.value)) {
+
+                passwordError.innerText =
+                    "Minimum 8 characters with uppercase, lowercase, number and special character.";
+
+                valid = false;
+
+            }
+
+            // --------------------------
+            // Confirm Password
+            // --------------------------
+
+            if (confirmPassword.value === "") {
+
+                confirmPasswordError.innerText =
+                    "Please confirm your password.";
+
+                valid = false;
+
+            }
+            else if (
+                password.value !==
+                confirmPassword.value
+            ) {
+
+                confirmPasswordError.innerText =
+                    "Passwords do not match.";
+
+                valid = false;
+
+            }
+
+            // --------------------------
+            // Terms
+            // --------------------------
+
+            if (!terms.checked) {
+
+                alert(
+                    "Please accept the Terms & Conditions."
+                );
+
+                valid = false;
+
+            }
+
+            // Stop submission if validation fails
+
+            if (!valid) {
+
+                return;
+
+            }
+
+            // Validation successful.
+            // Continue with API request in Part 3C.
+                        // ================================
+            // Loading State
+            // ================================
+
+            registerBtn.disabled = true;
+
+            registerBtn.innerHTML = `
+                <i class="fa-solid fa-spinner fa-spin"></i>
+                Creating Account...
+            `;
+
+            try {
+
+                const response = await fetch(
+                    "http://127.0.0.1:5000/api/auth/register",
+                    {
+                        method: "POST",
+
+                        headers: {
+                            "Content-Type": "application/json"
+                        },
+
+                        body: JSON.stringify({
+
+                            fullname: fullname.value.trim(),
+
+                            email: email.value.trim(),
+
+                            phone: phone.value.trim(),
+
+                            college: college.value.trim(),
+
+                            degree: degree.value,
+
+                            year: year.value,
+
+                            branch: branch.value.trim(),
+
+                            skills: skills.value
+                                .split(",")
+                                .map(skill => skill.trim())
+                                .filter(skill => skill !== ""),
+
+                            password: password.value
+
+                        })
+
+                    }
+                );
+
+                const data = await response.json();
+
+                if (response.ok) {
+
+                    // Save email for OTP verification page
+
+                    localStorage.setItem(
+                        "otp_email",
+                        email.value.trim()
+                    );
+
+                    alert(
+                        data.message ||
+                        "Registration Successful!"
+                    );
+
+                    window.location.href =
+                        "otp-verification.html";
+
+                } else {
+
+                    alert(
+                        data.message ||
+                        "Registration Failed."
+                    );
+
+                }
+
+            } catch (error) {
+
+                console.error(error);
+
+                alert(
+                    "Unable to connect to the server."
+                );
+
+            } finally {
+
+                registerBtn.disabled = false;
+
+                registerBtn.innerHTML = `
+                    <span>Create Account</span>
+                    <i class="fa-solid fa-user-plus"></i>
+                `;
+
+            }
+
+        });
+
+    </script>
+
+</body>
+
+</html>

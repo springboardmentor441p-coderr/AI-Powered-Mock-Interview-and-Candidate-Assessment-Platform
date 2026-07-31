@@ -1,0 +1,1034 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+
+    <meta charset="UTF-8">
+
+    <meta name="viewport"
+          content="width=device-width, initial-scale=1.0">
+
+    <title>Dashboard | SmartHire AI</title>
+
+    <!-- Google Fonts -->
+
+    <link rel="preconnect"
+          href="https://fonts.googleapis.com">
+
+    <link rel="preconnect"
+          href="https://fonts.gstatic.com"
+          crossorigin>
+
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap"
+          rel="stylesheet">
+
+    <!-- Font Awesome -->
+
+    <link rel="stylesheet"
+          href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css">
+
+    <!-- CSS -->
+
+    <link rel="stylesheet"
+          href="assets/css/style.css">
+
+    <link rel="stylesheet"
+          href="assets/css/components.css">
+
+    <link rel="stylesheet"
+          href="assets/css/dashboard.css">
+
+    <link rel="stylesheet"
+          href="assets/css/responsive.css">
+
+</head>
+
+<body>
+
+<div class="dashboard-wrapper">
+
+    <!-- ===================================
+            Sidebar
+    ==================================== -->
+
+    <aside class="sidebar">
+
+        <div class="sidebar-logo">
+
+            <i class="fa-solid fa-user-graduate"></i>
+
+            <span>SmartHire AI</span>
+
+        </div>
+
+        <ul class="sidebar-menu">
+
+            <li class="active">
+
+                <a href="dashboard.html">
+
+                    <i class="fa-solid fa-house"></i>
+
+                    Dashboard
+
+                </a>
+
+            </li>
+
+            <li>
+
+                <a href="profile.html">
+
+                    <i class="fa-solid fa-user"></i>
+
+                    My Profile
+
+                </a>
+
+            </li>
+
+            <li>
+
+                <a href="resume.html">
+
+                    <i class="fa-solid fa-file-arrow-up"></i>
+
+                    Resume
+
+                </a>
+
+            </li>
+
+            <li>
+
+                <a href="interview.html">
+
+                    <i class="fa-solid fa-video"></i>
+
+                    AI Interview
+
+                </a>
+
+            </li>
+
+            <li>
+
+                <a href="reports.html">
+
+                    <i class="fa-solid fa-chart-line"></i>
+
+                    Reports
+
+                </a>
+
+            </li>
+
+            <li>
+
+                <a href="#">
+
+                    <i class="fa-solid fa-gear"></i>
+
+                    Settings
+
+                </a>
+
+            </li>
+
+        </ul>
+
+        <div class="sidebar-bottom">
+
+            <button
+                id="logoutBtn"
+                class="btn btn-danger">
+
+                <i class="fa-solid fa-right-from-bracket"></i>
+
+                Logout
+
+            </button>
+
+        </div>
+
+    </aside>
+
+    <!-- ===================================
+            Main Content
+    ==================================== -->
+
+    <main class="dashboard-main">
+
+        <!-- =============================
+                Top Navigation
+        ============================== -->
+
+        <header class="topbar">
+
+            <div class="topbar-left">
+
+                <button
+                    id="menuToggle"
+                    class="menu-toggle">
+
+                    <i class="fa-solid fa-bars"></i>
+
+                </button>
+
+                <h2>
+
+                    Dashboard
+
+                </h2>
+
+            </div>
+
+            <div class="topbar-right">
+
+                <div class="search-box">
+
+                    <i class="fa-solid fa-search"></i>
+
+                    <input
+                        type="text"
+                        id="dashboardSearch"
+                        placeholder="Search...">
+
+                </div>
+
+                <button class="notification-btn">
+
+                    <i class="fa-solid fa-bell"></i>
+
+                    <span class="notification-count">
+
+                        3
+
+                    </span>
+
+                </button>
+
+                <div class="profile-menu">
+
+                    <img
+                        src="assets/images/default-profile.png"
+                        alt="Profile"
+                        class="avatar">
+
+                    <div>
+
+                        <h4 id="userName">
+
+                            Loading...
+
+                        </h4>
+
+                        <small>
+
+                            Candidate
+
+                        </small>
+
+                    </div>
+
+                </div>
+
+            </div>
+
+        </header>
+
+        <!-- =============================
+                Dashboard Content
+        ============================== -->
+
+        <section class="dashboard-content">
+
+            <!-- Welcome -->
+
+            <div class="welcome-card">
+
+                <div>
+
+                    <h1>
+
+                        Welcome Back,
+
+                        <span id="welcomeName">
+
+                            Candidate
+
+                        </span>
+
+                    </h1>
+
+                    <p>
+
+                        Track your interview progress,
+                        improve your ATS score,
+                        and prepare for your dream job.
+
+                    </p>
+
+                </div>
+
+                <div>
+
+                    <img
+                        src="assets/images/dashboard-banner.svg"
+                        alt="Dashboard Banner">
+
+                </div>
+
+            </div>
+
+            <!-- Statistics Row -->
+
+            <div class="stats-grid">
+                            <!-- ======================================
+                    Statistics Cards
+            ======================================= -->
+
+            <div class="stat-card">
+
+                <div class="stat-icon blue">
+
+                    <i class="fa-solid fa-video"></i>
+
+                </div>
+
+                <div class="stat-details">
+
+                    <h3 id="totalInterviews">
+
+                        0
+
+                    </h3>
+
+                    <p>
+
+                        Interviews Completed
+
+                    </p>
+
+                </div>
+
+            </div>
+
+            <div class="stat-card">
+
+                <div class="stat-icon green">
+
+                    <i class="fa-solid fa-file-circle-check"></i>
+
+                </div>
+
+                <div class="stat-details">
+
+                    <h3 id="atsScore">
+
+                        0%
+
+                    </h3>
+
+                    <p>
+
+                        Resume ATS Score
+
+                    </p>
+
+                </div>
+
+            </div>
+
+            <div class="stat-card">
+
+                <div class="stat-icon orange">
+
+                    <i class="fa-solid fa-chart-column"></i>
+
+                </div>
+
+                <div class="stat-details">
+
+                    <h3 id="averageScore">
+
+                        0%
+
+                    </h3>
+
+                    <p>
+
+                        Average Interview Score
+
+                    </p>
+
+                </div>
+
+            </div>
+
+            <div class="stat-card">
+
+                <div class="stat-icon purple">
+
+                    <i class="fa-solid fa-award"></i>
+
+                </div>
+
+                <div class="stat-details">
+
+                    <h3 id="skillLevel">
+
+                        Beginner
+
+                    </h3>
+
+                    <p>
+
+                        Current Skill Level
+
+                    </p>
+
+                </div>
+
+            </div>
+
+        </div>
+
+        <!-- ======================================
+                Quick Actions
+        ======================================= -->
+
+        <section class="card">
+
+            <div class="section-title">
+
+                <div>
+
+                    <h2>
+
+                        Quick Actions
+
+                    </h2>
+
+                    <p>
+
+                        Start using SmartHire AI
+
+                    </p>
+
+                </div>
+
+            </div>
+
+            <div class="quick-actions-grid">
+
+                <a
+                    href="resume.html"
+                    class="quick-card">
+
+                    <i class="fa-solid fa-file-arrow-up"></i>
+
+                    <h3>
+
+                        Upload Resume
+
+                    </h3>
+
+                    <p>
+
+                        Upload or update your latest resume.
+
+                    </p>
+
+                </a>
+
+                <a
+                    href="interview.html"
+                    class="quick-card">
+
+                    <i class="fa-solid fa-video"></i>
+
+                    <h3>
+
+                        Start Interview
+
+                    </h3>
+
+                    <p>
+
+                        Begin an AI-powered mock interview.
+
+                    </p>
+
+                </a>
+
+                <a
+                    href="reports.html"
+                    class="quick-card">
+
+                    <i class="fa-solid fa-chart-line"></i>
+
+                    <h3>
+
+                        View Reports
+
+                    </h3>
+
+                    <p>
+
+                        Check performance analytics.
+
+                    </p>
+
+                </a>
+
+                <a
+                    href="profile.html"
+                    class="quick-card">
+
+                    <i class="fa-solid fa-user-pen"></i>
+
+                    <h3>
+
+                        Update Profile
+
+                    </h3>
+
+                    <p>
+
+                        Manage your personal information.
+
+                    </p>
+
+                </a>
+
+            </div>
+
+        </section>
+
+        <!-- ======================================
+                Dashboard Row
+        ======================================= -->
+
+        <div class="dashboard-grid">
+
+            <!-- ======================================
+                    Recent Interviews
+            ======================================= -->
+
+            <section class="card">
+
+                <div class="section-title">
+
+                    <div>
+
+                        <h2>
+
+                            Recent Interviews
+
+                        </h2>
+
+                        <p>
+
+                            Your latest interview attempts
+
+                        </p>
+
+                    </div>
+
+                </div>
+
+                <table class="table">
+
+                    <thead>
+
+                        <tr>
+
+                            <th>
+
+                                Date
+
+                            </th>
+
+                            <th>
+
+                                Role
+
+                            </th>
+
+                            <th>
+
+                                Score
+
+                            </th>
+
+                            <th>
+
+                                Status
+
+                            </th>
+
+                        </tr>
+
+                    </thead>
+
+                    <tbody id="recentInterviewTable">
+
+                        <tr>
+
+                            <td>
+
+                                --
+
+                            </td>
+
+                            <td>
+
+                                No Interviews
+
+                            </td>
+
+                            <td>
+
+                                --
+
+                            </td>
+
+                            <td>
+
+                                <span
+                                    class="badge badge-warning">
+
+                                    Pending
+
+                                </span>
+
+                            </td>
+
+                        </tr>
+
+                    </tbody>
+
+                </table>
+
+            </section>
+
+            <!-- ======================================
+                    Resume Overview
+            ======================================= -->
+
+            <section class="card">
+
+                <div class="section-title">
+
+                    <div>
+
+                        <h2>
+
+                            Resume Overview
+
+                        </h2>
+
+                        <p>
+
+                            Current uploaded resume
+
+                        </p>
+
+                    </div>
+
+                </div>
+
+                <div class="resume-overview">
+
+                    <div class="resume-icon">
+
+                        <i class="fa-solid fa-file-lines"></i>
+
+                    </div>
+
+                    <h3
+                        id="resumeName">
+
+                        No Resume Uploaded
+
+                    </h3>
+
+                    <p>
+
+                        Upload your latest resume
+                        to receive ATS analysis
+                        and personalized interview
+                        questions.
+
+                    </p>
+
+                    <div class="progress">
+
+                        <div
+                            class="progress-bar"
+                            id="resumeProgress">
+
+                        </div>
+
+                    </div>
+
+                    <p
+                        class="progress-text"
+                        id="resumeScoreText">
+
+                        ATS Score : 0%
+
+                    </p>
+
+                    <a
+                        href="resume.html"
+                        class="btn btn-primary">
+
+                        Upload Resume
+
+                    </a>
+
+                </div>
+
+            </section>
+
+        </div>
+
+        <!-- ======================================
+                AI Recommendation Section
+        ======================================= -->
+
+        <section class="card">
+
+            <div class="section-title">
+
+                <div>
+
+                    <h2>
+
+                        AI Recommendations
+
+                    </h2>
+
+                    <p>
+
+                        Personalized suggestions to improve
+                        your placement readiness.
+
+                    </p>
+
+                </div>
+
+            </div>
+
+            <div id="recommendationContainer">
+
+                <div class="alert alert-info">
+
+                    No recommendations available yet.
+                    Upload a resume and complete an
+                    interview to receive AI feedback.
+
+                </div>
+
+            </div>
+
+        </section>
+
+        <!-- Continue in Part 3 -->
+                 <!-- ======================================
+                Dashboard Bottom Grid
+        ======================================= -->
+
+        <div class="dashboard-grid">
+
+            <!-- ======================================
+                    Upcoming Interviews
+            ======================================= -->
+
+            <section class="card">
+
+                <div class="section-title">
+
+                    <div>
+
+                        <h2>
+
+                            Upcoming Interviews
+
+                        </h2>
+
+                        <p>
+
+                            Scheduled interview sessions
+
+                        </p>
+
+                    </div>
+
+                </div>
+
+                <div id="upcomingInterviewContainer">
+
+                    <div class="empty-state">
+
+                        <img
+                            src="assets/images/no-data.svg"
+                            alt="No Data">
+
+                        <h3>
+
+                            No Upcoming Interviews
+
+                        </h3>
+
+                        <p>
+
+                            Schedule a new AI interview to
+                            continue improving your skills.
+
+                        </p>
+
+                        <a
+                            href="interview.html"
+                            class="btn btn-primary">
+
+                            <i class="fa-solid fa-video"></i>
+
+                            Start Interview
+
+                        </a>
+
+                    </div>
+
+                </div>
+
+            </section>
+
+            <!-- ======================================
+                    Performance Summary
+            ======================================= -->
+
+            <section class="card">
+
+                <div class="section-title">
+
+                    <div>
+
+                        <h2>
+
+                            Performance Summary
+
+                        </h2>
+
+                        <p>
+
+                            Overall placement readiness
+
+                        </p>
+
+                    </div>
+
+                </div>
+
+                <div class="performance-summary">
+
+                    <div class="summary-item">
+
+                        <span>
+
+                            Communication
+
+                        </span>
+
+                        <div class="progress">
+
+                            <div
+                                class="progress-bar"
+                                id="communicationProgress">
+
+                            </div>
+
+                        </div>
+
+                        <strong
+                            id="communicationScore">
+
+                            0%
+
+                        </strong>
+
+                    </div>
+
+                    <div class="summary-item">
+
+                        <span>
+
+                            Technical Skills
+
+                        </span>
+
+                        <div class="progress">
+
+                            <div
+                                class="progress-bar"
+                                id="technicalProgress">
+
+                            </div>
+
+                        </div>
+
+                        <strong
+                            id="technicalScore">
+
+                            0%
+
+                        </strong>
+
+                    </div>
+
+                    <div class="summary-item">
+
+                        <span>
+
+                            Confidence
+
+                        </span>
+
+                        <div class="progress">
+
+                            <div
+                                class="progress-bar"
+                                id="confidenceProgress">
+
+                            </div>
+
+                        </div>
+
+                        <strong
+                            id="confidenceScore">
+
+                            0%
+
+                        </strong>
+
+                    </div>
+
+                    <div class="summary-item">
+
+                        <span>
+
+                            Problem Solving
+
+                        </span>
+
+                        <div class="progress">
+
+                            <div
+                                class="progress-bar"
+                                id="problemProgress">
+
+                            </div>
+
+                        </div>
+
+                        <strong
+                            id="problemScore">
+
+                            0%
+
+                        </strong>
+
+                    </div>
+
+                </div>
+
+            </section>
+
+        </div>
+
+        <!-- ======================================
+                Activity Timeline
+        ======================================= -->
+
+        <section class="card">
+
+            <div class="section-title">
+
+                <div>
+
+                    <h2>
+
+                        Recent Activity
+
+                    </h2>
+
+                    <p>
+
+                        Latest updates from your account
+
+                    </p>
+
+                </div>
+
+            </div>
+
+            <div
+                class="timeline"
+                id="activityTimeline">
+
+                <div class="timeline-item">
+
+                    <div class="timeline-dot">
+
+                    </div>
+
+                    <div class="timeline-content">
+
+                        <h4>
+
+                            Welcome to SmartHire AI
+
+                        </h4>
+
+                        <p>
+
+                            Complete your profile and upload
+                            your resume to unlock all features.
+
+                        </p>
+
+                        <small>
+
+                            Just Now
+
+                        </small>
+
+                    </div>
+
+                </div>
+
+            </div>
+
+        </section>
+
+    </section>
+
+</main>
+
+</div>
+
+<!-- ======================================
+        JavaScript
+====================================== -->
+
+<script src="assets/js/config.js"></script>
+
+<script src="assets/js/utils.js"></script>
+
+<script src="assets/js/dashboard.js"></script>
+
+</body>
+
+</html>

@@ -1,0 +1,1039 @@
+/* ==========================================================
+   SmartHire AI
+   Profile Page Styles
+   Version : 1.0
+========================================================== */
+
+/* ==========================================================
+   Page Layout
+========================================================== */
+
+.dashboard-content{
+
+    display:flex;
+
+    flex-direction:column;
+
+    gap:30px;
+
+}
+
+/* ==========================================================
+   Profile Header
+========================================================== */
+
+.profile-header{
+
+    position:relative;
+
+    overflow:hidden;
+
+    border-radius:24px;
+
+    background:linear-gradient(
+        135deg,
+        #4f46e5,
+        #6366f1
+    );
+
+    color:#ffffff;
+
+    padding:40px;
+
+}
+
+.profile-header::before{
+
+    content:"";
+
+    position:absolute;
+
+    width:280px;
+
+    height:280px;
+
+    right:-90px;
+
+    top:-90px;
+
+    border-radius:50%;
+
+    background:rgba(255,255,255,.08);
+
+}
+
+.profile-header::after{
+
+    content:"";
+
+    position:absolute;
+
+    width:170px;
+
+    height:170px;
+
+    left:-60px;
+
+    bottom:-60px;
+
+    border-radius:50%;
+
+    background:rgba(255,255,255,.05);
+
+}
+
+/* ==========================================================
+   Cover
+========================================================== */
+
+.profile-cover{
+
+    position:relative;
+
+    display:flex;
+
+    align-items:center;
+
+    gap:35px;
+
+    z-index:2;
+
+}
+
+/* ==========================================================
+   Avatar
+========================================================== */
+
+.profile-avatar{
+
+    position:relative;
+
+    width:160px;
+
+    height:160px;
+
+    flex-shrink:0;
+
+}
+
+.profile-avatar img{
+
+    width:100%;
+
+    height:100%;
+
+    object-fit:cover;
+
+    border-radius:50%;
+
+    border:6px solid rgba(255,255,255,.25);
+
+    background:#ffffff;
+
+}
+
+.camera-btn{
+
+    position:absolute;
+
+    right:5px;
+
+    bottom:5px;
+
+    width:48px;
+
+    height:48px;
+
+    border-radius:50%;
+
+    display:flex;
+
+    justify-content:center;
+
+    align-items:center;
+
+    cursor:pointer;
+
+    background:#ffffff;
+
+    color:#4f46e5;
+
+    font-size:18px;
+
+    box-shadow:0 10px 25px rgba(0,0,0,.20);
+
+    transition:.3s ease;
+
+}
+
+.camera-btn:hover{
+
+    transform:scale(1.08);
+
+    background:#eef2ff;
+
+}
+
+/* ==========================================================
+   Profile Information
+========================================================== */
+
+.profile-header-info{
+
+    flex:1;
+
+}
+
+.profile-header-info h2{
+
+    font-size:36px;
+
+    font-weight:700;
+
+    margin-bottom:10px;
+
+}
+
+.profile-header-info p{
+
+    font-size:18px;
+
+    opacity:.95;
+
+    margin-bottom:18px;
+
+}
+
+/* ==========================================================
+   Profile Badges
+========================================================== */
+
+.profile-badges{
+
+    display:flex;
+
+    gap:12px;
+
+    flex-wrap:wrap;
+
+}
+
+.profile-badges .badge{
+
+    padding:8px 18px;
+
+    border-radius:50px;
+
+    font-size:14px;
+
+    font-weight:600;
+
+}
+
+/* ==========================================================
+   Completion Card
+========================================================== */
+
+.completion-container{
+
+    margin-top:25px;
+
+}
+
+.completion-details{
+
+    margin-top:12px;
+
+    display:flex;
+
+    justify-content:space-between;
+
+    align-items:center;
+
+    font-size:15px;
+
+    color:#64748b;
+
+}
+
+#completionText{
+
+    color:#4f46e5;
+
+    font-weight:700;
+
+}
+
+/* ==========================================================
+   Progress Bar
+========================================================== */
+
+.progress{
+
+    width:100%;
+
+    height:12px;
+
+    border-radius:50px;
+
+    background:#e5e7eb;
+
+    overflow:hidden;
+
+}
+
+.progress-bar{
+
+    width:0;
+
+    height:100%;
+
+    border-radius:50px;
+
+    background:linear-gradient(
+        90deg,
+        #4f46e5,
+        #7c3aed
+    );
+
+    transition:width .4s ease;
+
+}
+
+/* ==========================================================
+   Profile Grid
+========================================================== */
+
+.profile-grid{
+
+    display:grid;
+
+    grid-template-columns:1fr 1fr;
+
+    gap:28px;
+
+}
+
+/* ==========================================================
+   Section Cards
+========================================================== */
+
+.card{
+
+    background:#ffffff;
+
+    border-radius:22px;
+
+    padding:28px;
+
+    box-shadow:0 10px 28px rgba(15,23,42,.06);
+
+    transition:.3s ease;
+
+}
+
+.card:hover{
+
+    transform:translateY(-4px);
+
+    box-shadow:0 18px 38px rgba(15,23,42,.12);
+
+}
+
+/* ==========================================================
+   Section Header
+========================================================== */
+
+.section-title{
+
+    display:flex;
+
+    justify-content:space-between;
+
+    align-items:center;
+
+    margin-bottom:25px;
+
+}
+
+.section-title h2{
+
+    font-size:24px;
+
+    color:#111827;
+
+    margin-bottom:6px;
+
+}
+
+.section-title p{
+
+    color:#64748b;
+
+    font-size:15px;
+
+}
+/* ==========================================================
+   Forms
+========================================================== */
+
+.profile-form{
+
+    width:100%;
+
+}
+
+.form-grid{
+
+    display:grid;
+
+    grid-template-columns:repeat(2,1fr);
+
+    gap:22px;
+
+}
+
+.form-group{
+
+    display:flex;
+
+    flex-direction:column;
+
+}
+
+.form-group.full-width{
+
+    grid-column:1 / -1;
+
+}
+
+/* ==========================================================
+   Labels
+========================================================== */
+
+.form-group label{
+
+    margin-bottom:8px;
+
+    font-size:15px;
+
+    font-weight:600;
+
+    color:#374151;
+
+}
+
+/* ==========================================================
+   Inputs
+========================================================== */
+
+.form-group input,
+
+.form-group select,
+
+.form-group textarea{
+
+    width:100%;
+
+    padding:14px 16px;
+
+    border:1px solid #d1d5db;
+
+    border-radius:12px;
+
+    background:#ffffff;
+
+    color:#111827;
+
+    font-size:15px;
+
+    font-family:"Poppins",sans-serif;
+
+    transition:all .3s ease;
+
+    outline:none;
+
+}
+
+.form-group textarea{
+
+    resize:vertical;
+
+    min-height:120px;
+
+}
+
+.form-group input:focus,
+
+.form-group select:focus,
+
+.form-group textarea:focus{
+
+    border-color:#4f46e5;
+
+    box-shadow:0 0 0 4px rgba(79,70,229,.12);
+
+}
+
+.form-group input::placeholder,
+
+.form-group textarea::placeholder{
+
+    color:#9ca3af;
+
+}
+
+/* ==========================================================
+   Readonly Fields
+========================================================== */
+
+input[readonly]{
+
+    background:#f3f4f6;
+
+    cursor:not-allowed;
+
+}
+
+/* ==========================================================
+   Password Section
+========================================================== */
+
+#passwordForm{
+
+    margin-top:10px;
+
+}
+
+#passwordForm .form-grid{
+
+    grid-template-columns:repeat(3,1fr);
+
+}
+
+/* ==========================================================
+   Save Action Area
+========================================================== */
+
+.profile-actions{
+
+    display:flex;
+
+    justify-content:flex-end;
+
+    align-items:center;
+
+    gap:18px;
+
+    flex-wrap:wrap;
+
+}
+
+/* ==========================================================
+   Buttons
+========================================================== */
+
+.profile-actions .btn{
+
+    min-width:170px;
+
+    height:50px;
+
+    border:none;
+
+    border-radius:12px;
+
+    font-size:15px;
+
+    font-weight:600;
+
+    cursor:pointer;
+
+    display:flex;
+
+    justify-content:center;
+
+    align-items:center;
+
+    gap:10px;
+
+    transition:.3s ease;
+
+}
+
+.profile-actions .btn-primary{
+
+    background:#4f46e5;
+
+    color:#ffffff;
+
+}
+
+.profile-actions .btn-primary:hover{
+
+    background:#4338ca;
+
+    transform:translateY(-2px);
+
+}
+
+.profile-actions .btn-secondary{
+
+    background:#f3f4f6;
+
+    color:#111827;
+
+}
+
+.profile-actions .btn-secondary:hover{
+
+    background:#e5e7eb;
+
+}
+
+.profile-actions .btn-outline{
+
+    background:#ffffff;
+
+    color:#4f46e5;
+
+    border:2px solid #4f46e5;
+
+}
+
+.profile-actions .btn-outline:hover{
+
+    background:#4f46e5;
+
+    color:#ffffff;
+
+}
+
+/* ==========================================================
+   Badge Variants
+========================================================== */
+
+.badge{
+
+    display:inline-flex;
+
+    align-items:center;
+
+    justify-content:center;
+
+    padding:7px 16px;
+
+    border-radius:999px;
+
+    font-size:13px;
+
+    font-weight:600;
+
+}
+
+.badge-primary{
+
+    background:#eef2ff;
+
+    color:#4f46e5;
+
+}
+
+.badge-success{
+
+    background:#dcfce7;
+
+    color:#166534;
+
+}
+
+/* ==========================================================
+   Upload Hint
+========================================================== */
+
+.profile-avatar:hover img{
+
+    filter:brightness(.9);
+
+}
+
+.camera-btn i{
+
+    pointer-events:none;
+
+}
+
+/* ==========================================================
+   Small Utility Spacing
+========================================================== */
+
+.mt-20{
+
+    margin-top:20px;
+
+}
+
+.mb-20{
+
+    margin-bottom:20px;
+
+}
+
+.text-right{
+
+    text-align:right;
+
+}
+
+.text-center{
+
+    text-align:center;
+
+}
+/* ==========================================================
+   Responsive Design
+========================================================== */
+
+/* ---------- Large Tablets ---------- */
+
+@media (max-width:1200px){
+
+    .profile-grid{
+
+        grid-template-columns:1fr;
+
+    }
+
+    #passwordForm .form-grid{
+
+        grid-template-columns:1fr;
+
+    }
+
+}
+
+/* ---------- Tablets ---------- */
+
+@media (max-width:992px){
+
+    .profile-header{
+
+        padding:32px;
+
+    }
+
+    .profile-cover{
+
+        flex-direction:column;
+
+        text-align:center;
+
+        gap:24px;
+
+    }
+
+    .profile-header-info{
+
+        display:flex;
+
+        flex-direction:column;
+
+        align-items:center;
+
+    }
+
+    .profile-badges{
+
+        justify-content:center;
+
+    }
+
+    .profile-actions{
+
+        justify-content:center;
+
+    }
+
+}
+
+/* ---------- Mobile ---------- */
+
+@media (max-width:768px){
+
+    .dashboard-content{
+
+        padding:20px;
+
+        gap:20px;
+
+    }
+
+    .card{
+
+        padding:22px;
+
+    }
+
+    .form-grid{
+
+        grid-template-columns:1fr;
+
+        gap:18px;
+
+    }
+
+    .profile-avatar{
+
+        width:130px;
+
+        height:130px;
+
+    }
+
+    .profile-header-info h2{
+
+        font-size:28px;
+
+    }
+
+    .profile-header-info p{
+
+        font-size:16px;
+
+    }
+
+    .profile-actions{
+
+        flex-direction:column;
+
+        align-items:stretch;
+
+    }
+
+    .profile-actions .btn{
+
+        width:100%;
+
+        min-width:unset;
+
+    }
+
+}
+
+/* ---------- Small Mobile ---------- */
+
+@media (max-width:576px){
+
+    .profile-header{
+
+        padding:24px;
+
+    }
+
+    .profile-avatar{
+
+        width:110px;
+
+        height:110px;
+
+    }
+
+    .camera-btn{
+
+        width:42px;
+
+        height:42px;
+
+        font-size:16px;
+
+    }
+
+    .section-title{
+
+        flex-direction:column;
+
+        align-items:flex-start;
+
+        gap:8px;
+
+    }
+
+    .section-title h2{
+
+        font-size:21px;
+
+    }
+
+    .completion-details{
+
+        flex-direction:column;
+
+        align-items:flex-start;
+
+        gap:8px;
+
+    }
+
+}
+
+/* ==========================================================
+   Input Validation States
+========================================================== */
+
+.form-group input.error,
+
+.form-group select.error,
+
+.form-group textarea.error{
+
+    border-color:#ef4444;
+
+    background:#fef2f2;
+
+}
+
+.form-group input.success,
+
+.form-group select.success,
+
+.form-group textarea.success{
+
+    border-color:#22c55e;
+
+    background:#f0fdf4;
+
+}
+
+/* ==========================================================
+   Disabled Fields
+========================================================== */
+
+input:disabled,
+
+select:disabled,
+
+textarea:disabled{
+
+    background:#f3f4f6;
+
+    color:#6b7280;
+
+    cursor:not-allowed;
+
+}
+
+/* ==========================================================
+   Smooth Animations
+========================================================== */
+
+@keyframes fadeInUp{
+
+    from{
+
+        opacity:0;
+
+        transform:translateY(25px);
+
+    }
+
+    to{
+
+        opacity:1;
+
+        transform:translateY(0);
+
+    }
+
+}
+
+.profile-header{
+
+    animation:fadeInUp .45s ease;
+
+}
+
+.card{
+
+    animation:fadeInUp .55s ease;
+
+}
+
+/* ==========================================================
+   Avatar Animation
+========================================================== */
+
+.profile-avatar img{
+
+    transition:transform .35s ease;
+
+}
+
+.profile-avatar:hover img{
+
+    transform:scale(1.04);
+
+}
+
+/* ==========================================================
+   Scrollbar
+========================================================== */
+
+::-webkit-scrollbar{
+
+    width:10px;
+
+}
+
+::-webkit-scrollbar-track{
+
+    background:#edf2f7;
+
+}
+
+::-webkit-scrollbar-thumb{
+
+    background:#cbd5e1;
+
+    border-radius:20px;
+
+}
+
+::-webkit-scrollbar-thumb:hover{
+
+    background:#94a3b8;
+
+}
+
+/* ==========================================================
+   Accessibility
+========================================================== */
+
+button:focus,
+
+input:focus,
+
+select:focus,
+
+textarea:focus{
+
+    outline:none;
+
+}
+
+button{
+
+    -webkit-tap-highlight-color:transparent;
+
+}
+
+img{
+
+    user-select:none;
+
+    -webkit-user-drag:none;
+
+}
+
+/* ==========================================================
+   End of Profile Styles
+========================================================== */
