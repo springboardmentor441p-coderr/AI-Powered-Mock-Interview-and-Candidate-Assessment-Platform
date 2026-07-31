@@ -1,0 +1,574 @@
+/* ===========================================================
+   SmartHire AI
+   Reusable Components
+=========================================================== */
+
+/* ===============================
+   Container
+=============================== */
+
+.container{
+
+    width:100%;
+
+    max-width:1400px;
+
+    margin:auto;
+
+    padding:0 24px;
+
+}
+
+/* ===============================
+   Cards
+=============================== */
+
+.card{
+
+    background:#ffffff;
+
+    border-radius:18px;
+
+    padding:24px;
+
+    box-shadow:
+        0 8px 25px rgba(0,0,0,.08);
+
+    transition:.3s ease;
+
+}
+
+.card:hover{
+
+    transform:translateY(-4px);
+
+    box-shadow:
+        0 14px 40px rgba(0,0,0,.12);
+
+}
+
+/* ===============================
+   Section Title
+=============================== */
+
+.section-title{
+
+    display:flex;
+
+    justify-content:space-between;
+
+    align-items:center;
+
+    margin-bottom:20px;
+
+}
+
+.section-title h2{
+
+    font-size:24px;
+
+    color:#1e293b;
+
+    font-weight:700;
+
+}
+
+.section-title p{
+
+    color:#64748b;
+
+    margin-top:4px;
+
+}
+
+/* ===============================
+   Primary Button
+=============================== */
+
+.btn{
+
+    display:inline-flex;
+
+    align-items:center;
+
+    justify-content:center;
+
+    gap:10px;
+
+    border:none;
+
+    cursor:pointer;
+
+    border-radius:12px;
+
+    padding:12px 22px;
+
+    font-weight:600;
+
+    transition:.3s ease;
+
+    text-decoration:none;
+
+}
+
+.btn-primary{
+
+    background:#4f46e5;
+
+    color:white;
+
+}
+
+.btn-primary:hover{
+
+    background:#4338ca;
+
+}
+
+.btn-secondary{
+
+    background:#e2e8f0;
+
+    color:#1f2937;
+
+}
+
+.btn-secondary:hover{
+
+    background:#cbd5e1;
+
+}
+
+.btn-success{
+
+    background:#16a34a;
+
+    color:#fff;
+
+}
+
+.btn-danger{
+
+    background:#dc2626;
+
+    color:#fff;
+
+}
+
+.btn-warning{
+
+    background:#f59e0b;
+
+    color:#fff;
+
+}
+
+/* ===============================
+   Small Button
+=============================== */
+
+.btn-sm{
+
+    padding:8px 14px;
+
+    font-size:14px;
+
+}
+
+/* ===============================
+   Badge
+=============================== */
+
+.badge{
+
+    display:inline-block;
+
+    padding:6px 14px;
+
+    border-radius:50px;
+
+    font-size:13px;
+
+    font-weight:600;
+
+}
+
+.badge-success{
+
+    background:#dcfce7;
+
+    color:#15803d;
+
+}
+
+.badge-danger{
+
+    background:#fee2e2;
+
+    color:#b91c1c;
+
+}
+
+.badge-warning{
+
+    background:#fef3c7;
+
+    color:#b45309;
+
+}
+
+.badge-info{
+
+    background:#dbeafe;
+
+    color:#2563eb;
+
+}
+
+/* ===============================
+   Avatar
+=============================== */
+
+.avatar{
+
+    width:50px;
+
+    height:50px;
+
+    border-radius:50%;
+
+    object-fit:cover;
+
+}
+
+.avatar-lg{
+
+    width:120px;
+
+    height:120px;
+
+}
+
+/* ===============================
+   Search Box
+=============================== */
+
+.search-box{
+
+    position:relative;
+
+}
+
+.search-box input{
+
+    width:100%;
+
+    padding:14px 16px 14px 46px;
+
+    border-radius:12px;
+
+    border:1px solid #dbe4ee;
+
+    outline:none;
+
+}
+
+.search-box i{
+
+    position:absolute;
+
+    left:16px;
+
+    top:50%;
+
+    transform:translateY(-50%);
+
+    color:#94a3b8;
+
+}
+
+/* ===============================
+   Table
+=============================== */
+
+.table{
+
+    width:100%;
+
+    border-collapse:collapse;
+
+}
+
+.table th{
+
+    text-align:left;
+
+    background:#f8fafc;
+
+    padding:16px;
+
+    color:#334155;
+
+    font-weight:600;
+
+}
+
+.table td{
+
+    padding:16px;
+
+    border-top:1px solid #edf2f7;
+
+}
+
+.table tr:hover{
+
+    background:#fafafa;
+
+}
+
+/* ===============================
+   Progress Bar
+=============================== */
+
+.progress{
+
+    width:100%;
+
+    height:10px;
+
+    background:#e2e8f0;
+
+    border-radius:20px;
+
+    overflow:hidden;
+
+}
+
+.progress-bar{
+
+    height:100%;
+
+    width:0%;
+
+    background:#4f46e5;
+
+    transition:width .4s ease;
+
+}
+
+/* ===============================
+   Alert
+=============================== */
+
+.alert{
+
+    padding:16px;
+
+    border-radius:12px;
+
+    margin-bottom:20px;
+
+}
+
+.alert-success{
+
+    background:#dcfce7;
+
+    color:#166534;
+
+}
+
+.alert-danger{
+
+    background:#fee2e2;
+
+    color:#991b1b;
+
+}
+
+.alert-warning{
+
+    background:#fef3c7;
+
+    color:#92400e;
+
+}
+
+.alert-info{
+
+    background:#dbeafe;
+
+    color:#1d4ed8;
+
+}
+
+/* ===============================
+   Modal
+=============================== */
+
+.modal{
+
+    position:fixed;
+
+    inset:0;
+
+    background:rgba(0,0,0,.45);
+
+    display:none;
+
+    justify-content:center;
+
+    align-items:center;
+
+    z-index:9999;
+
+}
+
+.modal.active{
+
+    display:flex;
+
+}
+
+.modal-content{
+
+    width:95%;
+
+    max-width:600px;
+
+    background:#fff;
+
+    border-radius:18px;
+
+    padding:28px;
+
+    animation:popup .25s ease;
+
+}
+
+@keyframes popup{
+
+    from{
+
+        transform:scale(.92);
+
+        opacity:0;
+
+    }
+
+    to{
+
+        transform:scale(1);
+
+        opacity:1;
+
+    }
+
+}
+
+/* ===============================
+   Loader
+=============================== */
+
+.loader{
+
+    width:50px;
+
+    height:50px;
+
+    border:5px solid #e2e8f0;
+
+    border-top:5px solid #4f46e5;
+
+    border-radius:50%;
+
+    animation:loaderSpin 1s linear infinite;
+
+    margin:auto;
+
+}
+
+@keyframes loaderSpin{
+
+    to{
+
+        transform:rotate(360deg);
+
+    }
+
+}
+
+/* ===============================
+   Empty State
+=============================== */
+
+.empty-state{
+
+    text-align:center;
+
+    padding:50px 20px;
+
+}
+
+.empty-state img{
+
+    width:180px;
+
+    margin-bottom:20px;
+
+}
+
+.empty-state h3{
+
+    color:#334155;
+
+    margin-bottom:10px;
+
+}
+
+.empty-state p{
+
+    color:#64748b;
+
+}
+
+/* ===============================
+   Responsive
+=============================== */
+
+@media(max-width:768px){
+
+    .container{
+
+        padding:0 16px;
+
+    }
+
+    .section-title{
+
+        flex-direction:column;
+
+        align-items:flex-start;
+
+        gap:10px;
+
+    }
+
+    .table{
+
+        display:block;
+
+        overflow-x:auto;
+
+        white-space:nowrap;
+
+    }
+
+    .btn{
+
+        width:100%;
+
+    }
+
+}

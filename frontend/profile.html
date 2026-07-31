@@ -1,0 +1,993 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+
+    <meta charset="UTF-8">
+
+    <meta name="viewport"
+          content="width=device-width, initial-scale=1.0">
+
+    <title>My Profile | SmartHire AI</title>
+
+    <!-- Google Fonts -->
+
+    <link rel="preconnect"
+          href="https://fonts.googleapis.com">
+
+    <link rel="preconnect"
+          href="https://fonts.gstatic.com"
+          crossorigin>
+
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap"
+          rel="stylesheet">
+
+    <!-- Font Awesome -->
+
+    <link rel="stylesheet"
+          href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css">
+
+    <!-- CSS -->
+
+    <link rel="stylesheet"
+          href="assets/css/style.css">
+
+    <link rel="stylesheet"
+          href="assets/css/components.css">
+
+    <link rel="stylesheet"
+          href="assets/css/profile.css">
+
+    <link rel="stylesheet"
+          href="assets/css/responsive.css">
+
+</head>
+
+<body>
+
+<div class="dashboard-wrapper">
+
+    <!-- ===================================
+            Sidebar
+    ==================================== -->
+
+    <aside class="sidebar">
+
+        <div class="sidebar-logo">
+
+            <i class="fa-solid fa-user-graduate"></i>
+
+            <span>SmartHire AI</span>
+
+        </div>
+
+        <ul class="sidebar-menu">
+
+            <li>
+
+                <a href="dashboard.html">
+
+                    <i class="fa-solid fa-house"></i>
+
+                    Dashboard
+
+                </a>
+
+            </li>
+
+            <li class="active">
+
+                <a href="profile.html">
+
+                    <i class="fa-solid fa-user"></i>
+
+                    My Profile
+
+                </a>
+
+            </li>
+
+            <li>
+
+                <a href="resume.html">
+
+                    <i class="fa-solid fa-file-arrow-up"></i>
+
+                    Resume
+
+                </a>
+
+            </li>
+
+            <li>
+
+                <a href="interview.html">
+
+                    <i class="fa-solid fa-video"></i>
+
+                    AI Interview
+
+                </a>
+
+            </li>
+
+            <li>
+
+                <a href="reports.html">
+
+                    <i class="fa-solid fa-chart-line"></i>
+
+                    Reports
+
+                </a>
+
+            </li>
+
+            <li>
+
+                <a href="#">
+
+                    <i class="fa-solid fa-gear"></i>
+
+                    Settings
+
+                </a>
+
+            </li>
+
+        </ul>
+
+        <div class="sidebar-bottom">
+
+            <button
+                id="logoutBtn"
+                class="btn btn-danger">
+
+                <i class="fa-solid fa-right-from-bracket"></i>
+
+                Logout
+
+            </button>
+
+        </div>
+
+    </aside>
+
+    <!-- ===================================
+            Main Content
+    ==================================== -->
+
+    <main class="dashboard-main">
+
+        <!-- Top Bar -->
+
+        <header class="topbar">
+
+            <div class="topbar-left">
+
+                <button
+                    id="menuToggle"
+                    class="menu-toggle">
+
+                    <i class="fa-solid fa-bars"></i>
+
+                </button>
+
+                <h2>
+
+                    My Profile
+
+                </h2>
+
+            </div>
+
+            <div class="topbar-right">
+
+                <div class="search-box">
+
+                    <i class="fa-solid fa-search"></i>
+
+                    <input
+                        type="text"
+                        placeholder="Search...">
+
+                </div>
+
+                <button class="notification-btn">
+
+                    <i class="fa-solid fa-bell"></i>
+
+                    <span class="notification-count">
+
+                        2
+
+                    </span>
+
+                </button>
+
+                <div class="profile-menu">
+
+                    <img
+                        src="assets/images/default-profile.png"
+                        alt="Profile"
+                        class="avatar">
+
+                    <div>
+
+                        <h4 id="headerUserName">
+
+                            Loading...
+
+                        </h4>
+
+                        <small>
+
+                            Candidate
+
+                        </small>
+
+                    </div>
+
+                </div>
+
+            </div>
+
+        </header>
+
+        <!-- Profile Content -->
+
+        <section class="dashboard-content">
+
+            <!-- ===================================
+                    Profile Header
+            ==================================== -->
+
+            <section class="profile-header card">
+
+                <div class="profile-cover">
+
+                    <div class="profile-avatar">
+
+                        <img
+                            src="assets/images/default-profile.png"
+                            id="profileImage"
+                            alt="Profile">
+
+                        <label
+                            for="profilePhoto"
+                            class="camera-btn">
+
+                            <i class="fa-solid fa-camera"></i>
+
+                        </label>
+
+                        <input
+                            type="file"
+                            id="profilePhoto"
+                            accept="image/*"
+                            hidden>
+
+                    </div>
+
+                    <div class="profile-header-info">
+
+                        <h2 id="profileName">
+
+                            Loading...
+
+                        </h2>
+
+                        <p id="profileRole">
+
+                            Candidate
+
+                        </p>
+
+                        <div class="profile-badges">
+
+                            <span class="badge badge-primary">
+
+                                Active
+
+                            </span>
+
+                            <span
+                                class="badge badge-success"
+                                id="profileCompletion">
+
+                                0% Complete
+
+                            </span>
+
+                        </div>
+
+                    </div>
+
+                </div>
+
+            </section>
+
+            <!-- ===================================
+                    Completion Card
+            ==================================== -->
+
+            <section class="card">
+
+                <div class="section-title">
+
+                    <div>
+
+                        <h2>
+
+                            Profile Completion
+
+                        </h2>
+
+                        <p>
+
+                            Complete your profile to unlock all SmartHire AI features.
+
+                        </p>
+
+                    </div>
+
+                </div>
+
+                <div class="completion-container">
+
+                    <div class="progress">
+
+                        <div
+                            class="progress-bar"
+                            id="completionBar">
+
+                        </div>
+
+                    </div>
+
+                    <div class="completion-details">
+
+                        <span id="completionText">
+
+                            0% Completed
+
+                        </span>
+
+                        <span>
+
+                            Target : 100%
+
+                        </span>
+
+                    </div>
+
+                </div>
+
+            </section>
+
+            <!-- Continue in Part 2 -->
+                         <!-- ===================================
+                    Profile Forms Grid
+            ==================================== -->
+
+            <div class="profile-grid">
+
+                <!-- ===================================
+                        Personal Information
+                ==================================== -->
+
+                <section class="card">
+
+                    <div class="section-title">
+
+                        <div>
+
+                            <h2>
+
+                                Personal Information
+
+                            </h2>
+
+                            <p>
+
+                                Manage your personal details.
+
+                            </p>
+
+                        </div>
+
+                    </div>
+
+                    <form
+                        id="personalForm"
+                        class="profile-form">
+
+                        <div class="form-grid">
+
+                            <div class="form-group">
+
+                                <label for="fullName">
+
+                                    Full Name
+
+                                </label>
+
+                                <input
+                                    type="text"
+                                    id="fullName"
+                                    placeholder="Enter full name">
+
+                            </div>
+
+                            <div class="form-group">
+
+                                <label for="email">
+
+                                    Email Address
+
+                                </label>
+
+                                <input
+                                    type="email"
+                                    id="email"
+                                    readonly>
+
+                            </div>
+
+                            <div class="form-group">
+
+                                <label for="phone">
+
+                                    Mobile Number
+
+                                </label>
+
+                                <input
+                                    type="tel"
+                                    id="phone"
+                                    placeholder="Enter mobile number">
+
+                            </div>
+
+                            <div class="form-group">
+
+                                <label for="gender">
+
+                                    Gender
+
+                                </label>
+
+                                <select id="gender">
+
+                                    <option value="">
+
+                                        Select
+
+                                    </option>
+
+                                    <option value="Male">
+
+                                        Male
+
+                                    </option>
+
+                                    <option value="Female">
+
+                                        Female
+
+                                    </option>
+
+                                    <option value="Other">
+
+                                        Other
+
+                                    </option>
+
+                                </select>
+
+                            </div>
+
+                            <div class="form-group">
+
+                                <label for="dob">
+
+                                    Date of Birth
+
+                                </label>
+
+                                <input
+                                    type="date"
+                                    id="dob">
+
+                            </div>
+
+                            <div class="form-group">
+
+                                <label for="country">
+
+                                    Country
+
+                                </label>
+
+                                <input
+                                    type="text"
+                                    id="country"
+                                    placeholder="Country">
+
+                            </div>
+
+                            <div class="form-group full-width">
+
+                                <label for="address">
+
+                                    Address
+
+                                </label>
+
+                                <textarea
+                                    id="address"
+                                    rows="3"
+                                    placeholder="Enter address"></textarea>
+
+                            </div>
+
+                            <div class="form-group">
+
+                                <label for="city">
+
+                                    City
+
+                                </label>
+
+                                <input
+                                    type="text"
+                                    id="city"
+                                    placeholder="City">
+
+                            </div>
+
+                            <div class="form-group">
+
+                                <label for="state">
+
+                                    State
+
+                                </label>
+
+                                <input
+                                    type="text"
+                                    id="state"
+                                    placeholder="State">
+
+                            </div>
+
+                        </div>
+
+                    </form>
+
+                </section>
+
+                <!-- ===================================
+                        Academic Information
+                ==================================== -->
+
+                <section class="card">
+
+                    <div class="section-title">
+
+                        <div>
+
+                            <h2>
+
+                                Academic Information
+
+                            </h2>
+
+                            <p>
+
+                                Educational details used for resume generation.
+
+                            </p>
+
+                        </div>
+
+                    </div>
+
+                    <form
+                        id="academicForm"
+                        class="profile-form">
+
+                        <div class="form-grid">
+
+                            <div class="form-group">
+
+                                <label for="college">
+
+                                    College
+
+                                </label>
+
+                                <input
+                                    type="text"
+                                    id="college"
+                                    placeholder="College name">
+
+                            </div>
+
+                            <div class="form-group">
+
+                                <label for="university">
+
+                                    University
+
+                                </label>
+
+                                <input
+                                    type="text"
+                                    id="university"
+                                    placeholder="University">
+
+                            </div>
+
+                            <div class="form-group">
+
+                                <label for="degree">
+
+                                    Degree
+
+                                </label>
+
+                                <input
+                                    type="text"
+                                    id="degree"
+                                    placeholder="Degree">
+
+                            </div>
+
+                            <div class="form-group">
+
+                                <label for="branch">
+
+                                    Branch
+
+                                </label>
+
+                                <input
+                                    type="text"
+                                    id="branch"
+                                    placeholder="Branch">
+
+                            </div>
+
+                            <div class="form-group">
+
+                                <label for="cgpa">
+
+                                    CGPA
+
+                                </label>
+
+                                <input
+                                    type="number"
+                                    id="cgpa"
+                                    step="0.01"
+                                    min="0"
+                                    max="10"
+                                    placeholder="CGPA">
+
+                            </div>
+
+                            <div class="form-group">
+
+                                <label for="graduationYear">
+
+                                    Graduation Year
+
+                                </label>
+
+                                <input
+                                    type="number"
+                                    id="graduationYear"
+                                    placeholder="2027">
+
+                            </div>
+
+                        </div>
+
+                    </form>
+
+                </section>
+
+            </div>
+
+            <!-- Continue in Part 3 -->
+                         <!-- ===================================
+                    Professional Information
+            ==================================== -->
+
+            <section class="card">
+
+                <div class="section-title">
+
+                    <div>
+
+                        <h2>
+
+                            Professional Information
+
+                        </h2>
+
+                        <p>
+
+                            Showcase your skills and professional profiles.
+
+                        </p>
+
+                    </div>
+
+                </div>
+
+                <form
+                    id="professionalForm"
+                    class="profile-form">
+
+                    <div class="form-grid">
+
+                        <div class="form-group full-width">
+
+                            <label for="skills">
+
+                                Technical Skills
+
+                            </label>
+
+                            <textarea
+                                id="skills"
+                                rows="3"
+                                placeholder="Example: HTML, CSS, JavaScript, Python, Flask, SQL, React"></textarea>
+
+                        </div>
+
+                        <div class="form-group full-width">
+
+                            <label for="certifications">
+
+                                Certifications
+
+                            </label>
+
+                            <textarea
+                                id="certifications"
+                                rows="3"
+                                placeholder="Enter certifications separated by commas"></textarea>
+
+                        </div>
+
+                        <div class="form-group full-width">
+
+                            <label for="projects">
+
+                                Projects
+
+                            </label>
+
+                            <textarea
+                                id="projects"
+                                rows="4"
+                                placeholder="Briefly describe your major projects"></textarea>
+
+                        </div>
+
+                        <div class="form-group">
+
+                            <label for="experience">
+
+                                Experience
+
+                            </label>
+
+                            <input
+                                type="text"
+                                id="experience"
+                                placeholder="Internships / Work Experience">
+
+                        </div>
+
+                        <div class="form-group">
+
+                            <label for="portfolio">
+
+                                Portfolio Website
+
+                            </label>
+
+                            <input
+                                type="url"
+                                id="portfolio"
+                                placeholder="https://">
+
+                        </div>
+
+                        <div class="form-group">
+
+                            <label for="linkedin">
+
+                                LinkedIn
+
+                            </label>
+
+                            <input
+                                type="url"
+                                id="linkedin"
+                                placeholder="https://linkedin.com/in/...">
+
+                        </div>
+
+                        <div class="form-group">
+
+                            <label for="github">
+
+                                GitHub
+
+                            </label>
+
+                            <input
+                                type="url"
+                                id="github"
+                                placeholder="https://github.com/...">
+
+                        </div>
+
+                    </div>
+
+                </form>
+
+            </section>
+
+            <!-- ===================================
+                    Change Password
+            ==================================== -->
+
+            <section class="card">
+
+                <div class="section-title">
+
+                    <div>
+
+                        <h2>
+
+                            Change Password
+
+                        </h2>
+
+                        <p>
+
+                            Update your account password securely.
+
+                        </p>
+
+                    </div>
+
+                </div>
+
+                <form
+                    id="passwordForm"
+                    class="profile-form">
+
+                    <div class="form-grid">
+
+                        <div class="form-group">
+
+                            <label for="currentPassword">
+
+                                Current Password
+
+                            </label>
+
+                            <input
+                                type="password"
+                                id="currentPassword"
+                                placeholder="Current password">
+
+                        </div>
+
+                        <div class="form-group">
+
+                            <label for="newPassword">
+
+                                New Password
+
+                            </label>
+
+                            <input
+                                type="password"
+                                id="newPassword"
+                                placeholder="New password">
+
+                        </div>
+
+                        <div class="form-group">
+
+                            <label for="confirmPassword">
+
+                                Confirm Password
+
+                            </label>
+
+                            <input
+                                type="password"
+                                id="confirmPassword"
+                                placeholder="Confirm new password">
+
+                        </div>
+
+                    </div>
+
+                </form>
+
+            </section>
+
+            <!-- ===================================
+                    Save Profile
+            ==================================== -->
+
+            <section class="card">
+
+                <div class="profile-actions">
+
+                    <button
+                        type="button"
+                        id="saveProfileBtn"
+                        class="btn btn-primary">
+
+                        <i class="fa-solid fa-floppy-disk"></i>
+
+                        Save Profile
+
+                    </button>
+
+                    <button
+                        type="button"
+                        id="changePasswordBtn"
+                        class="btn btn-secondary">
+
+                        <i class="fa-solid fa-key"></i>
+
+                        Update Password
+
+                    </button>
+
+                    <button
+                        type="reset"
+                        id="resetProfileBtn"
+                        class="btn btn-outline">
+
+                        <i class="fa-solid fa-rotate-left"></i>
+
+                        Reset
+
+                    </button>
+
+                </div>
+
+            </section>
+
+        </section>
+
+    </main>
+
+</div>
+
+<!-- ===================================
+        JavaScript
+=================================== -->
+
+<script src="assets/js/config.js"></script>
+
+<script src="assets/js/utils.js"></script>
+
+<script src="assets/js/profile.js"></script>
+
+</body>
+
+</html>

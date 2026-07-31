@@ -1,0 +1,966 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+
+    <meta charset="UTF-8">
+
+    <meta
+        name="viewport"
+        content="width=device-width, initial-scale=1.0">
+
+    <title>
+
+        Reports | SmartHire AI
+
+    </title>
+
+    <!-- Google Fonts -->
+
+    <link rel="preconnect"
+          href="https://fonts.googleapis.com">
+
+    <link rel="preconnect"
+          href="https://fonts.gstatic.com"
+          crossorigin>
+
+    <link
+        href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap"
+        rel="stylesheet">
+
+    <!-- Font Awesome -->
+
+    <link
+        rel="stylesheet"
+        href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css">
+
+    <!-- CSS -->
+
+    <link
+        rel="stylesheet"
+        href="assets/css/style.css">
+
+    <link
+        rel="stylesheet"
+        href="assets/css/components.css">
+
+    <link
+        rel="stylesheet"
+        href="assets/css/reports.css">
+
+    <link
+        rel="stylesheet"
+        href="assets/css/responsive.css">
+
+</head>
+
+<body>
+
+<div class="dashboard-wrapper">
+
+    <!-- ==========================================
+                    Sidebar
+    =========================================== -->
+
+    <aside class="sidebar">
+
+        <div class="sidebar-logo">
+
+            <i class="fa-solid fa-user-graduate"></i>
+
+            <span>
+
+                SmartHire AI
+
+            </span>
+
+        </div>
+
+        <ul class="sidebar-menu">
+
+            <li>
+
+                <a href="dashboard.html">
+
+                    <i class="fa-solid fa-house"></i>
+
+                    Dashboard
+
+                </a>
+
+            </li>
+
+            <li>
+
+                <a href="profile.html">
+
+                    <i class="fa-solid fa-user"></i>
+
+                    My Profile
+
+                </a>
+
+            </li>
+
+            <li>
+
+                <a href="resume.html">
+
+                    <i class="fa-solid fa-file-arrow-up"></i>
+
+                    Resume
+
+                </a>
+
+            </li>
+
+            <li>
+
+                <a href="interview.html">
+
+                    <i class="fa-solid fa-video"></i>
+
+                    AI Interview
+
+                </a>
+
+            </li>
+
+            <li class="active">
+
+                <a href="reports.html">
+
+                    <i class="fa-solid fa-chart-line"></i>
+
+                    Reports
+
+                </a>
+
+            </li>
+
+            <li>
+
+                <a href="#">
+
+                    <i class="fa-solid fa-gear"></i>
+
+                    Settings
+
+                </a>
+
+            </li>
+
+        </ul>
+
+        <div class="sidebar-bottom">
+
+            <button
+                id="logoutBtn"
+                class="btn btn-danger">
+
+                <i class="fa-solid fa-right-from-bracket"></i>
+
+                Logout
+
+            </button>
+
+        </div>
+
+    </aside>
+
+    <!-- ==========================================
+                    Main Content
+    =========================================== -->
+
+    <main class="dashboard-main">
+
+        <!-- Topbar -->
+
+        <header class="topbar">
+
+            <div class="topbar-left">
+
+                <button
+                    id="menuToggle"
+                    class="menu-toggle">
+
+                    <i class="fa-solid fa-bars"></i>
+
+                </button>
+
+                <h2>
+
+                    Reports & Analytics
+
+                </h2>
+
+            </div>
+
+            <div class="topbar-right">
+
+                <div class="profile-menu">
+
+                    <img
+                        src="assets/images/default-profile.png"
+                        alt="Profile"
+                        class="avatar">
+
+                    <div>
+
+                        <h4 id="headerUserName">
+
+                            Loading...
+
+                        </h4>
+
+                        <small>
+
+                            Candidate
+
+                        </small>
+
+                    </div>
+
+                </div>
+
+            </div>
+
+        </header>
+
+        <!-- ==========================================
+                    Reports Header
+        =========================================== -->
+
+        <section class="dashboard-content">
+
+            <section class="card reports-header">
+
+                <h1>
+
+                    Reports & Analytics Dashboard
+
+                </h1>
+
+                <p>
+
+                    View your interview performance, ATS resume score, skill analysis, AI feedback, and overall progress from all completed mock interviews.
+
+                </p>
+
+            </section>
+
+            <!-- ==========================================
+                    Overall Statistics
+            =========================================== -->
+
+            <section class="stats-grid">
+
+                <div class="card stat-card">
+
+                    <i class="fa-solid fa-medal"></i>
+
+                    <h3 id="overallScore">
+
+                        0%
+
+                    </h3>
+
+                    <p>
+
+                        Overall Interview Score
+
+                    </p>
+
+                </div>
+
+                <div class="card stat-card">
+
+                    <i class="fa-solid fa-file-circle-check"></i>
+
+                    <h3 id="atsScore">
+
+                        0%
+
+                    </h3>
+
+                    <p>
+
+                        ATS Resume Score
+
+                    </p>
+
+                </div>
+
+                <div class="card stat-card">
+
+                    <i class="fa-solid fa-brain"></i>
+
+                    <h3 id="technicalScore">
+
+                        0%
+
+                    </h3>
+
+                    <p>
+
+                        Technical Skills
+
+                    </p>
+
+                </div>
+
+                <div class="card stat-card">
+
+                    <i class="fa-solid fa-comments"></i>
+
+                    <h3 id="communicationScore">
+
+                        0%
+
+                    </h3>
+
+                    <p>
+
+                        Communication Skills
+
+                    </p>
+
+                </div>
+
+            </section>
+
+            <!-- ==========================================
+                    Charts Section
+            =========================================== -->
+
+            <section class="reports-grid">
+
+                <section class="card">
+
+                    <div class="section-title">
+
+                        <div>
+
+                            <h2>
+
+                                Performance Trend
+
+                            </h2>
+
+                            <p>
+
+                                Overall interview performance over time.
+
+                            </p>
+
+                        </div>
+
+                    </div>
+
+                    <canvas
+                        id="performanceChart">
+
+                    </canvas>
+
+                </section>
+
+                <section class="card">
+
+                    <div class="section-title">
+
+                        <div>
+
+                            <h2>
+
+                                Skill Analysis
+
+                            </h2>
+
+                            <p>
+
+                                Compare individual skill scores.
+
+                            </p>
+
+                        </div>
+
+                    </div>
+
+                    <canvas
+                        id="skillsChart">
+
+                    </canvas>
+
+                </section>
+
+            </section>
+
+            <!-- Continue in 9A-2 -->
+                         <!-- ==========================================
+                    AI Performance Breakdown
+            =========================================== -->
+
+            <section class="reports-grid">
+
+                <!-- Strengths -->
+
+                <section class="card">
+
+                    <div class="section-title">
+
+                        <div>
+
+                            <h2>
+
+                                Your Strengths
+
+                            </h2>
+
+                            <p>
+
+                                Areas where you consistently perform well.
+
+                            </p>
+
+                        </div>
+
+                    </div>
+
+                    <div
+                        id="strengthList"
+                        class="analysis-list">
+
+                        <div class="analysis-item">
+
+                            <i class="fa-solid fa-circle-check"></i>
+
+                            <span>
+
+                                Loading strengths...
+
+                            </span>
+
+                        </div>
+
+                    </div>
+
+                </section>
+
+                <!-- Weaknesses -->
+
+                <section class="card">
+
+                    <div class="section-title">
+
+                        <div>
+
+                            <h2>
+
+                                Areas for Improvement
+
+                            </h2>
+
+                            <p>
+
+                                Skills that need more practice.
+
+                            </p>
+
+                        </div>
+
+                    </div>
+
+                    <div
+                        id="weaknessList"
+                        class="analysis-list">
+
+                        <div class="analysis-item">
+
+                            <i class="fa-solid fa-circle-exclamation"></i>
+
+                            <span>
+
+                                Loading analysis...
+
+                            </span>
+
+                        </div>
+
+                    </div>
+
+                </section>
+
+            </section>
+
+            <!-- ==========================================
+                    AI Feedback
+            =========================================== -->
+
+            <section class="card">
+
+                <div class="section-title">
+
+                    <div>
+
+                        <h2>
+
+                            AI Feedback
+
+                        </h2>
+
+                        <p>
+
+                            Personalized feedback generated from your interview performance.
+
+                        </p>
+
+                    </div>
+
+                </div>
+
+                <div
+                    id="feedbackContainer"
+                    class="feedback-box">
+
+                    Your interview feedback will appear here after completing an AI interview.
+
+                </div>
+
+            </section>
+
+            <!-- ==========================================
+                    AI Recommendations
+            =========================================== -->
+
+            <section class="card">
+
+                <div class="section-title">
+
+                    <div>
+
+                        <h2>
+
+                            AI Recommendations
+
+                        </h2>
+
+                        <p>
+
+                            Suggested improvements for your next interview.
+
+                        </p>
+
+                    </div>
+
+                </div>
+
+                <div
+                    id="recommendationContainer"
+                    class="recommendation-list">
+
+                    <div class="recommendation-item">
+
+                        <i class="fa-solid fa-lightbulb"></i>
+
+                        <span>
+
+                            Recommendations will be generated after interview evaluation.
+
+                        </span>
+
+                    </div>
+
+                </div>
+
+            </section>
+
+            <!-- ==========================================
+                    Interview History
+            =========================================== -->
+
+            <section class="card">
+
+                <div class="section-title">
+
+                    <div>
+
+                        <h2>
+
+                            Interview History
+
+                        </h2>
+
+                        <p>
+
+                            View all completed mock interviews.
+
+                        </p>
+
+                    </div>
+
+                </div>
+
+                <div class="table-responsive">
+
+                    <table class="history-table">
+
+                        <thead>
+
+                            <tr>
+
+                                <th>
+
+                                    Date
+
+                                </th>
+
+                                <th>
+
+                                    Role
+
+                                </th>
+
+                                <th>
+
+                                    Difficulty
+
+                                </th>
+
+                                <th>
+
+                                    Score
+
+                                </th>
+
+                                <th>
+
+                                    Status
+
+                                </th>
+
+                            </tr>
+
+                        </thead>
+
+                        <tbody
+                            id="historyTableBody">
+
+                            <tr>
+
+                                <td colspan="5">
+
+                                    No interview history available.
+
+                                </td>
+
+                            </tr>
+
+                        </tbody>
+
+                    </table>
+
+                </div>
+
+            </section>
+
+            <!-- Continue in 9A-3 -->
+                         <!-- ==========================================
+                    AI Score Summary
+            =========================================== -->
+
+            <section class="card score-summary-card">
+
+                <div class="section-title">
+
+                    <div>
+
+                        <h2>
+
+                            Overall Interview Score
+
+                        </h2>
+
+                        <p>
+
+                            AI evaluated your complete interview performance.
+
+                        </p>
+
+                    </div>
+
+                </div>
+
+
+                <div class="score-container">
+
+
+                    <div class="score-circle">
+
+                        <div class="circle-inner">
+
+                            <span id="overallScore">
+
+                                --
+
+                            </span>
+
+                            <small>
+
+                                /100
+
+                            </small>
+
+                        </div>
+
+                    </div>
+
+
+                    <div class="score-details">
+
+
+                        <div class="score-item">
+
+                            <span>
+
+                                Technical Skills
+
+                            </span>
+
+                            <div class="progress">
+
+                                <div
+                                    id="technicalScore"
+                                    class="progress-bar">
+
+                                </div>
+
+                            </div>
+
+                        </div>
+
+
+
+                        <div class="score-item">
+
+                            <span>
+
+                                Communication
+
+                            </span>
+
+                            <div class="progress">
+
+                                <div
+                                    id="communicationScore"
+                                    class="progress-bar">
+
+                                </div>
+
+                            </div>
+
+                        </div>
+
+
+
+                        <div class="score-item">
+
+                            <span>
+
+                                Problem Solving
+
+                            </span>
+
+                            <div class="progress">
+
+                                <div
+                                    id="problemScore"
+                                    class="progress-bar">
+
+                                </div>
+
+                            </div>
+
+                        </div>
+
+
+
+                        <div class="score-item">
+
+                            <span>
+
+                                Confidence
+
+                            </span>
+
+                            <div class="progress">
+
+                                <div
+                                    id="confidenceScore"
+                                    class="progress-bar">
+
+                                </div>
+
+                            </div>
+
+                        </div>
+
+
+                    </div>
+
+
+                </div>
+
+
+            </section>
+
+
+
+            <!-- ==========================================
+                    Download Report
+            =========================================== -->
+
+
+            <section class="card download-card">
+
+
+                <div class="section-title">
+
+
+                    <div>
+
+
+                        <h2>
+
+                            Download Interview Report
+
+                        </h2>
+
+
+                        <p>
+
+                            Export your AI generated interview analysis.
+
+                        </p>
+
+
+                    </div>
+
+
+                </div>
+
+
+
+                <div class="download-actions">
+
+
+                    <button
+                        id="downloadReportBtn"
+                        class="primary-btn">
+
+
+                        <i class="fa-solid fa-file-pdf"></i>
+
+
+                        Download PDF Report
+
+
+                    </button>
+
+
+
+                    <button
+                        id="shareReportBtn"
+                        class="secondary-btn">
+
+
+                        <i class="fa-solid fa-share-nodes"></i>
+
+
+                        Share Report
+
+
+                    </button>
+
+
+
+                </div>
+
+
+            </section>
+
+
+
+            <!-- ==========================================
+                    Empty State
+            =========================================== -->
+
+
+            <section
+                id="emptyReportState"
+                class="empty-state">
+
+
+                <i class="fa-solid fa-chart-line"></i>
+
+
+                <h2>
+
+                    No Interview Analysis Yet
+
+                </h2>
+
+
+                <p>
+
+                    Complete an AI mock interview to generate your performance report.
+
+                </p>
+
+
+
+                <button
+                    onclick="startInterview()"
+                    class="primary-btn">
+
+
+                    Start AI Interview
+
+
+                </button>
+
+
+            </section>
+
+
+
+        </main>
+
+
+        <!-- ==========================================
+                Footer
+        =========================================== -->
+
+
+        <footer class="dashboard-footer">
+
+
+            <p>
+
+                © 2026 SmartHire AI. AI Powered Interview Assessment Platform.
+
+            </p>
+
+
+        </footer>
+
+
+
+        <!-- JavaScript -->
+
+        <script src="../js/reports.js"></script>
+
+
+    </body>
+
+
+</html>
