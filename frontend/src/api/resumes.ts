@@ -20,4 +20,7 @@ export const resumesApi = {
   async reprocess(resumeId: string): Promise<void> {
     await post(`/resumes/${resumeId}/reprocess/`);
   },
+  async setPrimary(resumeId: string): Promise<void> {
+    await post(`/resumes/${resumeId}/set-primary/`);
+  },
 };

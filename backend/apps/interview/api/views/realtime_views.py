@@ -12,7 +12,7 @@ from core.permissions import IsCandidate
 from core.responses import APIResponse
 
 from apps.interview.api.serializers.interview_serializer import (
-    AppendTranscriptTurnSerializer, ConversationTurnSerializer, CreateRealtimeSessionSerializer,
+    CreateRealtimeSessionSerializer,
     RealtimeSessionDetailSerializer,
 )
 from apps.interview.models import InterviewSession, InterviewTemplate
@@ -176,39 +176,6 @@ class SessionCurrentTopicView(APIView):
            "question_id": str(session.current_seed_topic.id) if session.current_seed_topic else None
         })
 
-class SessionRealtimeTranscriptView(APIView):
-    """
-    GET  /api/v1/interviews/realtime/sessions/<session_id>/transcript/  - poll turns so far
-    POST /api/v1/interviews/realtime/sessions/<session_id>/transcript/  - append a turn observed
-         client-side via the Ultravox SDK (including barge-in detection)
-    """
 
-    permission_classes = [IsCandidate]
 
-    def get(self, request: Request, session_id: str, *args: Any, **kwargs: Any):
-        session = get_owned_session_or_404(candidate=request.user, session_id=session_id)
-        turns = session.turns.order_by("order")  # type: ignore[attr-defined]
-        return APIResponse.success(data=ConversationTurnSerializer(turns, many=True).data)
-
-    def post(self, request: Request, session_id: str, *args: Any, **kwargs: Any):
-        from core.container import container
-
-        serializer = AppendTranscriptTurnSerializer(data=request.data)
-        serializer.is_valid(raise_exception=True)
-        session = get_owned_session_or_404(candidate=request.user, session_id=session_id)
-
-        vd = cast(dict[str, Any], serializer.validated_data)
-        turn = container.interview_orchestrator().record_transcript_turn(
-            session=session,
-            speaker=vd["speaker"],
-            text=vd["text"],
-            turn_type=vd.get("turn_type", "answer"),
-            started_at_ms=vd.get("started_at_ms"),
-            ended_at_ms=vd.get("ended_at_ms"),
-            was_interrupted=vd.get("was_interrupted", False),
-        )
-        return APIResponse.created(data=ConversationTurnSerializer(turn).data)
-    
-    
-    
     

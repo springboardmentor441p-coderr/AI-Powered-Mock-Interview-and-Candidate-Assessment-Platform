@@ -11,10 +11,8 @@ import type { CandidateProfile } from "@/types/api";
 export const candidateKeys = {
   profile: ["candidate", "profile"] as const,
   resumes: ["candidate", "resumes"] as const,
-  templates: ["interviews", "templates"] as const,
   sessions: ["interviews", "sessions"] as const,
   session: (id: string) => ["interviews", "sessions", id] as const,
-  realtimeTranscript: (id: string) => ["interviews", "sessions", id, "transcript-live"] as const,
   fullTranscript: (id: string) => ["interviews", "sessions", id, "transcript-full"] as const,
   threadEvals: (id: string) => ["interviews", "sessions", id, "thread-evals"] as const,
   brief: (id: string) => ["interviews", "sessions", id, "brief"] as const,
@@ -71,9 +69,16 @@ export function useReprocessResume() {
   });
 }
 
-// --- Templates ---
-export function useInterviewTemplates() {
-  return useQuery({ queryKey: candidateKeys.templates, queryFn: interviewsApi.templates });
+export function useSetPrimaryResume() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (resumeId: string) => resumesApi.setPrimary(resumeId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: candidateKeys.resumes });
+      toast.success("Primary résumé updated.");
+    },
+    onError: (error: ApiError) => toast.error(error.message || "Couldn't update primary résumé."),
+  });
 }
 
 // --- Realtime sessions ---

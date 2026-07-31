@@ -2,8 +2,7 @@ from django.urls import path
 
 from apps.interview.api.views.realtime_views import (
     SessionRealtimeAccountWebhookView, SessionRealtimeCreateView, SessionRealtimeStartView,
-    SessionRealtimeToolAskNextQuestionView, SessionRealtimeTranscriptView,
-    SessionCurrentTopicView, 
+    SessionRealtimeToolAskNextQuestionView, SessionCurrentTopicView,
 )
 from apps.interview.api.views.session_views import (
     InterviewTemplateListCreateView, SessionAnswerView, SessionCompleteView,
@@ -32,9 +31,6 @@ urlpatterns = [
     # --- Realtime voice flow ---
     path("realtime/sessions/create/", SessionRealtimeCreateView.as_view(), name="realtime_session_create"),
     path("realtime/sessions/<uuid:session_id>/start/", SessionRealtimeStartView.as_view(), name="realtime_session_start"),
-
-    # Legacy ConversationTurn endpoint — kept for backwards compatibility.
-    path("realtime/sessions/<uuid:session_id>/transcript/", SessionRealtimeTranscriptView.as_view(), name="realtime_session_transcript"),
 
     # Transcript: per-turn storage webhook (Ultravox → Django)
     path("realtime/sessions/<uuid:session_id>/transcript/webhook/", SessionTranscriptWebhookView.as_view(), name="realtime_transcript_webhook"),

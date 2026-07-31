@@ -121,9 +121,14 @@ export function FaceAssessmentHUD({
 
       {/* Error state */}
       {error && (
-        <p className="text-[0.6rem] text-destructive font-mono leading-tight">
-          ⚠ {error.slice(0, 60)}
-        </p>
+        <div className="flex flex-col gap-1 rounded-lg border border-destructive/40 bg-destructive/10 px-2 py-1.5">
+          <p className="font-mono text-[0.58rem] text-destructive font-semibold leading-tight">
+            ⚠ Camera unavailable
+          </p>
+          <p className="font-mono text-[0.55rem] text-destructive/80 leading-tight">
+            {error}
+          </p>
+        </div>
       )}
 
       {/* Scores */}

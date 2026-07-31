@@ -1,7 +1,6 @@
 import { get, getList, post, patch } from "@/api/client";
 import type { Paginated } from "@/api/client";
 import type {
-  ConversationTurn,
   InterviewBrief,
   InterviewSessionDetail,
   InterviewSessionListItem,
@@ -10,15 +9,6 @@ import type {
   ThreadEvaluation,
   Transcript,
 } from "@/types/api";
-
-export interface CreateSessionPayload {
-  interview_type: string;
-  domain: string;
-  difficulty: "easy" | "medium" | "hard";
-  question_count: number;
-  template_id?: string;
-  use_primary_resume?: boolean;
-}
 
 export interface CreateRealtimeSessionPayload {
   interview_type: string;
@@ -37,24 +27,12 @@ export const interviewsApi = {
     return post<InterviewTemplate>("/interviews/templates/", payload);
   },
 
-  // Scripted flow
+  // Session list & detail (shared between history page and live room)
   async list(): Promise<Paginated<InterviewSessionListItem>> {
     return getList<InterviewSessionListItem>("/interviews/sessions/");
   },
   async detail(sessionId: string): Promise<InterviewSessionDetail> {
     return get<InterviewSessionDetail>(`/interviews/sessions/${sessionId}/`);
-  },
-  async create(payload: CreateSessionPayload): Promise<InterviewSessionDetail> {
-    return post<InterviewSessionDetail>("/interviews/sessions/create/", payload);
-  },
-  async start(sessionId: string): Promise<InterviewSessionDetail> {
-    return post<InterviewSessionDetail>(`/interviews/sessions/${sessionId}/start/`);
-  },
-  async answer(
-    sessionId: string,
-    payload: { question_order: number; answer_text?: string; response_time_seconds?: number },
-  ) {
-    return post(`/interviews/sessions/${sessionId}/answer/`, payload);
   },
   async complete(sessionId: string): Promise<InterviewSessionDetail> {
     return post<InterviewSessionDetail>(`/interviews/sessions/${sessionId}/complete/`);
@@ -70,10 +48,6 @@ export const interviewsApi = {
   async startRealtime(sessionId: string): Promise<RealtimeSessionDetail> {
     return post<RealtimeSessionDetail>(`/interviews/realtime/sessions/${sessionId}/start/`);
   },
-  async realtimeTranscript(sessionId: string): Promise<ConversationTurn[]> {
-    return get<ConversationTurn[]>(`/interviews/realtime/sessions/${sessionId}/transcript/`);
-  },
-
   // Transcript & evaluation review
   async fullTranscript(sessionId: string): Promise<Transcript[]> {
     return get<Transcript[]>(`/interviews/realtime/sessions/${sessionId}/transcript/full/`);

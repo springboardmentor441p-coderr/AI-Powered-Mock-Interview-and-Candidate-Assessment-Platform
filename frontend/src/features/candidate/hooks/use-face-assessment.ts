@@ -222,7 +222,18 @@ export function useFaceAssessment({ sessionId, onMetrics, autoStart = false, dry
       activeRef.current = true;
       setActive(true);
     } catch (err) {
-      const msg = err instanceof Error ? err.message : "Could not start camera.";
+      let msg = "Could not start camera.";
+      if (err instanceof Error) {
+        if (err.name === "NotAllowedError" || err.name === "PermissionDeniedError") {
+          msg = "Camera permission denied. Allow camera access in your browser's site settings and try again.";
+        } else if (err.name === "NotFoundError" || err.name === "DevicesNotFoundError") {
+          msg = "No camera found. Plug in a webcam and try again.";
+        } else if (err.name === "NotReadableError" || err.name === "TrackStartError") {
+          msg = "Camera is in use by another app. Close the other app and try again.";
+        } else {
+          msg = err.message;
+        }
+      }
       setError(msg);
     }
   }, [initLandmarker, processFrame]);

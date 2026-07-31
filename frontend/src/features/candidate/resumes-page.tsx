@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn, formatDate } from "@/lib/utils";
-import { useReprocessResume, useResumes, useUploadResume } from "@/features/candidate/hooks";
+import { useReprocessResume, useResumes, useSetPrimaryResume, useUploadResume } from "@/features/candidate/hooks";
 
 const ACCEPTED = [".pdf", ".doc", ".docx"];
 
@@ -17,6 +17,7 @@ export default function ResumesPage() {
   const { data, isLoading, isError, error, refetch } = useResumes();
   const upload = useUploadResume();
   const reprocess = useReprocessResume();
+  const setPrimary = useSetPrimaryResume();
   const [dragOver, setDragOver] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -123,16 +124,28 @@ export default function ResumesPage() {
                     )}
                   </div>
                 </div>
-                {(resume.status === "failed" || resume.status === "processed") && (
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => reprocess.mutate(resume.id)}
-                    disabled={reprocess.isPending}
-                  >
-                    <RefreshCw className="h-3.5 w-3.5" /> Reprocess
-                  </Button>
-                )}
+                <div className="flex items-center gap-2">
+                  {!resume.is_primary && resume.status === "processed" && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setPrimary.mutate(resume.id)}
+                      disabled={setPrimary.isPending}
+                    >
+                      <Star className="h-3.5 w-3.5" /> Make Primary
+                    </Button>
+                  )}
+                  {(resume.status === "failed" || resume.status === "processed") && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => reprocess.mutate(resume.id)}
+                      disabled={reprocess.isPending}
+                    >
+                      <RefreshCw className="h-3.5 w-3.5" /> Reprocess
+                    </Button>
+                  )}
+                </div>
               </CardContent>
             </Card>
           ))}

@@ -33,8 +33,6 @@ export default function LiveInterviewRoom() {
   const [callStatus, setCallStatus] = useState<string>("idle");
   const [lines, setLines] = useState<LiveTranscriptLine[]>([]);
   const [elapsed, setElapsed] = useState(0);
-  // Whether the user has opted into face assessment for this session
-  const [faceEnabled, setFaceEnabled] = useState(true);
 
   const sessionRef = useRef<import("ultravox-client").UltravoxSession | null>(null);
   const hasStartedRef = useRef(false);
@@ -50,16 +48,13 @@ export default function LiveInterviewRoom() {
     autoStart: false,
   });
 
-  // Start face assessment when interview goes live and user opted in
+  // Stop face assessment if the interview ends while the camera is running
   useEffect(() => {
-    if (phase === "live" && faceEnabled && !face.active) {
-      void face.start();
-    }
     if (phase !== "live" && face.active) {
       face.stop();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [phase, faceEnabled]);
+  }, [phase]);
 
   // Stop face assessment on unmount (hook also does this, but belt-and-suspenders)
   useEffect(() => {
@@ -223,12 +218,24 @@ export default function LiveInterviewRoom() {
     setMuted(next);
   }
 
-  function toggleFace() {
+  async function toggleFace() {
     if (face.active) {
       face.stop();
-      setFaceEnabled(false);
     } else {
-      setFaceEnabled(true);
+      // Check permission state before calling start() so we can give a clear
+      // actionable message instead of a raw browser error string.
+      try {
+        const perm = await navigator.permissions.query({ name: "camera" as PermissionName });
+        if (perm.state === "denied") {
+          toast.error(
+            "Camera access is blocked for this site. Click the camera/lock icon in your browser's address bar, allow camera access, then reload the page and try again.",
+            { duration: 8000 },
+          );
+          return;
+        }
+      } catch {
+        // permissions API not supported (e.g. Firefox) — fall through and let getUserMedia handle it
+      }
       void face.start();
     }
   }

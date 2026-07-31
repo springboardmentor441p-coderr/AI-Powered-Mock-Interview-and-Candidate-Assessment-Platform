@@ -63,3 +63,27 @@ class ResumeReprocessView(APIView):
         get_owned_resume_or_404(candidate=request.user, resume_id=resume_id)
         process_resume_task.delay(str(resume_id))  # type: ignore[union-attr]
         return APIResponse.success(message="Resume queued for reprocessing.", http_status=status.HTTP_202_ACCEPTED)
+
+
+class ResumeSetPrimaryView(APIView):
+    """
+    POST /api/v1/resumes/<resume_id>/set-primary/
+
+    Makes the given resume the candidate's primary resume and demotes all others.
+    Only processed resumes can be made primary.
+    """
+    permission_classes = [IsCandidate]
+
+    def post(self, request: Request, resume_id: str, *args: Any, **kwargs: Any):
+        from apps.resume.repositories.resume_repository import ResumeRepository
+
+        resume = get_owned_resume_or_404(candidate=request.user, resume_id=resume_id)
+        if resume.status != Resume.Status.PROCESSED:
+            return APIResponse.error(
+                message="Only a fully processed résumé can be set as primary.",
+                http_status=status.HTTP_400_BAD_REQUEST,
+            )
+        repo = ResumeRepository()
+        repo.set_all_non_primary(candidate=request.user, exclude_id=resume.pk)
+        repo.update(resume, is_primary=True)
+        return APIResponse.success(data=ResumeSerializer(resume).data)
