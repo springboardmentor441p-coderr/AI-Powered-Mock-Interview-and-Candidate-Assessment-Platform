@@ -126,7 +126,7 @@ export default function NewInterviewPage() {
                     <FormItem>
                       <FormLabel>Topics</FormLabel>
                       <FormControl>
-                        <Input type="number" min={2} max={15} {...field} />
+                        <Input type="number" min={3} max={15} {...field} />
                       </FormControl>
                       <FormMessage />
                     </FormItem>

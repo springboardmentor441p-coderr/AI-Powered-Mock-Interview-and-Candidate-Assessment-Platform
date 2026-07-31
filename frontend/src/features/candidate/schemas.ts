@@ -4,7 +4,7 @@ export const newInterviewSchema = z.object({
   interview_type: z.string().min(1, "Choose an interview type."),
   domain: z.string().min(1, "Tell us the role or domain."),
   difficulty: z.enum(["easy", "medium", "hard"]),
-  topic_count: z.coerce.number().int().min(2, "At least 2 topics.").max(15, "15 topics max."),
+  topic_count: z.coerce.number().int().min(3, "At least 3 topics.").max(15, "15 topics max."),
   use_primary_resume: z.boolean(),
 });
 export type NewInterviewFormValues = z.infer<typeof newInterviewSchema>;

@@ -23,6 +23,9 @@ const TemplatesPage = lazy(() => import("@/features/recruiter/templates-page"));
 const BriefReviewPage = lazy(() => import("@/features/recruiter/brief-review-page"));
 
 const NotificationsPage = lazy(() => import("@/features/notifications/notifications-page"));
+
+
+
 const NotFoundPage = lazy(() => import("@/features/not-found-page"));
 
 function Suspended({ children }: { children: React.ReactNode }) {
