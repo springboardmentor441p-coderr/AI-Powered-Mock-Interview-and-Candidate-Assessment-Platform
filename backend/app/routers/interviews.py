@@ -106,6 +106,7 @@ async def create_session(
         parsed_skills=skills,
         resume_text=resume_text,
         job_description=extracted_jd,
+        candidate_name=current_user.full_name,
         api_keys=api_keys
     )
     questions_list = [full_qs[0]] if full_qs else [{"text": "Can you introduce yourself and outline how your background matches the Job Description requirements?", "category": "hr"}]
@@ -223,7 +224,7 @@ def submit_answer(
     if not session.template_id:
         completed_answers = db.query(models.InterviewAnswer).filter(
             models.InterviewAnswer.session_id == session_id
-        ).all()
+        ).order_by(models.InterviewAnswer.id.asc()).all()
         
         num_completed = len(completed_answers)
         if num_completed < 8:
@@ -235,7 +236,8 @@ def submit_answer(
                     "question": q_desc.question_text, 
                     "answer": ans.answer_text,
                     "score": ans.score,
-                    "feedback": ans.feedback_text
+                    "feedback": ans.feedback_text,
+                    "category": q_desc.category
                 })
             
             # Add the current answer to the history
@@ -243,7 +245,8 @@ def submit_answer(
                 "question": question.question_text, 
                 "answer": answer_in.answer_text,
                 "score": score,
-                "feedback": feedback_text
+                "feedback": feedback_text,
+                "category": question.category
             })
             
             # Generate next question dynamically holding context and checking answer quality
@@ -253,6 +256,7 @@ def submit_answer(
                 history=history,
                 resume_text=session.resume_text,
                 job_description=session.job_description,
+                candidate_name=current_user.full_name,
                 api_keys=api_keys
             )
             
