@@ -58,3 +58,34 @@ export function useSetHumanVerdict(sessionId: string | undefined) {
     onError: (error: ApiError) => toast.error(error.message || "Couldn't save the verdict."),
   });
 }
+
+export const recruiterInvitationKeys = {
+  sent: ["interviews", "invitations", "sent"] as const,
+  history: ["interviews", "invitations", "history"] as const,
+};
+
+export function useSentInvitations() {
+  return useQuery({
+    queryKey: recruiterInvitationKeys.sent,
+    queryFn: interviewsApi.sentInvitations,
+  });
+}
+
+export function useSendInvitation() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: interviewsApi.sendInvitation,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: recruiterInvitationKeys.sent });
+      toast.success("Invitation sent.");
+    },
+    onError: (error: ApiError) => toast.error(error.message || "Couldn't send invitation."),
+  });
+}
+
+export function useRecruiterHistory() {
+  return useQuery({
+    queryKey: recruiterInvitationKeys.history,
+    queryFn: interviewsApi.recruiterHistory,
+  });
+}

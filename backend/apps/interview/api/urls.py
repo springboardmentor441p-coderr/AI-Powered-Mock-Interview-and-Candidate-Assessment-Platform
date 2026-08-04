@@ -1,5 +1,12 @@
 from django.urls import path
 
+from apps.interview.api.views.invitation_views import (
+    AcceptInvitationView,
+    ReceivedInvitationsView,
+    RecruiterSessionHistoryView,
+    SendInvitationView,
+    SentInvitationsView,
+)
 from apps.interview.api.views.realtime_views import (
     SessionRealtimeAccountWebhookView, SessionRealtimeCreateView, SessionRealtimeStartView,
     SessionRealtimeToolAskNextQuestionView, SessionCurrentTopicView,
@@ -49,4 +56,11 @@ urlpatterns = [
     path("realtime/sessions/<uuid:session_id>/current-topic/", SessionCurrentTopicView.as_view(), 
     name="realtime_current_topic"),
     path("realtime/webhooks/ultravox/", SessionRealtimeAccountWebhookView.as_view(), name="realtime_webhook_ultravox"),
+
+    # --- Invitations ---
+    path("invitations/send/", SendInvitationView.as_view(), name="invitation_send"),
+    path("invitations/sent/", SentInvitationsView.as_view(), name="invitation_sent_list"),
+    path("invitations/received/", ReceivedInvitationsView.as_view(), name="invitation_received_list"),
+    path("invitations/<uuid:invitation_id>/accept/", AcceptInvitationView.as_view(), name="invitation_accept"),
+    path("invitations/history/", RecruiterSessionHistoryView.as_view(), name="invitation_history"),
 ]

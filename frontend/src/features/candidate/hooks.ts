@@ -174,3 +174,23 @@ export function useSessionFeedback(sessionId: string | undefined) {
 export function useCandidateDashboard() {
   return useQuery({ queryKey: candidateKeys.dashboard, queryFn: analyticsApi.candidateDashboard });
 }
+
+// --- Invitations ---
+export function useReceivedInvitations() {
+  return useQuery({
+    queryKey: ["interviews", "invitations", "received"] as const,
+    queryFn: interviewsApi.receivedInvitations,
+  });
+}
+
+export function useAcceptInvitation() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (invitationId: string) => interviewsApi.acceptInvitation(invitationId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["interviews", "invitations", "received"] });
+      toast.success("Invitation accepted — setting up your interview…");
+    },
+    onError: (error: ApiError) => toast.error(error.message || "Couldn't accept the invitation."),
+  });
+}

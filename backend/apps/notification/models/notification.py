@@ -9,6 +9,7 @@ class NotificationType(models.TextChoices):
     SESSION_COMPLETED = "session_completed", "Session Completed"
     REPORT_READY = "report_ready", "Report Ready"
     SYSTEM_ALERT = "system_alert", "System Alert"
+    INTERVIEW_INVITATION = "interview_invitation", "Interview Invitation"
 
 
 class Notification(models.Model):

@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useSearchParams } from "react-router-dom";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -24,8 +25,19 @@ const verdictSchema = z.object({
 type VerdictFormValues = z.infer<typeof verdictSchema>;
 
 export default function BriefReviewPage() {
-  const [lookupId, setLookupId] = useState("");
-  const [activeId, setActiveId] = useState<string | undefined>(undefined);
+  const [searchParams] = useSearchParams();
+  const [lookupId, setLookupId] = useState(() => searchParams.get("session") ?? "");
+  const [activeId, setActiveId] = useState<string | undefined>(
+    () => searchParams.get("session") ?? undefined
+  );
+
+  useEffect(() => {
+    const param = searchParams.get("session");
+    if (param && param !== activeId) {
+      setLookupId(param);
+      setActiveId(param);
+    }
+  }, [searchParams]); // eslint-disable-line react-hooks/exhaustive-deps
   const { data: brief, isLoading, isError, error } = useSessionBriefLookup(activeId);
   const setVerdict = useSetHumanVerdict(activeId);
 

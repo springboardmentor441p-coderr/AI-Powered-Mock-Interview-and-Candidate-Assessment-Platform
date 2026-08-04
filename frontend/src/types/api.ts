@@ -328,3 +328,47 @@ export interface Notification {
   metadata: Record<string, unknown>;
   created_at: string;
 }
+
+// ---- Invitations ------------------------------------------------------------------
+
+export type InvitationStatus = "pending" | "accepted" | "expired";
+
+export interface InterviewInvitation {
+  id: string;
+  candidate_email: string;
+  candidate_name: string | null;
+  template: InterviewTemplate | null;
+  message: string;
+  status: InvitationStatus;
+  session_id: string | null;
+  session_status: string | null;
+  has_result: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface ReceivedInvitation {
+  id: string;
+  recruiter_name: string;
+  template: InterviewTemplate | null;
+  message: string;
+  status: InvitationStatus;
+  session_id: string | null;
+  created_at: string;
+}
+
+export interface RecruiterHistoryItem {
+  invitation_id: string;
+  candidate_email: string;
+  candidate_name: string | null;
+  session_id: string;
+  interview_type: string;
+  domain: string;
+  difficulty: string;
+  status: string;
+  started_at: string | null;
+  completed_at: string | null;
+  duration_seconds: number | null;
+  has_brief: boolean;
+  created_at: string;
+}

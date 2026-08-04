@@ -61,4 +61,33 @@ export const interviewsApi = {
   async setHumanVerdict(sessionId: string, payload: { human_verdict: string; human_notes?: string }) {
     return patch<InterviewBrief>(`/interviews/realtime/sessions/${sessionId}/brief/`, payload);
   },
+
+  // Invitations
+  async sendInvitation(payload: SendInvitationPayload) {
+    return post<import("@/types/api").InterviewInvitation>("/interviews/invitations/send/", payload);
+  },
+  async sentInvitations(): Promise<Paginated<import("@/types/api").InterviewInvitation>> {
+    return getList("/interviews/invitations/sent/");
+  },
+  async receivedInvitations(): Promise<Paginated<import("@/types/api").ReceivedInvitation>> {
+    return getList("/interviews/invitations/received/");
+  },
+  async acceptInvitation(invitationId: string): Promise<import("@/types/api").RealtimeSessionDetail> {
+    return post(`/interviews/invitations/${invitationId}/accept/`);
+  },
+  async recruiterHistory(): Promise<RecruiterHistoryResponse> {
+    return get("/interviews/invitations/history/");
+  },
 };
+
+// ---- Invitations ----------------------------------------------------------------
+export interface SendInvitationPayload {
+  candidate_email: string;
+  template_id?: string;
+  message?: string;
+}
+
+export interface RecruiterHistoryResponse {
+  items: import("@/types/api").RecruiterHistoryItem[];
+  count: number;
+}

@@ -21,8 +21,11 @@ const RecruiterDashboard = lazy(() => import("@/features/recruiter/dashboard-pag
 const RankingsPage = lazy(() => import("@/features/recruiter/rankings-page"));
 const TemplatesPage = lazy(() => import("@/features/recruiter/templates-page"));
 const BriefReviewPage = lazy(() => import("@/features/recruiter/brief-review-page"));
+const SendInterviewPage = lazy(() => import("@/features/recruiter/send-interview-page"));
+const RecruiterInterviewHistoryPage = lazy(() => import("@/features/recruiter/interview-history-page"));
 
 const NotificationsPage = lazy(() => import("@/features/notifications/notifications-page"));
+const InvitationsPage = lazy(() => import("@/features/candidate/invitations-page"));
 
 
 
@@ -99,6 +102,7 @@ export const router = createBrowserRouter([
               { path: "/app/interviews/new", element: <Suspended><NewInterviewPage /></Suspended> },
               { path: "/app/interviews", element: <Suspended><InterviewHistoryPage /></Suspended> },
               { path: "/app/interviews/:sessionId", element: <Suspended><SessionDetailPage /></Suspended> },
+              { path: "/app/invitations", element: <Suspended><InvitationsPage /></Suspended> },
             ],
           },
           {
@@ -107,6 +111,8 @@ export const router = createBrowserRouter([
               { path: "/app/rankings", element: <Suspended><RankingsPage /></Suspended> },
               { path: "/app/templates", element: <Suspended><TemplatesPage /></Suspended> },
               { path: "/app/brief-review", element: <Suspended><BriefReviewPage /></Suspended> },
+              { path: "/app/send-interview", element: <Suspended><SendInterviewPage /></Suspended> },
+              { path: "/app/interview-history", element: <Suspended><RecruiterInterviewHistoryPage /></Suspended> },
             ],
           },
         ],
