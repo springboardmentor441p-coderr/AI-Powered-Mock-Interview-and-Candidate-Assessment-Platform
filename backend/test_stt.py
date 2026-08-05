@@ -1,26 +1,18 @@
-from deepgram import DeepgramClient, PrerecordedOptions
-from dotenv import load_dotenv
-import os
+"""Run the backend's configured speech-to-text path against sample audio."""
 
-load_dotenv()
+import asyncio
+from pathlib import Path
 
-deepgram = DeepgramClient(os.getenv("DEEPGRAM_API_KEY"))
+from app.services.deepgram_service import DeepgramService
 
-with open("test_audio/Recording.m4a", "rb") as audio:
-    source = {
-        "buffer": audio.read(),
-    }
 
-options = PrerecordedOptions(
-    model="nova-3",
-    smart_format=True,
-)
+SAMPLE_AUDIO = Path(__file__).parent / "test_audio" / "Recording.m4a"
 
-response = deepgram.listen.prerecorded.v("1").transcribe_file(
-    source,
-    options,
-)
 
-transcript = response.results.channels[0].alternatives[0].transcript
+async def main() -> None:
+    transcript = await DeepgramService().speech_to_text(SAMPLE_AUDIO)
+    print(transcript)
 
-print(transcript)
+
+if __name__ == "__main__":
+    asyncio.run(main())

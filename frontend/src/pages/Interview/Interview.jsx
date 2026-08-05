@@ -7,7 +7,7 @@ import Loader from '../../components/Loader/Loader.jsx';
 import { useInterview } from '../../context/InterviewContext.jsx';
 import { getApiErrorMessage, submitAnswer } from '../../services/interviewService.js';
 import { endInterview } from '../../services/reportService.js';
-import { playAiAudio } from '../../services/voiceService.js';
+import { playAiAudio, playAiText } from '../../services/voiceService.js';
 import './Interview.css';
 
 function Interview() {
@@ -83,6 +83,10 @@ function Interview() {
     if (response.completed || response.interview_status === 'completed') {
       addNotification('Interview completed. Generating your report...', 'info');
     }
+  };
+
+  const handleInitialQuestionPlayback = async () => {
+    await playAiText(currentQuestion);
   };
 
   const handleTextSubmit = async (text) => {
@@ -260,6 +264,7 @@ function Interview() {
             <h3 className="controls-title">🎙️ Response Controls</h3>
             <AudioRecorder
               sessionId={sessionId}
+              onInitialQuestionPlayback={handleInitialQuestionPlayback}
               onVoiceStreamResponse={handleVoiceStreamResponse}
               onTextSubmit={handleTextSubmit}
               onProcessingChange={setTimerPaused}

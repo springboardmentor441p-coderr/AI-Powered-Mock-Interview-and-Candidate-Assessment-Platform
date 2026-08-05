@@ -7,9 +7,11 @@ import './AudioRecorder.css';
 const SILENCE_THRESHOLD = 0.025;
 const SILENCE_MS = 1400;
 const MIN_SPEECH_MS = 600;
+const POST_TTS_GUARD_MS = 750;
 
 function AudioRecorder({
   sessionId,
+  onInitialQuestionPlayback,
   onVoiceStreamResponse,
   onTextSubmit,
   onProcessingChange,
@@ -28,6 +30,8 @@ function AudioRecorder({
   const isStreamingRef = useRef(false);
   const recordedChunksRef = useRef([]);
   const shouldSubmitRecordingRef = useRef(false);
+  const isListeningRef = useRef(false);
+  const streamRunIdRef = useRef(0);
 
   const [error, setError] = useState('');
   const [isStreaming, setIsStreaming] = useState(false);
@@ -42,6 +46,7 @@ function AudioRecorder({
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const cleanupAudio = () => {
+    isListeningRef.current = false;
     if (monitorFrameRef.current) {
       cancelAnimationFrame(monitorFrameRef.current);
       monitorFrameRef.current = null;
@@ -71,6 +76,7 @@ function AudioRecorder({
   };
 
   const stopStreaming = () => {
+    streamRunIdRef.current += 1;
     cleanupAudio();
     closeSocket();
     setIsStreaming(false);
@@ -89,9 +95,20 @@ function AudioRecorder({
     }
   };
 
+  const setMicrophoneEnabled = (enabled) => {
+    isListeningRef.current = enabled;
+    streamRef.current?.getAudioTracks().forEach((track) => {
+      track.enabled = enabled;
+    });
+  };
+
+  const waitForPostTtsGuard = () =>
+    new Promise((resolve) => window.setTimeout(resolve, POST_TTS_GUARD_MS));
+
   const endCurrentTurn = () => {
     if (!isTurnOpenRef.current || isAiThinkingRef.current) return;
     isTurnOpenRef.current = false;
+    setMicrophoneEnabled(false);
     isAiThinkingRef.current = true;
     setIsAiThinking(true);
     onProcessingChange?.(true);
@@ -109,7 +126,7 @@ function AudioRecorder({
     if (isTurnOpenRef.current || isAiThinkingRef.current) return;
     const stream = streamRef.current;
     const socket = socketRef.current;
-    if (!stream || socket?.readyState !== WebSocket.OPEN) return;
+    if (!isListeningRef.current || !stream || socket?.readyState !== WebSocket.OPEN) return;
 
     const supportedMimeType = [
       'audio/webm;codecs=opus',
@@ -186,7 +203,7 @@ function AudioRecorder({
     const rms = Math.sqrt(sum / data.length);
     const now = Date.now();
 
-    if (!isAiThinkingRef.current && rms > SILENCE_THRESHOLD) {
+    if (isListeningRef.current && !isAiThinkingRef.current && rms > SILENCE_THRESHOLD) {
       if (!speakingStartedAtRef.current) {
         speakingStartedAtRef.current = now;
         ensureTurnOpen();
@@ -197,6 +214,7 @@ function AudioRecorder({
     }
 
     if (
+      isListeningRef.current &&
       !isAiThinkingRef.current &&
       speakingStartedAtRef.current &&
       rms <= SILENCE_THRESHOLD
@@ -219,7 +237,9 @@ function AudioRecorder({
     }
 
     setError('');
-    setPermissionStatus('Connecting realtime voice interview...');
+    setPermissionStatus('Connecting. Microphone is off...');
+    const runId = streamRunIdRef.current + 1;
+    streamRunIdRef.current = runId;
 
     try {
       const socket = createVoiceStreamSocket(sessionId);
@@ -228,7 +248,7 @@ function AudioRecorder({
       socket.onmessage = async (event) => {
         const data = JSON.parse(event.data);
         if (data.type === 'ready') {
-          setPermissionStatus('Connected. Start speaking when you are ready.');
+          setPermissionStatus('Connected. Preparing the interviewer...');
           return;
         }
         if (data.type === 'processing') {
@@ -244,17 +264,21 @@ function AudioRecorder({
           return;
         }
         if (data.type === 'interviewer_turn') {
+          setMicrophoneEnabled(false);
           setPermissionStatus('Interviewer is speaking...');
           try {
             if (onVoiceStreamResponse) {
               await onVoiceStreamResponse(data);
             }
           } finally {
+            await waitForPostTtsGuard();
+            if (streamRunIdRef.current !== runId || !streamRef.current) return;
             isAiThinkingRef.current = false;
             setIsAiThinking(false);
             onProcessingChange?.(false);
             speakingStartedAtRef.current = null;
             silenceStartedAtRef.current = null;
+            setMicrophoneEnabled(true);
             setPermissionStatus('Your turn. Speak naturally when you are ready.');
           }
         }
@@ -276,9 +300,20 @@ function AudioRecorder({
       };
 
       await new Promise((resolve, reject) => {
-        socket.onopen = resolve;
-        socket.onerror = reject;
+        socket.addEventListener('open', resolve, { once: true });
+        socket.addEventListener('error', reject, { once: true });
       });
+
+      setIsStreaming(true);
+      isStreamingRef.current = true;
+      setPermissionStatus('Interviewer is speaking. Microphone is off...');
+
+      if (onInitialQuestionPlayback) {
+        await onInitialQuestionPlayback();
+      }
+      await waitForPostTtsGuard();
+
+      if (streamRunIdRef.current !== runId || socket.readyState !== WebSocket.OPEN) return;
 
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       streamRef.current = stream;
@@ -291,9 +326,8 @@ function AudioRecorder({
       audioContextRef.current = audioContext;
       analyserRef.current = analyser;
 
-      setIsStreaming(true);
-      isStreamingRef.current = true;
-      setPermissionStatus('Connected. Start speaking when you are ready.');
+      setMicrophoneEnabled(true);
+      setPermissionStatus('Your turn. Speak naturally when you are ready.');
       monitorFrameRef.current = requestAnimationFrame(monitorSilence);
     } catch (err) {
       setError('Microphone permission denied, unavailable, or realtime voice could not start.');

@@ -14,6 +14,7 @@ from __future__ import annotations
 
 import logging
 import re
+from difflib import SequenceMatcher
 
 from app.services.interview_scorer import InterviewScorer
 from app.services.interview_state import interview_state
@@ -348,15 +349,9 @@ class InterviewAgent:
                 "Next-question generation failed for session %s; using fallback.",
                 session.session_id,
             )
-            topic = str(session.current_topic or session.current_stage).replace("_", " ").lower()
-            if topic:
-                return (
-                    f"Let's continue with {topic}. Can you describe a specific example "
-                    "from your experience and explain the result?"
-                )
-            return (
-                "Can you describe a specific example from your experience, "
-                "the approach you took, and the result?"
+            return self._build_contextual_fallback(
+                candidate_answer=candidate_answer,
+                question_count=session.question_count,
             )
 
 
@@ -421,15 +416,16 @@ class InterviewAgent:
         if not question:
             raise ValueError("LLM returned an empty interview question.")
 
-        # Prevent duplicate questions
-        if question in session.questions_asked:
+        # Prevent exact and closely paraphrased questions.
+        if self._is_duplicate_question(question, session.questions_asked):
 
             logger.warning(
                 "Duplicate question generated. Falling back."
             )
 
-            question = (
-                "Can you elaborate more on your previous answer?"
+            question = self._build_contextual_fallback(
+                candidate_answer=candidate_answer,
+                question_count=session.question_count,
             )
 
         logger.info("Generated Question: %s", question)
@@ -438,24 +434,21 @@ class InterviewAgent:
 
     @staticmethod
     def _clean_generated_question(response: str) -> str:
-        """Remove model narration and return only one interviewer question."""
+        """Return a brief acknowledgement followed by exactly one question."""
         cleaned = response.strip()
         if cleaned.startswith("```"):
             cleaned = re.sub(r"^```(?:markdown|text)?\s*", "", cleaned, flags=re.IGNORECASE)
             cleaned = re.sub(r"\s*```$", "", cleaned).strip()
 
-        quoted_questions = re.findall(
+        quoted_turns = re.findall(
             r'["\u201c]([^"\u201d]*\?)["\u201d]',
             cleaned,
             flags=re.DOTALL,
         )
-        if quoted_questions:
-            return quoted_questions[-1].strip()
+        if quoted_turns:
+            cleaned = quoted_turns[-1].strip()
 
-        lines = [line.strip() for line in cleaned.splitlines() if line.strip()]
-        question_lines = [line for line in lines if line.endswith("?")]
-        if question_lines:
-            cleaned = question_lines[-1]
+        cleaned = " ".join(line.strip() for line in cleaned.splitlines() if line.strip())
 
         cleaned = re.sub(
             r"^(?:next\s+)?(?:interviewer\s+)?question\s*:\s*",
@@ -464,14 +457,68 @@ class InterviewAgent:
             flags=re.IGNORECASE,
         ).strip().strip('"\'\u201c\u201d')
 
-        if "?" in cleaned:
-            # Drop prose before the final sentence that contains the question.
-            sentences = re.split(r"(?<=[.!])\s+", cleaned)
-            question_sentences = [sentence.strip() for sentence in sentences if "?" in sentence]
-            if question_sentences:
-                cleaned = question_sentences[-1]
+        if "?" not in cleaned:
+            return cleaned.strip()
 
-        return cleaned.strip()
+        sentences = [
+            sentence.strip()
+            for sentence in re.split(r"(?<=[.!?])\s+", cleaned)
+            if sentence.strip()
+        ]
+        question_index = next(
+            (index for index, sentence in enumerate(sentences) if "?" in sentence),
+            None,
+        )
+        if question_index is None:
+            return cleaned[: cleaned.find("?") + 1].strip()
+
+        acknowledgements = [
+            sentence
+            for sentence in sentences[:question_index]
+            if not re.match(
+                r"^(?:based on|given|from) .*(?:i(?:'ll| will)|next question|follow-up)",
+                sentence,
+                flags=re.IGNORECASE,
+            )
+        ][-2:]
+        question = sentences[question_index]
+        question = question[: question.find("?") + 1].strip()
+        return " ".join([*acknowledgements, question]).strip()
+
+    @classmethod
+    def _is_duplicate_question(cls, candidate: str, previous: list[str]) -> bool:
+        """Detect exact or near-duplicate question wording, ignoring acknowledgements."""
+        candidate_key = cls._normalized_question(candidate)
+        if not candidate_key:
+            return False
+        return any(
+            SequenceMatcher(None, candidate_key, cls._normalized_question(item)).ratio() >= 0.86
+            for item in previous
+        )
+
+    @staticmethod
+    def _normalized_question(turn: str) -> str:
+        question_part = turn.rsplit(".", 1)[-1]
+        if "?" in turn:
+            sentences = re.findall(r"[^.!?]*\?", turn)
+            if sentences:
+                question_part = sentences[-1]
+        return " ".join(re.findall(r"[a-z0-9]+", question_part.lower()))
+
+    @staticmethod
+    def _build_contextual_fallback(*, candidate_answer: str, question_count: int) -> str:
+        """Keep a failed LLM turn connected to the answer without inventing details."""
+        answer = " ".join(candidate_answer.split())
+        acknowledgement = "Thanks for explaining that."
+        prompts = (
+            "What was your specific role in the experience you just described?",
+            "What was the most important decision you made in that work, and why?",
+            "What was the most difficult challenge you encountered there?",
+            "What did you learn from that experience?",
+        )
+        if not answer:
+            acknowledgement = "Thanks for your answer."
+        return f"{acknowledgement} {prompts[max(question_count - 1, 0) % len(prompts)]}"
 
 
     def evaluate_answer(

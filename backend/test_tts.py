@@ -1,22 +1,19 @@
-from deepgram import DeepgramClient
-from dotenv import load_dotenv
-import os
+"""Run the backend's Deepgram text-to-speech path and save the result."""
 
-load_dotenv()
+import asyncio
+from pathlib import Path
 
-deepgram = DeepgramClient(os.getenv("DEEPGRAM_API_KEY"))
+from app.services.deepgram_service import DeepgramService
 
-text = {
-    "text": "Hello Mahir. Welcome to your AI interview."
-}
 
-with open("output.mp3", "wb") as file:
-    response = deepgram.speak.v("1").save(
-        file,
-        text,
-        {
-            "model": "aura-2-thalia-en",
-        },
-    )
+TEXT = "Hello Mahir. Welcome to your AI interview."
+OUTPUT_AUDIO = Path(__file__).parent / "output.mp3"
 
-print("Audio saved as output.mp3")
+
+async def main() -> None:
+    audio = await DeepgramService().text_to_speech(TEXT, output_path=OUTPUT_AUDIO)
+    print(f"Audio saved as {OUTPUT_AUDIO.name} ({len(audio)} bytes)")
+
+
+if __name__ == "__main__":
+    asyncio.run(main())

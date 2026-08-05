@@ -64,4 +64,55 @@ export async function playAiAudio(response) {
   });
 }
 
+function speakWithBrowserVoice(text) {
+  if (!text || !('speechSynthesis' in window)) return Promise.resolve();
+
+  return new Promise((resolve) => {
+    window.speechSynthesis.cancel();
+    const utterance = new SpeechSynthesisUtterance(text);
+    utterance.rate = 0.95;
+    utterance.pitch = 1;
+    utterance.addEventListener('end', resolve, { once: true });
+    utterance.addEventListener('error', resolve, { once: true });
+    window.speechSynthesis.speak(utterance);
+  });
+}
+
+/**
+ * Synthesize and play interviewer text that does not already have an audio URL.
+ * The browser voice is a fallback when Deepgram or media autoplay is unavailable.
+ */
+export async function playAiText(text) {
+  if (!text) return;
+
+  const formData = new FormData();
+  formData.append('text', text);
+
+  try {
+    const response = await api.post(endpoints.voice.testTts, formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+      responseType: 'blob',
+    });
+    const audioUrl = URL.createObjectURL(response.data);
+    const audio = new Audio(audioUrl);
+
+    const cleanup = () => URL.revokeObjectURL(audioUrl);
+    audio.addEventListener('ended', cleanup, { once: true });
+    audio.addEventListener('error', cleanup, { once: true });
+
+    try {
+      await audio.play();
+      await new Promise((resolve) => {
+        audio.addEventListener('ended', resolve, { once: true });
+        audio.addEventListener('error', resolve, { once: true });
+      });
+    } catch {
+      cleanup();
+      await speakWithBrowserVoice(text);
+    }
+  } catch {
+    await speakWithBrowserVoice(text);
+  }
+}
+
 export { getApiErrorMessage };

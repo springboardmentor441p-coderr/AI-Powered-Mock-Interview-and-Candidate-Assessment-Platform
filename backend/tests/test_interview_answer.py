@@ -59,7 +59,9 @@ def test_submit_answer_uses_fallback_when_next_question_generation_fails(
     )
 
     assert answer.status_code == 200
-    assert "specific example" in answer.json()["question"].lower()
+    question = answer.json()["question"].lower()
+    assert question.startswith("thanks for explaining that")
+    assert question.count("?") == 1
 
 
 def test_expired_interview_completes_without_asking_another_question(client):
@@ -166,5 +168,35 @@ def test_generated_question_removes_model_narration():
 
     assert InterviewAgent._clean_generated_question(response) == (
         "Can you elaborate on the technologies you used?"
+    )
+
+
+def test_generated_turn_preserves_grounded_acknowledgement():
+    from app.services.interview_agent import InterviewAgent
+
+    response = (
+        "That's interesting. You mentioned using FastAPI for the backend. "
+        "Why did you choose it over another framework?"
+    )
+
+    assert InterviewAgent._clean_generated_question(response) == response
+
+
+def test_generated_turn_keeps_only_one_question():
+    from app.services.interview_agent import InterviewAgent
+
+    response = "Nice work. Was deployment difficult? How did you solve it?"
+
+    assert InterviewAgent._clean_generated_question(response) == (
+        "Nice work. Was deployment difficult?"
+    )
+
+
+def test_duplicate_detection_ignores_acknowledgement_wording():
+    from app.services.interview_agent import InterviewAgent
+
+    assert InterviewAgent._is_duplicate_question(
+        "That makes sense. Why did you choose FastAPI over Flask?",
+        ["Interesting. Why did you choose FastAPI over Flask?"],
     )
 from datetime import timedelta
