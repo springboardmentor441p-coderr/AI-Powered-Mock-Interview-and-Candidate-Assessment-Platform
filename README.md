@@ -410,9 +410,9 @@ Verixa is available under the [MIT License](backend/LICENSE).
 
 Maintainer information can be updated before publication:
 
-- **Name:** _Your name_
-- **GitHub:** [@your-username](https://github.com/your-username)
-- **Email:** `your-email@example.com`
+- **Name:** Mahir Thakur
+- **GitHub:** [@Mathir1057](https://github.com/Mahir1057)
+- **Email:** `thakurmahir870@gmail.com`
 
 ---
 
