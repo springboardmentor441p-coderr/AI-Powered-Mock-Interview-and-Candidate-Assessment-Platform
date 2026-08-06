@@ -64,11 +64,11 @@ The landing page highlights the platform's core value proposition — *"Practice
 
 <table align="center">
 <tr>
-<td align="center"><img src="screenshots/02-login-page.png" alt="Login Page" width="420"><br><sub><b>Login Page</b></sub></td>
-<td align="center"><img src="screenshots/03-register-page.png" alt="Register Page" width="420"><br><sub><b>Register Page</b></sub></td>
+<td align="center"><img src="Screenshots/screenshots/02-login-page.png" alt="Login Page" width="420"><br><sub><b>Login Page</b></sub></td>
+<td align="center"><img src="Screenshots/screenshots/03-register-page.png" alt="Register Page" width="420"><br><sub><b>Register Page</b></sub></td>
 </tr>
 <tr>
-<td align="center" colspan="2"><img src="screenshots/03b-account-created.png" alt="Account Created Successfully" width="420"><br><sub><b>Account Created Successfully</b></sub></td>
+<td align="center" colspan="2"><img src="Screenshots/screenshots/03b-account-created.png" alt="Account Created Successfully" width="420"><br><sub><b>Account Created Successfully</b></sub></td>
 </tr>
 </table>
 
@@ -79,7 +79,7 @@ Secure JWT-based authentication flow — candidates can register a new account a
 ### 📊 Candidate Dashboard
 
 <div align="center">
-<img src="screenshots/04-candidate-dashboard.png" alt="Candidate Dashboard" width="850">
+<img src="Screenshots/screenshots/04-candidate-dashboard.png" alt="Candidate Dashboard" width="850">
 </div>
 
 The central hub for candidates — view upcoming interviews, past results, and quick actions in one place.
@@ -89,7 +89,7 @@ The central hub for candidates — view upcoming interviews, past results, and q
 ### 🧩 Platform Features Overview
 
 <div align="center">
-<img src="screenshots/08-platform-features.png" alt="Platform Features Overview" width="850">
+<img src="Screenshots/screenshots/08-platform-features.png" alt="Platform Features Overview" width="850">
 </div>
 
 An overview of the enterprise AI capabilities and intelligent workflows offered across the platform.
@@ -100,15 +100,15 @@ An overview of the enterprise AI capabilities and intelligent workflows offered 
 
 <table align="center">
 <tr>
-<td align="center"><img src="screenshots/04b-resume-analyzer-page.png" alt="Resume Analyzer Page" width="420"><br><sub><b>Resume Analyzer Page</b></sub></td>
-<td align="center"><img src="screenshots/09-ats-resume-upload.png" alt="ATS Resume Upload" width="420"><br><sub><b>ATS Resume Upload</b></sub></td>
+<td align="center"><img src="Screenshots/screenshots/04b-resume-analyzer-page.png" alt="Resume Analyzer Page" width="420"><br><sub><b>Resume Analyzer Page</b></sub></td>
+<td align="center"><img src="Screenshots/screenshots/09-ats-resume-upload.png" alt="ATS Resume Upload" width="420"><br><sub><b>ATS Resume Upload</b></sub></td>
 </tr>
 <tr>
-<td align="center"><img src="screenshots/10-resume-analysis-results.png" alt="Resume Analysis Results" width="420"><br><sub><b>Resume Analysis Results</b></sub></td>
-<td align="center"><img src="screenshots/10b-resume-experience-certifications.png" alt="Experience & Certifications Breakdown" width="420"><br><sub><b>Experience & Certifications Breakdown</b></sub></td>
+<td align="center"><img src="Screenshots/screenshots/10-resume-analysis-results.png" alt="Resume Analysis Results" width="420"><br><sub><b>Resume Analysis Results</b></sub></td>
+<td align="center"><img src="Screenshots/screenshots/10b-resume-experience-certifications.png" alt="Experience & Certifications Breakdown" width="420"><br><sub><b>Experience & Certifications Breakdown</b></sub></td>
 </tr>
 <tr>
-<td align="center" colspan="2"><img src="screenshots/10c-resume-score-weaknesses.png" alt="ATS Score & Weaknesses" width="420"><br><sub><b>ATS Score & Weaknesses</b></sub></td>
+<td align="center" colspan="2"><img src="Screenshots/screenshots/10c-resume-score-weaknesses.png" alt="ATS Score & Weaknesses" width="420"><br><sub><b>ATS Score & Weaknesses</b></sub></td>
 </tr>
 </table>
 
@@ -119,7 +119,7 @@ Upload a resume and let Gemini AI generate a full **ATS compatibility score**, a
 ### 🤖 AI Interview Generator
 
 <div align="center">
-<img src="screenshots/11-ai-interview-generator.png" alt="AI Interview Generator" width="850">
+<img src="Screenshots/screenshots/11-ai-interview-generator.png" alt="AI Interview Generator" width="850">
 </div>
 
 Automatically generates a tailored set of technical, HR, and behavioural interview questions based on the candidate's resume and target role.
@@ -130,11 +130,11 @@ Automatically generates a tailored set of technical, HR, and behavioural intervi
 
 <table align="center">
 <tr>
-<td align="center" colspan="2"><img src="screenshots/12-ai-interview-room-setup.png" alt="AI Interview Room Setup" width="850"><br><sub><b>AI Interview Room Setup</b></sub></td>
+<td align="center" colspan="2"><img src="Screenshots/screenshots/12-ai-interview-room-setup.png" alt="AI Interview Room Setup" width="850"><br><sub><b>AI Interview Room Setup</b></sub></td>
 </tr>
 <tr>
-<td align="center"><img src="screenshots/13-hardware-check-pending.png" alt="Hardware Check Pending" width="420"><br><sub><b>Hardware Check — Pending</b></sub></td>
-<td align="center"><img src="screenshots/13b-hardware-check-passed.png" alt="Hardware Check Passed" width="420"><br><sub><b>Hardware Check — Passed</b></sub></td>
+<td align="center"><img src="Screenshots/screenshots/13-hardware-check-pending.png" alt="Hardware Check Pending" width="420"><br><sub><b>Hardware Check — Pending</b></sub></td>
+<td align="center"><img src="Screenshots/screenshots/13b-hardware-check-passed.png" alt="Hardware Check Passed" width="420"><br><sub><b>Hardware Check — Passed</b></sub></td>
 </tr>
 </table>
 
@@ -146,11 +146,11 @@ Before entering an interview, candidates go through an automated **camera & micr
 
 <table align="center">
 <tr>
-<td align="center"><img src="screenshots/14-interview-lobby.png" alt="Interview Lobby" width="420"><br><sub><b>Interview Lobby</b></sub></td>
-<td align="center"><img src="screenshots/15-live-interviews-join.png" alt="Join Live Interview" width="420"><br><sub><b>Join Live Interview</b></sub></td>
+<td align="center"><img src="Screenshots/screenshots/14-interview-lobby.png" alt="Interview Lobby" width="420"><br><sub><b>Interview Lobby</b></sub></td>
+<td align="center"><img src="Screenshots/screenshots/15-live-interviews-join.png" alt="Join Live Interview" width="420"><br><sub><b>Join Live Interview</b></sub></td>
 </tr>
 <tr>
-<td align="center" colspan="2"><img src="screenshots/14b-live-chat-transcript.png" alt="Live Chat Transcript" width="420"><br><sub><b>Live Chat Transcript</b></sub></td>
+<td align="center" colspan="2"><img src="Screenshots/screenshots/14b-live-chat-transcript.png" alt="Live Chat Transcript" width="420"><br><sub><b>Live Chat Transcript</b></sub></td>
 </tr>
 </table>
 
@@ -161,7 +161,7 @@ Candidates can wait in a lobby and join live, recruiter-hosted interview session
 ### 🕘 Interview History
 
 <div align="center">
-<img src="screenshots/16-interview-history.png" alt="Interview History" width="850">
+<img src="Screenshots/screenshots/16-interview-history.png" alt="Interview History" width="850">
 </div>
 
 A complete log of all past AI and live interviews, so candidates can revisit and track their progress over time.
@@ -172,11 +172,11 @@ A complete log of all past AI and live interviews, so candidates can revisit and
 
 <table align="center">
 <tr>
-<td align="center" colspan="2"><img src="screenshots/18-interview-results.png" alt="Interview Results" width="850"><br><sub><b>Interview Results</b></sub></td>
+<td align="center" colspan="2"><img src="Screenshots/screenshots/18-interview-results.png" alt="Interview Results" width="850"><br><sub><b>Interview Results</b></sub></td>
 </tr>
 <tr>
-<td align="center"><img src="screenshots/19-full-transcript-telemetry.png" alt="Full Transcript & Telemetry" width="420"><br><sub><b>Full Transcript & Telemetry</b></sub></td>
-<td align="center"><img src="screenshots/21-voice-telemetry-decision-panel.png" alt="Voice Telemetry Decision Panel" width="420"><br><sub><b>Voice Telemetry Decision Panel</b></sub></td>
+<td align="center"><img src="Screenshots/screenshots/19-full-transcript-telemetry.png" alt="Full Transcript & Telemetry" width="420"><br><sub><b>Full Transcript & Telemetry</b></sub></td>
+<td align="center"><img src="Screenshots/screenshots/21-voice-telemetry-decision-panel.png" alt="Voice Telemetry Decision Panel" width="420"><br><sub><b>Voice Telemetry Decision Panel</b></sub></td>
 </tr>
 </table>
 
