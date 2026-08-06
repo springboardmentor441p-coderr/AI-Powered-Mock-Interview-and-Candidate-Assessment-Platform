@@ -51,7 +51,9 @@ The platform combines a **React 19 + TypeScript** frontend with a **Python FastA
 ### 🏠 Landing Page
 
 <div align="center">
-<img src="screenshots/01-home-page.png" alt="SmartHire AI Home Page" width="850">
+
+<img src="Screenshots/screenshots/01-home-page.png" alt="SmartHire AI Home Page" width="100%">
+
 </div>
 
 The landing page highlights the platform's core value proposition — *"Practice, Perform and Get Hired with AI"* — with quick entry points to start an AI interview, join a live interview, or upload a resume.
