@@ -12,7 +12,7 @@ SKILLS
 Python FastAPI React Docker PostgreSQL
 
 PROJECTS
-SmartHire AI mock interview platform using FastAPI and React.
+Verixa AI-Powered Interview & Candidate Assessment Platform using FastAPI and React.
 """
 
     monkeypatch.setattr(

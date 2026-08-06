@@ -21,8 +21,8 @@ logging.basicConfig(
 )
 
 app = FastAPI(
-    title="Resume Parser API",
-    description="Parses PDF/DOCX resumes into structured JSON using Groq.",
+    title="Verixa API",
+    description="Verixa — AI-Powered Interview & Candidate Assessment Platform API.",
     version="1.0.0",
 )
 

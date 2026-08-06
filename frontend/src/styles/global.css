@@ -1,15 +1,24 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
 
 :root {
-  --bg-dark: #090d16;
-  --bg-card: rgba(15, 23, 42, 0.75);
-  --bg-card-hover: rgba(30, 41, 59, 0.8);
-  --border-color: rgba(255, 255, 255, 0.1);
-  --primary: #6366f1;
-  --primary-hover: #4f46e5;
-  --accent-cyan: #38bdf8;
-  --text-main: #f8fafc;
-  --text-muted: #94a3b8;
+  --color-bg: #0d0f12;
+  --color-sidebar: #0a0c0f;
+  --color-surface: #12151a;
+  --color-surface-raised: #161a20;
+  --color-surface-hover: #171b21;
+  --color-surface-selected: #1b2028;
+  --color-border: #252a32;
+  --color-border-strong: #343b46;
+  --color-primary: #3b82f6;
+  --color-primary-strong: #2563eb;
+  --color-primary-light: #70a5ff;
+  --color-text: #f2f4f7;
+  --color-text-muted: #9aa3af;
+  --color-text-faint: #68717e;
+  --color-success: #4ade80;
+  --color-warning: #fbbf24;
+  --color-danger: #f87171;
+  --color-surface-muted: #1b2027;
   --font-main: 'Inter', system-ui, -apple-system, sans-serif;
 }
 
@@ -20,12 +29,8 @@
 }
 
 body {
-  background-color: var(--bg-dark);
-  background-image: 
-    radial-gradient(at 0% 0%, rgba(99, 102, 241, 0.15) 0px, transparent 50%),
-    radial-gradient(at 100% 100%, rgba(56, 189, 248, 0.12) 0px, transparent 50%);
-  background-attachment: fixed;
-  color: var(--text-main);
+  background: var(--color-bg);
+  color: var(--color-text);
   font-family: var(--font-main);
   line-height: 1.6;
   min-height: 100vh;
@@ -33,82 +38,83 @@ body {
 }
 
 .app-container {
-  display: flex;
-  flex-direction: column;
   min-height: 100vh;
 }
 
 main {
-  flex: 1;
-  padding: 2rem 1.5rem;
-  max-width: 1280px;
-  width: 100%;
-  margin: 0 auto;
+  min-height: 100vh;
+  margin-left: 240px;
+  padding: 104px 32px 48px;
 }
 
 .page-grid {
   display: flex;
   flex-direction: column;
-  gap: 1.5rem;
+  gap: 24px;
+  width: 100%;
+  max-width: 1440px;
+  margin: 0 auto;
 }
 
 .page-kicker {
-  font-size: 0.8rem;
-  font-weight: 700;
+  font-size: 11px;
+  font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.1em;
-  color: #818cf8;
-  margin-bottom: 0.25rem;
+  color: var(--color-primary-light);
+  margin-bottom: 6px;
 }
 
 h1 {
-  font-size: 2.25rem;
-  font-weight: 800;
-  letter-spacing: -0.025em;
+  font-size: 24px;
+  font-weight: 650;
+  letter-spacing: -.025em;
   line-height: 1.25;
-  color: #ffffff;
+  color: var(--color-text);
 }
 
 h2 {
-  font-size: 1.5rem;
-  font-weight: 700;
-  letter-spacing: -0.015em;
-  color: #f8fafc;
+  font-size: 16px;
+  font-weight: 600;
+  letter-spacing: -.01em;
+  color: var(--color-text);
 }
 
 .page-description {
-  color: var(--text-muted);
-  font-size: 1.05rem;
+  color: var(--color-text-muted);
+  font-size: 13px;
   max-width: 700px;
 }
 
 /* Common Card */
 .glass-card {
-  background: var(--bg-card);
-  backdrop-filter: blur(16px);
-  border: 1px solid var(--border-color);
-  border-radius: 16px;
-  padding: 1.5rem;
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.37);
-  transition: transform 0.2s ease, border-color 0.2s ease;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 10px;
+  padding: 24px;
 }
 
 .glass-card:hover {
-  border-color: rgba(255, 255, 255, 0.18);
+  border-color: var(--color-border-strong);
 }
 
 /* Progress bar */
 .progress-bar-track {
   width: 100%;
-  height: 8px;
-  background: rgba(255, 255, 255, 0.1);
-  border-radius: 9999px;
+  height: 5px;
+  background: #222730;
+  border-radius: 3px;
   overflow: hidden;
 }
 
 .progress-bar-fill {
   height: 100%;
-  background: linear-gradient(90deg, #6366f1 0%, #38bdf8 100%);
-  border-radius: 9999px;
-  transition: width 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  background: var(--color-primary);
+  border-radius: 3px;
+  transition: width 180ms ease;
 }
+
+button, input, select, textarea { font: inherit; }
+button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible { outline: 2px solid var(--color-primary); outline-offset: 2px; }
+.capitalize { text-transform: capitalize; }
+@media (max-width: 760px) { main { margin-left: 0; padding: 88px 16px 88px; } }

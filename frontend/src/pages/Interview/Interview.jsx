@@ -14,6 +14,7 @@ function Interview() {
   const navigate = useNavigate();
   const {
     sessionId,
+    parsedResume,
     jobRole,
     interviewType,
     currentQuestion,
@@ -169,7 +170,6 @@ function Interview() {
       <div className="notifications-container">
         {notifications.map((n) => (
           <div key={n.id} className={`notification-toast notification--${n.type}`}>
-            <span className="toast-icon">⚡</span>
             <span>{n.message}</span>
           </div>
         ))}
@@ -196,7 +196,7 @@ function Interview() {
           </div>
           <div className="status-item timer-box">
             <span className="status-label">Remaining Time</span>
-            <strong className="timer-value">⏱️ {formatTime(remainingTime)}</strong>
+            <strong className="timer-value">{formatTime(remainingTime)}</strong>
           </div>
         </div>
       </div>
@@ -218,7 +218,7 @@ function Interview() {
           {/* AI Question Card */}
           <div className="ai-question-card glass-card">
             <div className="question-card-header">
-              <span className="ai-avatar">🤖 Interviewer AI</span>
+              <span className="ai-avatar"><span className="ai-avatar__mark">AI</span> Verixa interviewer</span>
               <div className="card-badges">
                 <StageBadge stage={currentStage} />
                 <DifficultyBadge difficulty={difficulty} />
@@ -232,7 +232,7 @@ function Interview() {
 
           {/* Live Transcript Log */}
           <div className="transcript-card glass-card">
-            <h3 className="transcript-title">💬 Live Candidate Transcript</h3>
+            <h3 className="transcript-title">Live transcript</h3>
             {lastCandidateTranscript ? (
               <div className="latest-transcript-box">
                 <span className="transcript-label">You said:</span>
@@ -260,8 +260,20 @@ function Interview() {
 
         {/* Right Column: Audio & Controls */}
         <div className="right-column">
+          <div className="candidate-card glass-card">
+            <span className="candidate-card__label">Candidate</span>
+            <div className="candidate-card__identity">
+              <span className="candidate-card__avatar">{(parsedResume?.name || 'Candidate').split(' ').map((part) => part[0]).slice(0, 2).join('').toUpperCase()}</span>
+              <div><strong>{parsedResume?.name || 'Candidate'}</strong><small>{jobRole}</small></div>
+            </div>
+            <dl className="candidate-card__details">
+              <div><dt>Interview</dt><dd className="capitalize">{interviewType}</dd></div>
+              <div><dt>Question</dt><dd>{questionNumber}</dd></div>
+              <div><dt>Status</dt><dd>In progress</dd></div>
+            </dl>
+          </div>
           <div className="controls-card glass-card">
-            <h3 className="controls-title">🎙️ Response Controls</h3>
+            <h3 className="controls-title">Meeting controls</h3>
             <AudioRecorder
               sessionId={sessionId}
               onInitialQuestionPlayback={handleInitialQuestionPlayback}
@@ -275,7 +287,7 @@ function Interview() {
 
             <div className="finish-early-box">
               <Button onClick={handleManualEnd} variant="danger" disabled={isSubmitting}>
-                🏁 Finish & Generate Report Now
+                End interview and generate report
               </Button>
             </div>
           </div>

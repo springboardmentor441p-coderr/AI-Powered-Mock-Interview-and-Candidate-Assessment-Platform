@@ -55,7 +55,7 @@ function History() {
 
               <div className="history-card__actions">
                 <Button onClick={() => handleViewReport(item.report)}>
-                  📊 View Full Report
+                  View report
                 </Button>
               </div>
             </div>

@@ -252,7 +252,7 @@ function ResumeUpload() {
           {error && <div className="error-banner">{error}</div>}
 
           <Button disabled={isStarting || isParsing} type="submit" size="large">
-            {isStarting ? 'Initializing Session...' : '🚀 Start Interview'}
+            {isStarting ? 'Initializing session...' : 'Start interview'}
           </Button>
         </form>
       </div>

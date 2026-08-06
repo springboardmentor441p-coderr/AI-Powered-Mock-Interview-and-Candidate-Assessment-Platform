@@ -1,79 +1,13 @@
-.history-page {
-  display: flex;
-  flex-direction: column;
-  gap: 1.5rem;
-}
-
-.history-list-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-  gap: 1.25rem;
-}
-
-.history-card {
-  display: flex;
-  flex-direction: column;
-  gap: 1rem;
-}
-
-.history-card__header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
-  padding-bottom: 0.75rem;
-}
-
-.history-card__role {
-  font-size: 1.1rem;
-  font-weight: 700;
-  color: #f8fafc;
-}
-
-.history-card__type {
-  font-size: 0.85rem;
-  color: #94a3b8;
-}
-
-.history-card__body {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-}
-
-.history-stat {
-  display: flex;
-  flex-direction: column;
-  gap: 0.2rem;
-}
-
-.stat-label {
-  font-size: 0.75rem;
-  color: #94a3b8;
-  text-transform: uppercase;
-}
-
-.stat-val {
-  font-size: 1.2rem;
-  font-weight: 700;
-  color: #38bdf8;
-}
-
-.stat-date {
-  font-size: 0.85rem;
-  color: #e2e8f0;
-}
-
-.history-card__actions {
-  display: flex;
-  justify-content: flex-end;
-}
-
-.history-empty {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 1rem;
-  text-align: center;
-  padding: 3rem;
-}
+.history-page { gap: 24px; }
+.history-list-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 16px; }
+.history-card { display: flex; flex-direction: column; gap: 16px; }
+.history-card__header { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; padding-bottom: 14px; border-bottom: 1px solid var(--color-border); }
+.history-card__role { color: var(--color-text); font-size: 13px; font-weight: 600; }
+.history-card__type { display: block; margin-top: 3px; color: var(--color-text-faint); font-size: 10px; }
+.history-card__body { display: flex; align-items: center; justify-content: space-between; gap: 16px; }
+.history-stat { display: flex; flex-direction: column; gap: 4px; }
+.stat-label { color: var(--color-text-faint); font-size: 9px; text-transform: uppercase; letter-spacing: .04em; }
+.stat-val { color: var(--color-text); font-size: 17px; font-weight: 600; }
+.stat-date { color: var(--color-text-muted); font-size: 11px; }
+.history-card__actions { display: flex; justify-content: flex-end; padding-top: 14px; border-top: 1px solid var(--color-border); }
+.history-empty { display: flex; flex-direction: column; align-items: center; gap: 16px; padding: 48px; text-align: center; }

@@ -1,5 +1,5 @@
 """
-Standalone Groq diagnostics for SmartHire.
+Standalone Groq diagnostics for Verixa.
 
 Run from the backend directory:
     .\\venv\\Scripts\\python.exe scripts\\diagnose_groq.py

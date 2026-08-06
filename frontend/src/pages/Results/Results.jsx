@@ -94,7 +94,7 @@ function Results() {
       <div className="results-header glass-card">
         <div className="header-info">
           <p className="page-kicker">Performance Analytics</p>
-          <h1>Interview Results Dashboard</h1>
+          <h1>Interview performance report</h1>
           <p className="page-description">
             Candidate: <strong>{candidate_information?.name || 'Candidate'}</strong> | Role:{' '}
             <strong>{jobRole}</strong> ({interviewType} interview)
@@ -116,7 +116,6 @@ function Results() {
       {/* 4 Category Score Cards */}
       <div className="score-cards-grid">
         <div className="score-card glass-card">
-          <div className="score-card__icon">💬</div>
           <div className="score-card__content">
             <span className="score-card__title">Communication (30%)</span>
             <span className="score-card__value">{communicationScore.toFixed(1)}</span>
@@ -127,7 +126,6 @@ function Results() {
         </div>
 
         <div className="score-card glass-card">
-          <div className="score-card__icon">⚙️</div>
           <div className="score-card__content">
             <span className="score-card__title">Technical Relevance (30%)</span>
             <span className="score-card__value">{technicalScore.toFixed(1)}</span>
@@ -138,7 +136,6 @@ function Results() {
         </div>
 
         <div className="score-card glass-card">
-          <div className="score-card__icon">🔥</div>
           <div className="score-card__content">
             <span className="score-card__title">Confidence (25%)</span>
             <span className="score-card__value">{confidenceScore.toFixed(1)}</span>
@@ -149,7 +146,6 @@ function Results() {
         </div>
 
         <div className="score-card glass-card">
-          <div className="score-card__icon">👔</div>
           <div className="score-card__content">
             <span className="score-card__title">Professionalism (15%)</span>
             <span className="score-card__value">{professionalismScore.toFixed(1)}</span>
@@ -163,7 +159,7 @@ function Results() {
       {/* Candidate Ranking & Weak Areas Summary */}
       <div className="analytics-summary-grid">
         <div className="ranking-card glass-card">
-          <h3>🏆 Candidate Ranking & Tier</h3>
+          <h3>Candidate ranking</h3>
           <div className="ranking-details">
             <div className="ranking-badge-box">
               <span className="ranking-tier">{ranking.tier || performance_rating || 'Unrated'}</span>
@@ -179,7 +175,7 @@ function Results() {
         </div>
 
         <div className="weak-areas-card glass-card">
-          <h3>⚠️ Key Focus & Weak Areas</h3>
+          <h3>Development priorities</h3>
           <div className="weak-badges">
             {weakAreas.map((area, idx) => (
               <Badge key={idx} variant="warning">
@@ -195,21 +191,21 @@ function Results() {
       <div className="charts-grid">
         {/* Question Score Progression Trend */}
         <div className="chart-card glass-card">
-          <h3>📈 Score Progression Trend</h3>
+          <h3>Score progression</h3>
           <p className="chart-subtitle">Question-by-question trajectory across key dimensions</p>
           <div className="chart-wrapper">
             <ResponsiveContainer width="100%" height={280}>
               <AreaChart data={trendData}>
-                <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.08)" />
-                <XAxis dataKey="question" stroke="#94a3b8" />
-                <YAxis domain={[0, 100]} stroke="#94a3b8" />
+                <CartesianGrid vertical={false} stroke="#252a32" />
+                <XAxis dataKey="question" stroke="#68717e" tickLine={false} axisLine={false} />
+                <YAxis domain={[0, 100]} stroke="#68717e" tickLine={false} axisLine={false} />
                 <Tooltip
-                  contentStyle={{ backgroundColor: '#0f172a', borderColor: '#6366f1', color: '#f8fafc' }}
+                  contentStyle={{ backgroundColor: '#161a20', borderColor: '#343b46', borderRadius: 8, color: '#f2f4f7' }}
                 />
                 <Legend />
-                <Area type="monotone" dataKey="overall" name="Overall" stroke="#38bdf8" fill="rgba(56, 189, 248, 0.2)" />
-                <Area type="monotone" dataKey="technical" name="Technical" stroke="#6366f1" fill="rgba(99, 102, 241, 0.1)" />
-                <Area type="monotone" dataKey="communication" name="Communication" stroke="#10b981" fill="none" />
+                <Area type="monotone" dataKey="overall" name="Overall" stroke="#3b82f6" fill="rgba(59,130,246,.12)" />
+                <Area type="monotone" dataKey="technical" name="Technical" stroke="#9aa3af" fill="none" />
+                <Area type="monotone" dataKey="communication" name="Communication" stroke="#68717e" fill="none" />
               </AreaChart>
             </ResponsiveContainer>
           </div>
@@ -217,15 +213,15 @@ function Results() {
 
         {/* Skill Breakdown Radar Chart */}
         <div className="chart-card glass-card">
-          <h3>🎯 Skill Breakdown Radar</h3>
+          <h3>Competency breakdown</h3>
           <p className="chart-subtitle">Evaluation balance across candidate assessment dimensions</p>
           <div className="chart-wrapper">
             <ResponsiveContainer width="100%" height={280}>
               <RadarChart data={scoreBreakdownData}>
-                <PolarGrid stroke="rgba(255,255,255,0.1)" />
-                <PolarAngleAxis dataKey="category" stroke="#cbd5e1" />
-                <PolarRadiusAxis angle={30} domain={[0, 100]} stroke="#94a3b8" />
-                <Radar name="Score" dataKey="score" stroke="#818cf8" fill="#6366f1" fillOpacity={0.4} />
+                <PolarGrid stroke="#252a32" />
+                <PolarAngleAxis dataKey="category" stroke="#9aa3af" />
+                <PolarRadiusAxis angle={30} domain={[0, 100]} stroke="#68717e" />
+                <Radar name="Score" dataKey="score" stroke="#3b82f6" fill="#3b82f6" fillOpacity={0.16} />
               </RadarChart>
             </ResponsiveContainer>
           </div>
@@ -235,7 +231,7 @@ function Results() {
       {/* AI Feedback Cards */}
       <div className="feedback-section-grid">
         <div className="feedback-card glass-card border-green">
-          <h3>✅ Strengths</h3>
+          <h3>Strengths</h3>
           <ul className="feedback-list">
             {strengths.map((item, idx) => (
               <li key={idx}>{item}</li>
@@ -244,7 +240,7 @@ function Results() {
         </div>
 
         <div className="feedback-card glass-card border-red">
-          <h3>❌ Weaknesses</h3>
+          <h3>Areas to improve</h3>
           <ul className="feedback-list">
             {weaknesses.map((item, idx) => (
               <li key={idx}>{item}</li>
@@ -253,7 +249,7 @@ function Results() {
         </div>
 
         <div className="feedback-card glass-card border-blue">
-          <h3>💡 Recommendations</h3>
+          <h3>Recommendations</h3>
           <ul className="feedback-list">
             {recommendations.map((item, idx) => (
               <li key={idx}>{item}</li>
@@ -262,7 +258,7 @@ function Results() {
         </div>
 
         <div className="feedback-card glass-card border-purple">
-          <h3>📚 Learning Resources</h3>
+          <h3>Learning resources</h3>
           <ul className="feedback-list">
             {learning_resources.map((item, idx) => (
               <li key={idx}>{item}</li>
@@ -274,7 +270,7 @@ function Results() {
       {/* Interview Summary Card */}
       {interview_summary && (
         <div className="interview-summary-card glass-card">
-          <h3>📝 Executive Interview Summary</h3>
+          <h3>Executive summary</h3>
           <p>{interview_summary}</p>
         </div>
       )}
@@ -288,7 +284,7 @@ function Results() {
       {/* Action Footer */}
       <div className="results-actions">
         <Button onClick={handleStartNew} size="large">
-          🔄 Start Another Mock Interview
+          Start another interview
         </Button>
       </div>
     </div>

@@ -1,5 +1,5 @@
 """
-Groq LLM service for SmartHire.
+Groq LLM service for Verixa.
 
 All backend LLM calls use Groq's OpenAI-compatible Chat Completions API.
 """
