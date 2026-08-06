@@ -253,6 +253,6 @@ This project is licensed under the **MIT License**.
 
 <div align="center">
 
-Made with ❤️ by [Jaswanth Patibandla](https://github.com/jaswanthpatibandla-35)
+Made with  by [Jaswanth Patibandla](https://github.com/jaswanthpatibandla-35)
 
 </div>
