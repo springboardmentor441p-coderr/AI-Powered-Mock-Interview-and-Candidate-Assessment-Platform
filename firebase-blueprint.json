@@ -1,0 +1,49 @@
+{
+  "entities": {
+    "ResumeAnalysis": {
+      "title": "Resume Analysis",
+      "description": "Extracted resume details and analysis result",
+      "type": "object",
+      "properties": {
+        "candidateName": { "type": "string", "maxLength": 200 },
+        "email": { "type": "string", "maxLength": 200 },
+        "phone": { "type": "string", "maxLength": 100 },
+        "targetRole": { "type": "string", "maxLength": 200 },
+        "detectedRole": { "type": "string", "maxLength": 200 },
+        "overallMatchScore": { "type": "number" },
+        "status": { "type": "string", "maxLength": 100 },
+        "experienceYearsEstimate": { "type": "number" },
+        "formattingScore": { "type": "number" },
+        "rawText": { "type": "string", "maxLength": 50000 },
+        "createdAt": { "type": "string", "maxLength": 100 }
+      },
+      "required": ["candidateName", "targetRole", "overallMatchScore"]
+    },
+    "AssessmentResult": {
+      "title": "Interview Assessment Result",
+      "description": "Scored result and feedback for mock interviews",
+      "type": "object",
+      "properties": {
+        "interviewId": { "type": "string", "maxLength": 100 },
+        "title": { "type": "string", "maxLength": 200 },
+        "type": { "type": "string", "maxLength": 100 },
+        "domain": { "type": "string", "maxLength": 200 },
+        "date": { "type": "string", "maxLength": 100 },
+        "overallScore": { "type": "number" },
+        "durationMinutes": { "type": "number" },
+        "summary": { "type": "string", "maxLength": 5000 }
+      },
+      "required": ["interviewId", "title", "overallScore"]
+    }
+  },
+  "firestore": {
+    "/resumes/{resumeId}": {
+      "schema": "ResumeAnalysis",
+      "description": "Stores candidate resume analyses"
+    },
+    "/assessments/{assessmentId}": {
+      "schema": "AssessmentResult",
+      "description": "Stores completed mock interview scores and feedback"
+    }
+  }
+}

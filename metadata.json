@@ -1,0 +1,6 @@
+{
+  "name": "SmartHire AI",
+  "description": "AI-Powered Mock Interview and Candidate Assessment Platform",
+  "requestFramePermissions": ["camera", "microphone"],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
