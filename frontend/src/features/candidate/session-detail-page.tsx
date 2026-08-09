@@ -81,10 +81,21 @@ export default function SessionDetailPage() {
 }
 
 function OverviewTab({ sessionId }: { sessionId: string }) {
+  const { data: session } = useSessionDetail(sessionId);
   const { data: score, isLoading, isError } = useFinalScore(sessionId);
   const { data: feedback } = useSessionFeedback(sessionId);
 
   if (isLoading) return <Skeleton className="h-56 w-full" />;
+
+  if (session?.status === "abandoned") {
+    return (
+      <EmptyState
+        icon={AlertTriangle}
+        title="Session abandoned"
+        description="This session was abandoned before completion. Scores and evaluations are only generated for completed interviews."
+      />
+    );
+  }
 
   if (isError || !score) {
     return (

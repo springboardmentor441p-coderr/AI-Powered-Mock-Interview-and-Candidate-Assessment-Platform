@@ -171,7 +171,9 @@ class AcceptInvitationView(APIView):
 class RecruiterSessionHistoryView(APIView):
     """
     GET /interviews/invitations/history/
-    Recruiter sees sessions from their accepted invitations.
+    Recruiter sees ALL accepted invitations (any session status),
+    not just completed ones — so they can track in-progress and
+    abandoned/failed sessions too.
     """
 
     permission_classes = [IsRecruiterOrAdmin]
@@ -192,11 +194,13 @@ class RecruiterSessionHistoryView(APIView):
             session = inv.session
             if session is None:
                 continue
+            has_brief = session.status == InterviewSession.Status.COMPLETED
             items.append(
                 {
                     "invitation_id": str(inv.id),
                     "candidate_email": inv.candidate_email,
                     "candidate_name": inv.candidate.get_full_name() if inv.candidate else None,
+                    "candidate_id": str(inv.candidate.id) if inv.candidate else None,
                     "session_id": str(session.id),
                     "interview_type": session.interview_type,
                     "domain": session.domain,
@@ -205,7 +209,7 @@ class RecruiterSessionHistoryView(APIView):
                     "started_at": session.started_at,
                     "completed_at": session.completed_at,
                     "duration_seconds": session.duration_seconds,
-                    "has_brief": session.status == "completed",
+                    "has_brief": has_brief,
                     "created_at": session.created_at,
                 }
             )

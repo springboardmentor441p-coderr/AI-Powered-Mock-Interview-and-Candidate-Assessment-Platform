@@ -86,47 +86,44 @@ def _make_brief_result():
 
 class TestEvaluateTopicThread:
 
-    @patch("apps.interview.tasks.evaluation_tasks.ThreadEvaluation")
+    @patch("apps.interview.models.ThreadEvaluation")
     def test_idempotency_skips_if_already_evaluated(self, mock_te):
         """If a ThreadEvaluation already exists for this topic, skip silently."""
         from apps.interview.tasks.evaluation_tasks import evaluate_topic_thread
 
         mock_te.objects.filter.return_value.exists.return_value = True
 
-        task = evaluate_topic_thread  # unbound — call directly
-        task.run = task  # pytest — bypass Celery machinery
-
         with patch("apps.interview.tasks.evaluation_tasks.logger") as mock_log:
-            evaluate_topic_thread("session-1", "topic-1")
+            evaluate_topic_thread.run("session-1", "topic-1")
 
         mock_log.info.assert_called_once()
         assert "skipping" in mock_log.info.call_args[0][0]
 
-    @patch("apps.interview.tasks.evaluation_tasks.ThreadEvaluation")
-    @patch("apps.interview.tasks.evaluation_tasks.InterviewSession")
+    @patch("apps.interview.models.ThreadEvaluation")
+    @patch("apps.interview.models.InterviewSession")
     def test_no_session_returns_early(self, mock_is, mock_te):
         mock_te.objects.filter.return_value.exists.return_value = False
         mock_is.objects.filter.return_value.first.return_value = None
 
         from apps.interview.tasks.evaluation_tasks import evaluate_topic_thread
-        evaluate_topic_thread("missing-session", "topic-1")  # should not raise
+        evaluate_topic_thread.run("missing-session", "topic-1")  # should not raise
 
-    @patch("apps.interview.tasks.evaluation_tasks.ThreadEvaluation")
-    @patch("apps.interview.tasks.evaluation_tasks.Question")
-    @patch("apps.interview.tasks.evaluation_tasks.InterviewSession")
+    @patch("apps.interview.models.ThreadEvaluation")
+    @patch("apps.interview.models.Question")
+    @patch("apps.interview.models.InterviewSession")
     def test_no_topic_returns_early(self, mock_is, mock_q, mock_te):
         mock_te.objects.filter.return_value.exists.return_value = False
         mock_is.objects.filter.return_value.first.return_value = _make_session()
         mock_q.objects.filter.return_value.first.return_value = None
 
         from apps.interview.tasks.evaluation_tasks import evaluate_topic_thread
-        evaluate_topic_thread("session-1", "missing-topic")  # should not raise
+        evaluate_topic_thread.run("session-1", "missing-topic")  # should not raise
 
-    @patch("apps.interview.tasks.evaluation_tasks.ThreadEvaluation")
-    @patch("apps.interview.tasks.evaluation_tasks.ConversationTurn")
-    @patch("apps.interview.tasks.evaluation_tasks.Transcript")
-    @patch("apps.interview.tasks.evaluation_tasks.Question")
-    @patch("apps.interview.tasks.evaluation_tasks.InterviewSession")
+    @patch("apps.interview.models.ThreadEvaluation")
+    @patch("apps.interview.models.ConversationTurn")
+    @patch("apps.interview.models.Transcript")
+    @patch("apps.interview.models.Question")
+    @patch("apps.interview.models.InterviewSession")
     def test_no_turns_returns_early(self, mock_is, mock_q, mock_tr, mock_ct, mock_te):
         mock_te.objects.filter.return_value.exists.return_value = False
         mock_is.objects.filter.return_value.first.return_value = _make_session()
@@ -139,14 +136,14 @@ class TestEvaluateTopicThread:
         mock_ct.objects.filter.return_value.order_by.return_value.first.return_value = None
 
         from apps.interview.tasks.evaluation_tasks import evaluate_topic_thread
-        evaluate_topic_thread(str(uuid.uuid4()), str(topic.id))  # should not raise
+        evaluate_topic_thread.run(str(uuid.uuid4()), str(topic.id))  # should not raise
 
-    @patch("apps.interview.tasks.evaluation_tasks.container")
-    @patch("apps.interview.tasks.evaluation_tasks.ThreadEvaluation")
-    @patch("apps.interview.tasks.evaluation_tasks.ConversationTurn")
-    @patch("apps.interview.tasks.evaluation_tasks.Transcript")
-    @patch("apps.interview.tasks.evaluation_tasks.Question")
-    @patch("apps.interview.tasks.evaluation_tasks.InterviewSession")
+    @patch("core.container.container")
+    @patch("apps.interview.models.ThreadEvaluation")
+    @patch("apps.interview.models.ConversationTurn")
+    @patch("apps.interview.models.Transcript")
+    @patch("apps.interview.models.Question")
+    @patch("apps.interview.models.InterviewSession")
     def test_happy_path_saves_thread_evaluation(
         self, mock_is, mock_q, mock_tr, mock_ct, mock_te, mock_container
     ):
@@ -168,7 +165,7 @@ class TestEvaluateTopicThread:
         mock_container.ai_factory.return_value.thread_evaluation.return_value.evaluate_thread.return_value = result
 
         from apps.interview.tasks.evaluation_tasks import evaluate_topic_thread
-        evaluate_topic_thread(str(session.id), str(topic.id))
+        evaluate_topic_thread.run(str(session.id), str(topic.id))
 
         mock_te.objects.create.assert_called_once()
         call_kwargs = mock_te.objects.create.call_args[1]
@@ -177,12 +174,12 @@ class TestEvaluateTopicThread:
         assert call_kwargs["interview"] == session
         assert call_kwargs["seed_topic"] == topic
 
-    @patch("apps.interview.tasks.evaluation_tasks.container")
-    @patch("apps.interview.tasks.evaluation_tasks.ThreadEvaluation")
-    @patch("apps.interview.tasks.evaluation_tasks.ConversationTurn")
-    @patch("apps.interview.tasks.evaluation_tasks.Transcript")
-    @patch("apps.interview.tasks.evaluation_tasks.Question")
-    @patch("apps.interview.tasks.evaluation_tasks.InterviewSession")
+    @patch("core.container.container")
+    @patch("apps.interview.models.ThreadEvaluation")
+    @patch("apps.interview.models.ConversationTurn")
+    @patch("apps.interview.models.Transcript")
+    @patch("apps.interview.models.Question")
+    @patch("apps.interview.models.InterviewSession")
     def test_external_service_error_retries(
         self, mock_is, mock_q, mock_tr, mock_ct, mock_te, mock_container
     ):
@@ -204,14 +201,14 @@ class TestEvaluateTopicThread:
 
         # ExternalServiceError should propagate out (Celery will retry it)
         with pytest.raises(ExternalServiceError):
-            evaluate_topic_thread(str(session.id), str(topic.id))
+            evaluate_topic_thread.run(str(session.id), str(topic.id))
 
-    @patch("apps.interview.tasks.evaluation_tasks.container")
-    @patch("apps.interview.tasks.evaluation_tasks.ThreadEvaluation")
-    @patch("apps.interview.tasks.evaluation_tasks.ConversationTurn")
-    @patch("apps.interview.tasks.evaluation_tasks.Transcript")
-    @patch("apps.interview.tasks.evaluation_tasks.Question")
-    @patch("apps.interview.tasks.evaluation_tasks.InterviewSession")
+    @patch("core.container.container")
+    @patch("apps.interview.models.ThreadEvaluation")
+    @patch("apps.interview.models.ConversationTurn")
+    @patch("apps.interview.models.Transcript")
+    @patch("apps.interview.models.Question")
+    @patch("apps.interview.models.InterviewSession")
     def test_unrecoverable_error_does_not_retry(
         self, mock_is, mock_q, mock_tr, mock_ct, mock_te, mock_container
     ):
@@ -232,7 +229,7 @@ class TestEvaluateTopicThread:
 
         # ValueError is not ExternalServiceError — should raise immediately, not retry
         with pytest.raises(ValueError, match="Bad prompt"):
-            evaluate_topic_thread(str(session.id), str(topic.id))
+            evaluate_topic_thread.run(str(session.id), str(topic.id))
 
 
 # ---------------------------------------------------------------------------
@@ -241,33 +238,33 @@ class TestEvaluateTopicThread:
 
 class TestGenerateInterviewBrief:
 
-    @patch("apps.interview.tasks.evaluation_tasks.InterviewBrief")
+    @patch("apps.interview.models.InterviewBrief")
     def test_idempotency_skips_if_brief_exists(self, mock_ib):
         mock_ib.objects.filter.return_value.exists.return_value = True
 
         from apps.interview.tasks.evaluation_tasks import generate_interview_brief
-        generate_interview_brief(str(uuid.uuid4()))  # should not raise or create
+        generate_interview_brief.run(str(uuid.uuid4()))  # should not raise or create
 
         mock_ib.objects.create.assert_not_called()
 
-    @patch("apps.interview.tasks.evaluation_tasks.InterviewBrief")
-    @patch("apps.interview.tasks.evaluation_tasks.InterviewSession")
+    @patch("apps.interview.models.InterviewBrief")
+    @patch("apps.interview.models.InterviewSession")
     def test_no_session_returns_early(self, mock_is, mock_ib):
         mock_ib.objects.filter.return_value.exists.return_value = False
         mock_is.objects.filter.return_value.first.return_value = None
 
         from apps.interview.tasks.evaluation_tasks import generate_interview_brief
-        generate_interview_brief(str(uuid.uuid4()))
+        generate_interview_brief.run(str(uuid.uuid4()))
 
         mock_ib.objects.create.assert_not_called()
 
-    @patch("apps.interview.tasks.evaluation_tasks.generate_interview_brief")
-    @patch("apps.interview.tasks.evaluation_tasks.ThreadEvaluation")
-    @patch("apps.interview.tasks.evaluation_tasks.Question")
-    @patch("apps.interview.tasks.evaluation_tasks.InterviewBrief")
-    @patch("apps.interview.tasks.evaluation_tasks.InterviewSession")
+    @patch("apps.interview.tasks.evaluation_tasks.generate_interview_brief.apply_async")
+    @patch("apps.interview.models.ThreadEvaluation")
+    @patch("apps.interview.models.Question")
+    @patch("apps.interview.models.InterviewBrief")
+    @patch("apps.interview.models.InterviewSession")
     def test_readiness_check_reschedules_when_pending(
-        self, mock_is, mock_ib, mock_q, mock_te, mock_self_task
+        self, mock_is, mock_ib, mock_q, mock_te, mock_apply_async
     ):
         """If some topics aren't evaluated yet, task reschedules itself."""
         session = _make_session()
@@ -283,18 +280,18 @@ class TestGenerateInterviewBrief:
         from apps.interview.tasks.evaluation_tasks import generate_interview_brief
 
         # _readiness_attempt=0, so it should reschedule.
-        generate_interview_brief(str(session.id), _readiness_attempt=0)
+        generate_interview_brief.run(str(session.id), _readiness_attempt=0)
 
-        mock_self_task.apply_async.assert_called_once()
-        call_kwargs = mock_self_task.apply_async.call_args[1]
+        mock_apply_async.assert_called_once()
+        call_kwargs = mock_apply_async.call_args[1]
         assert call_kwargs["kwargs"]["_readiness_attempt"] == 1
         assert call_kwargs["countdown"] == 30
 
-    @patch("apps.interview.tasks.evaluation_tasks.container")
-    @patch("apps.interview.tasks.evaluation_tasks.ThreadEvaluation")
-    @patch("apps.interview.tasks.evaluation_tasks.Question")
-    @patch("apps.interview.tasks.evaluation_tasks.InterviewBrief")
-    @patch("apps.interview.tasks.evaluation_tasks.InterviewSession")
+    @patch("core.container.container")
+    @patch("apps.interview.models.ThreadEvaluation")
+    @patch("apps.interview.models.Question")
+    @patch("apps.interview.models.InterviewBrief")
+    @patch("apps.interview.models.InterviewSession")
     def test_max_waits_exceeded_proceeds_on_partial_data(
         self, mock_is, mock_ib, mock_q, mock_te, mock_container
     ):
@@ -329,15 +326,15 @@ class TestGenerateInterviewBrief:
 
         from apps.interview.tasks.evaluation_tasks import generate_interview_brief
         from apps.interview.tasks.evaluation_tasks import _BRIEF_MAX_READINESS_WAITS
-        generate_interview_brief(str(session.id), _readiness_attempt=_BRIEF_MAX_READINESS_WAITS)
+        generate_interview_brief.run(str(session.id), _readiness_attempt=_BRIEF_MAX_READINESS_WAITS)
 
         mock_ib.objects.create.assert_called_once()
 
-    @patch("apps.interview.tasks.evaluation_tasks.container")
-    @patch("apps.interview.tasks.evaluation_tasks.ThreadEvaluation")
-    @patch("apps.interview.tasks.evaluation_tasks.Question")
-    @patch("apps.interview.tasks.evaluation_tasks.InterviewBrief")
-    @patch("apps.interview.tasks.evaluation_tasks.InterviewSession")
+    @patch("core.container.container")
+    @patch("apps.interview.models.ThreadEvaluation")
+    @patch("apps.interview.models.Question")
+    @patch("apps.interview.models.InterviewBrief")
+    @patch("apps.interview.models.InterviewSession")
     def test_no_thread_evals_skips_brief(self, mock_is, mock_ib, mock_q, mock_te, mock_container):
         session = _make_session()
 
@@ -348,15 +345,15 @@ class TestGenerateInterviewBrief:
         mock_te.objects.filter.return_value.select_related.return_value.order_by.return_value = []
 
         from apps.interview.tasks.evaluation_tasks import generate_interview_brief
-        generate_interview_brief(str(session.id))
+        generate_interview_brief.run(str(session.id))
 
         mock_ib.objects.create.assert_not_called()
 
-    @patch("apps.interview.tasks.evaluation_tasks.container")
-    @patch("apps.interview.tasks.evaluation_tasks.ThreadEvaluation")
-    @patch("apps.interview.tasks.evaluation_tasks.Question")
-    @patch("apps.interview.tasks.evaluation_tasks.InterviewBrief")
-    @patch("apps.interview.tasks.evaluation_tasks.InterviewSession")
+    @patch("core.container.container")
+    @patch("apps.interview.models.ThreadEvaluation")
+    @patch("apps.interview.models.Question")
+    @patch("apps.interview.models.InterviewBrief")
+    @patch("apps.interview.models.InterviewSession")
     def test_happy_path_saves_brief(self, mock_is, mock_ib, mock_q, mock_te, mock_container):
         session = _make_session()
         topic_id = uuid.uuid4()
@@ -386,7 +383,7 @@ class TestGenerateInterviewBrief:
             .generate_brief.return_value = result
 
         from apps.interview.tasks.evaluation_tasks import generate_interview_brief
-        generate_interview_brief(str(session.id))
+        generate_interview_brief.run(str(session.id))
 
         mock_ib.objects.create.assert_called_once()
         call_kwargs = mock_ib.objects.create.call_args[1]
@@ -394,11 +391,11 @@ class TestGenerateInterviewBrief:
         assert call_kwargs["interview"] == session
         assert call_kwargs["summary"] == result.summary
 
-    @patch("apps.interview.tasks.evaluation_tasks.container")
-    @patch("apps.interview.tasks.evaluation_tasks.ThreadEvaluation")
-    @patch("apps.interview.tasks.evaluation_tasks.Question")
-    @patch("apps.interview.tasks.evaluation_tasks.InterviewBrief")
-    @patch("apps.interview.tasks.evaluation_tasks.InterviewSession")
+    @patch("core.container.container")
+    @patch("apps.interview.models.ThreadEvaluation")
+    @patch("apps.interview.models.Question")
+    @patch("apps.interview.models.InterviewBrief")
+    @patch("apps.interview.models.InterviewSession")
     def test_external_service_error_retries(
         self, mock_is, mock_ib, mock_q, mock_te, mock_container
     ):
@@ -430,4 +427,4 @@ class TestGenerateInterviewBrief:
 
         # ExternalServiceError should propagate out (Celery will retry it)
         with pytest.raises(ExternalServiceError):
-            generate_interview_brief(str(session.id))
+            generate_interview_brief.run(str(session.id))

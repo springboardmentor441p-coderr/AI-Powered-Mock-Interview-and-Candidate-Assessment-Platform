@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { toast } from "sonner";
-import { Disc3, Mic, MicOff, PhoneOff, Radio, Video, VideoOff } from "lucide-react";
+import { Disc3, Mic, MicOff, PhoneOff, Radio, RefreshCw, Video, VideoOff } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Spinner } from "@/components/ui/spinner";
 import { VuMeter } from "@/components/shared/vu-meter";
@@ -10,6 +10,7 @@ import { useRealtimeSessionPoll, useStartRealtimeSession } from "@/features/cand
 import { interviewsApi } from "@/api/interviews";
 import { useFaceAssessment } from "./hooks/use-face-assessment";
 import { FaceAssessmentHUD } from "./face-assessment-hud";
+import { useAuthStore } from "@/stores/auth-store";
 
 const BACKEND = "http://localhost:8000/api/v1/interviews";
 const TOOL_SECRET = import.meta.env.VITE_ULTRAVOX_TOOL_SECRET as string;
@@ -34,21 +35,22 @@ export default function LiveInterviewRoom() {
   const [lines, setLines] = useState<LiveTranscriptLine[]>([]);
   const [elapsed, setElapsed] = useState(0);
 
+
   const sessionRef = useRef<import("ultravox-client").UltravoxSession | null>(null);
   const hasStartedRef = useRef(false);
   const transcriptEndRef = useRef<HTMLDivElement>(null);
   const lastSentIdxRef = useRef(-1);
   const currentQuestionIdRef = useRef<string>("");
+  // Track whether we initiated the disconnect (end call button) vs Ultravox dropping us
+  const intentionalDisconnectRef = useRef(false);
 
   // ── Face assessment ──────────────────────────────────────────────────── //
   const face = useFaceAssessment({
     sessionId: sessionId ?? "",
     dryRun: !sessionId,
-    // Start automatically when the interview goes live (handled in useEffect below)
     autoStart: false,
   });
 
-  // Stop face assessment if the interview ends while the camera is running
   useEffect(() => {
     if (phase !== "live" && face.active) {
       face.stop();
@@ -56,7 +58,6 @@ export default function LiveInterviewRoom() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [phase]);
 
-  // Stop face assessment on unmount (hook also does this, but belt-and-suspenders)
   useEffect(() => {
     return () => face.stop();
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -107,6 +108,7 @@ export default function LiveInterviewRoom() {
       setPhase("connecting");
       lastSentIdxRef.current = -1;
       currentQuestionIdRef.current = "";
+      intentionalDisconnectRef.current = false;
 
       try {
         const started = await startSession.mutateAsync(sessionId);
@@ -118,9 +120,34 @@ export default function LiveInterviewRoom() {
         sessionRef.current = uvSession;
 
         uvSession.addEventListener("status", () => {
-          setCallStatus(uvSession.status);
-          if (uvSession.status === "disconnected") {
-            setPhase((p) => (p === "wrapping-up" || p === "ended" ? "ended" : p));
+          const uvStatus = uvSession.status;
+          setCallStatus(uvStatus);
+
+          if (uvStatus === "disconnected") {
+            if (intentionalDisconnectRef.current) {
+              // We triggered this — wrapping-up handler already called
+              setPhase((p) => (p === "wrapping-up" || p === "ended" ? "ended" : p));
+            } else {
+              // Ultravox dropped us (plan limit, network error, etc.)
+              // The session was started (in_progress) but never user-ended.
+              // Transition to error so the candidate sees a clear message.
+              setPhase((p) => {
+                if (p === "live" || p === "connecting") {
+                  return "error";
+                }
+                return p === "wrapping-up" || p === "ended" ? "ended" : p;
+              });
+              setErrorMessage(
+                "The call was disconnected unexpectedly (this can happen if the AI service has reached its plan limit). " +
+                  "Your session has been reset — you can retry the interview from your invitations page.",
+              );
+              // Best-effort: abandon the session so the invitation resets to pending
+              if (sessionId) {
+                interviewsApi.abandonRealtime(sessionId).catch(() => {
+                  // ignore — worst case the session stays scheduled
+                });
+              }
+            }
           }
         });
 
@@ -184,10 +211,20 @@ export default function LiveInterviewRoom() {
           return;
         }
         console.error(err);
+
+        const message =
+          err instanceof Error ? err.message : "Couldn't connect to the interviewer.";
+        setErrorMessage(message);
         setPhase("error");
-        setErrorMessage(
-          err instanceof Error ? err.message : "Couldn't connect to the interviewer.",
-        );
+
+        // Abandon the session so the invitation resets back to pending
+        if (sessionId) {
+          try {
+            await interviewsApi.abandonRealtime(sessionId);
+          } catch {
+            // ignore — not critical
+          }
+        }
       }
     },
     [sessionId, startSession],
@@ -196,6 +233,7 @@ export default function LiveInterviewRoom() {
   // ── End call ─────────────────────────────────────────────────────────── //
   async function handleEndCall() {
     if (!sessionId) return;
+    intentionalDisconnectRef.current = true;
     setPhase("wrapping-up");
     face.stop();
     try { sessionRef.current?.leaveCall(); } catch { /* ignore */ }
@@ -222,8 +260,6 @@ export default function LiveInterviewRoom() {
     if (face.active) {
       face.stop();
     } else {
-      // Check permission state before calling start() so we can give a clear
-      // actionable message instead of a raw browser error string.
       try {
         const perm = await navigator.permissions.query({ name: "camera" as PermissionName });
         if (perm.state === "denied") {
@@ -234,17 +270,72 @@ export default function LiveInterviewRoom() {
           return;
         }
       } catch {
-        // permissions API not supported (e.g. Firefox) — fall through and let getUserMedia handle it
+        // permissions API not supported — fall through
       }
       void face.start();
     }
   }
 
+  // ── Unmount / page unload cleanup ────────────────────────────────────── //
+  const phaseRef = useRef(phase);
   useEffect(() => {
-    return () => {
-      try { sessionRef.current?.leaveCall(); } catch { /* no-op on unmount */ }
+    phaseRef.current = phase;
+  }, [phase]);
+
+  const abandonSessionOnLeave = useCallback(() => {
+    if (!sessionId) return;
+    const token = useAuthStore.getState().accessToken;
+    const url = `${import.meta.env.VITE_API_BASE_URL ?? "http://localhost:8000/api/v1"}/interviews/realtime/sessions/${sessionId}/abandon/`;
+    fetch(url, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
+      keepalive: true,
+    }).catch(() => {});
+  }, [sessionId]);
+
+  useEffect(() => {
+    const handleUnload = () => {
+      const currentPhase = phaseRef.current;
+      if (
+        (currentPhase === "preparing" || currentPhase === "connecting" || currentPhase === "live") &&
+        !intentionalDisconnectRef.current
+      ) {
+        abandonSessionOnLeave();
+      }
     };
-  }, []);
+
+    window.addEventListener("pagehide", handleUnload);
+    window.addEventListener("beforeunload", handleUnload);
+
+    return () => {
+      window.removeEventListener("pagehide", handleUnload);
+      window.removeEventListener("beforeunload", handleUnload);
+
+      // Leave the Ultravox call if any is active
+      try {
+        sessionRef.current?.leaveCall();
+      } catch {
+        /* no-op */
+      }
+
+      // Abandon the session on the backend if leaving before completed/ended
+      const currentPhase = phaseRef.current;
+      if (
+        (currentPhase === "preparing" || currentPhase === "connecting" || currentPhase === "live") &&
+        !intentionalDisconnectRef.current
+      ) {
+        abandonSessionOnLeave();
+      }
+    };
+  }, [abandonSessionOnLeave]);
+
+  async function handleRetryFromError() {
+    // Navigate back to invitations so they can click "Accept & start" again
+    navigate("/app/invitations");
+  }
 
   const mins = String(Math.floor(elapsed / 60)).padStart(2, "0");
   const secs = String(elapsed % 60).padStart(2, "0");
@@ -292,11 +383,20 @@ export default function LiveInterviewRoom() {
             <div className="flex h-14 w-14 items-center justify-center rounded-full bg-destructive/15 text-destructive">
               <PhoneOff className="h-6 w-6" />
             </div>
-            <p className="font-display text-xl text-foreground">Couldn't connect</p>
+            <p className="font-display text-xl text-foreground">Interview interrupted</p>
             <p className="max-w-sm text-sm text-muted-foreground">{errorMessage}</p>
-            <Button variant="outline" onClick={() => navigate("/app/interviews/new")}>
-              Back to setup
-            </Button>
+            <div className="flex gap-3">
+              <Button
+                variant="outline"
+                onClick={handleRetryFromError}
+              >
+                <RefreshCw className="h-4 w-4" />
+                Go to invitations
+              </Button>
+              <Button variant="ghost" onClick={() => navigate("/app/interviews/new")}>
+                New interview
+              </Button>
+            </div>
           </div>
         )}
 

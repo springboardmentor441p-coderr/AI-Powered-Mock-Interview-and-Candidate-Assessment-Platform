@@ -358,6 +358,7 @@ export interface ReceivedInvitation {
 }
 
 export interface RecruiterHistoryItem {
+  candidate_id: string | null;
   invitation_id: string;
   candidate_email: string;
   candidate_name: string | null;

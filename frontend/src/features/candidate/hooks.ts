@@ -194,3 +194,13 @@ export function useAcceptInvitation() {
     onError: (error: ApiError) => toast.error(error.message || "Couldn't accept the invitation."),
   });
 }
+export function useAbandonRealtimeSession() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (sessionId: string) => interviewsApi.abandonRealtime(sessionId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["interviews", "invitations", "received"] });
+    },
+    onError: (error: ApiError) => console.warn("Abandon failed:", error.message),
+  });
+}

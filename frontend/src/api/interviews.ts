@@ -27,7 +27,7 @@ export const interviewsApi = {
     return post<InterviewTemplate>("/interviews/templates/", payload);
   },
 
-  // Session list & detail (shared between history page and live room)
+  // Session list & detail
   async list(): Promise<Paginated<InterviewSessionListItem>> {
     return getList<InterviewSessionListItem>("/interviews/sessions/");
   },
@@ -48,6 +48,11 @@ export const interviewsApi = {
   async startRealtime(sessionId: string): Promise<RealtimeSessionDetail> {
     return post<RealtimeSessionDetail>(`/interviews/realtime/sessions/${sessionId}/start/`);
   },
+  /** Abandon a scheduled/in-progress session that failed to start and reset its invitation to pending. */
+  async abandonRealtime(sessionId: string): Promise<RealtimeSessionDetail> {
+    return post<RealtimeSessionDetail>(`/interviews/realtime/sessions/${sessionId}/abandon/`);
+  },
+
   // Transcript & evaluation review
   async fullTranscript(sessionId: string): Promise<Transcript[]> {
     return get<Transcript[]>(`/interviews/realtime/sessions/${sessionId}/transcript/full/`);
