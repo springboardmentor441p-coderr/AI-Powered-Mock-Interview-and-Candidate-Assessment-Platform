@@ -6,8 +6,39 @@ AI-powered mock interview and candidate assessment platform.
 
 ## Architecture
 
-Clean Architecture + DDD-inspired modular monolith. Every layer has a
-single direction of dependency: **View → Service → Repository → ORM**.
+Clean Architecture + Domain-Driven Design (DDD) inspired modular monolith. Every layer has a strict single direction of dependency: **View → Service/Selector → Repository → ORM Models**.
+
+```mermaid
+graph TD
+    subgraph UI / Interface Layer
+        View[DRF API Views] --> Serializer[DRF Serializers]
+    end
+    
+    subgraph Application / Domain Logic
+        Serializer --> Service[Application Services - Write/Command]
+        Serializer --> Selector[Domain Selectors - Read/Query]
+    end
+
+    subgraph Data / Infrastructure Layer
+        Service --> Repo[Domain Repositories]
+        Selector --> Repo
+        Repo --> ORM[Django ORM & PostgreSQL]
+        Service --> Infrastructure[Celery Workers / Redis / External APIs]
+    end
+    
+    classDef layer fill:#2e3440,stroke:#81a1c1,stroke-width:2px,color:#d8dee9;
+    class View,Serializer,Service,Selector,Repo,ORM,Infrastructure layer;
+```
+
+### 1. Core Architectural Layers
+
+*   **API Views & Serializers (Interface Adapters)**: Responsible strictly for HTTP protocol concerns: extracting headers, parsing query parameters, executing permissions check, and returning structured JSON. Serializers validate input formats and schema constraints. No business rules are allowed in this layer.
+*   **Application Services (Use Cases - Command/Write)**: Orchestrate transaction boundaries and coordinate domain logic. They process modifications, write records, and schedule asynchronous tasks. They depend on abstract repository interfaces and external adapters rather than concrete database classes (Dependency Inversion Principle).
+*   **Domain Selectors (Read/Query)**: Dedicated query-only interfaces that bypass services for read paths (implementing a CQRS-ish separation). Selectors house database joins, aggregates, and caching layers to build view models for the frontend.
+*   **Domain Repositories (Data Access)**: Decouples the Django ORM from the service layer. All SQL query generation, filter chaining, and ORM accesses are isolated here. If the database engine or ORM changes, only this layer is rewritten.
+*   **Infrastructure (Adapters)**: Interfaces for third-party systems such as SendGrid/SMTP for mail dispatch, Redis for locking/caching, Celery for queue processing, and speech-to-text/LLM engines.
+
+---
 
 ```
 backend/
@@ -114,45 +145,115 @@ backend/
 
 ---
 
-## Request Flow
+## System Control & Data Flows
+
+### 1. API Request & Command Flow (Clean Architecture)
 
 ```
-HTTP Request
-    ↓
-DRF View  (HTTP parsing only — no business logic)
-    ↓
-Serializer  (validation / shape)
-    ↓
-Service  (business logic, transactional boundaries)
-    ↓
-Repository  (the only place that touches ORM directly)
-    ↓
-PostgreSQL
+[Candidate / Recruiter HTTP Request]
+                 │
+                 ▼
+     [DRF Views (Interface)] 
+  (Handles route, authentication check)
+                 │
+                 ▼
+  [DRF Serializers (DTO/Validation)]
+ (Input parsing, type validation, structure)
+                 │
+                 ▼
+   [Application Services (Command)]   <─────►   [Application Selectors (Query)]
+(Transactional business rules execution)         (Bypasses service logic for reads)
+                 │                                             │
+                 ▼                                             ▼
+       [Domain Repositories]                  <────────────────┘
+  (Constructs database queries, filters)
+                 │
+                 ▼
+   [Django ORM / PostgreSQL Database]
 ```
 
-## AI Pipeline Flow
+### 2. Resume Parsing & Profile Pipeline (Asynchronous)
 
 ```
-Session completed
-    ↓
-Celery task: run_assessment_pipeline
-    ↓
-SpeechAnalysisService
-    ├── ISpeechToTextProvider    → transcript
-    ├── ICommunicationAnalysisProvider → grammar, pace, filler words
-    ├── IEmotionDetectionProvider → emotion, confidence
-    └── IEyeContactTrackingProvider → eye contact, attention
-    ↓
-ScoringService
-    ├── CommunicationStrategy  × 30%
-    ├── ConfidenceStrategy     × 25%
-    ├── TechnicalStrategy      × 30%
-    └── ProfessionalismStrategy × 15%
-    ↓
-FeedbackService → IFeedbackGenerationProvider
-    ↓
-NotificationService → IEmailProvider (SMTP / SendGrid)
+[Resume PDF Upload] ──► [API View] ──► [Schedule Celery parsing_task]
+                                                 │
+  ┌──────────────────────────────────────────────┘
+  ▼
+[ParsingService] ──────► Extracts raw text content from PDF document
+  │
+  ▼
+[ExtractionService] ───► Prompts LLM (OpenAI/Gemini) to parse structured schema (skills, work history)
+  │
+  ▼
+[SummaryService] ──────► Generates candidate highlights and structured index profile
+  │
+  ▼
+[ProfileRepository] ───► Persists to CandidateProfile & ExtractedSkills in DB
 ```
+
+### 3. Realtime Voice Call & Transcript Flow (Ultravox WebRTC)
+
+```
+ [Candidate Browser]             SmartHire Django Backend              Ultravox WebRTC Server
+         │                                   │                                    │
+         │─── Accept Invitation ────────────►│                                    │
+         │                                   │─── generate_seed_topics_task ─────►│ (Pre-caches LLM instructions
+         │                                   │    (Builds resume-aware topics)    │  with topic list)
+         │                                   │                                    │
+         │─── Request WebRTC Credentials ───►│                                    │
+         │                                   │─── Create Call REST API ──────────►│
+         │                                   │◄── Return WebRTC Join URL ─────────│
+         │◄── Return Join URL ───────────────│                                    │
+         │                                                                        │
+         │─── Establish Direct Audio Connection (WebRTC) ────────────────────────►│
+         │                                                                        │
+         │◄═══ Host Voice Interview & Ask Questions ══════════════════════════════│
+         │                                                                        │
+         │                                   │◄── Webhook: transcript.turn ───────│ (Pushes audio transcript
+         │                                   │    (Records client/agent text)     │  on every turn)
+         │                                   │                                    │
+         │                                   │◄── Tool Webhook: ask-next-topic ───│ (Fired mid-call when 
+         │                                   │    (Updates current active topic)  │  candidate completes a topic)
+         │                                   │                                    │
+         │─── End Call / Leave ──────────────│                                    │
+         │                                   │─── Terminate Session ─────────────►│
+         │                                   │                                    │
+         │                                   ▼
+         │                        [Celery Scoring & Brief Pipeline]
+```
+
+### 4. Post-Session Scoring & Brief Pipeline (Asynchronous)
+
+```
+[Session Complete Signal]
+           │
+           ▼
+[Schedule Celery run_assessment_pipeline]
+           │
+           ▼
+[SpeechAnalysisService]
+   ├── ISpeechToTextProvider      ──► Merges Ultravox transcript logs
+   ├── ICommunicationProvider     ──► Analyzes pace, grammar, filler words
+   ├── IEmotionDetectionProvider  ──► Evaluates WebRTC sentiment telemetry
+   └── IEyeContactTrackingProvider ──► Analyzes pupil center focus telemetry
+           │
+           ▼
+[ScoringService (Strategy Pattern)]
+   ├── CommunicationStrategy (30% weight) ──► Computes pacing, grammar scores
+   ├── ConfidenceStrategy    (25% weight) ──► Computes emotional & eye contact scores
+   ├── TechnicalStrategy     (30% weight) ──► Computes accuracy & depth of answers
+   └── ProfessionalismStrategy(15% weight) ──► Computes focus & tone scores
+           │
+           ▼
+[FeedbackService]
+   └── Prompts LLM (Gemini/OpenAI) to generate brief reviews, verdict and candidate scorecards
+           │
+           ▼
+[NotificationService]
+   └── Dispatches notification signals & emails recruiters and candidates
+```
+
+---
 
 ---
 
