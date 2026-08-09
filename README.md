@@ -278,39 +278,97 @@ Same pattern for email: `EMAIL_PROVIDER=smtp` (default) or `EMAIL_PROVIDER=sendg
 
 ---
 
-## Local Setup
+## Local Setup & Development Workflows
 
-```bash
-git clone <repo>
-cd backend
-cp .env.example .env          # edit as needed
-python -m venv .venv && source .venv/bin/activate
-pip install -r requirements/dev.txt
-python manage.py migrate
-python manage.py shell < scripts/seed_demo_data.py
-python manage.py runserver
-```
+You can run the application in two ways: **Natively (Multiplexed Local Terminals)** or via **Docker Compose**. 
 
-Async pipeline (separate terminal):
-```bash
-celery -A config worker --loglevel=info
-```
-
-Periodic reminders (separate terminal):
-```bash
-celery -A config beat --loglevel=info
-```
+For real-time voice call functionality (Ultravox WebRTC), you must expose your local server using a tunnel (like `ngrok`) so the external AI service can call your webhook endpoints.
 
 ---
 
-## Docker
+### Method A: Native Local Development (Windows / macOS / Linux)
 
+This setup runs services directly on your host machine.
+
+#### Step 1: Base Environment Setup
 ```bash
-cp .env.example .env
-docker compose up --build
+git clone <repo>
+cd backend
+cp .env.example .env          # edit as needed (set AI_SERVICE_PROVIDER, etc.)
+python -m venv .venv
+
+# Windows activation:
+.venv\Scripts\activate
+# Linux/macOS activation:
+source .venv/bin/activate
+
+pip install -r requirements/dev.txt
+python manage.py migrate
+python manage.py shell < scripts/seed_demo_data.py
 ```
 
-Starts: PostgreSQL, Redis, Django (gunicorn), Nginx, Celery worker, Celery beat.
+#### Step 2: Running the Services (4-Terminal Loop)
+
+*   **Terminal 1 — ngrok Tunnel (Required for WebRTC Webhooks)**
+    Expose your local port 8000 to the public web:
+    ```bash
+    ngrok http 8000
+    ```
+    *Copy the resulting `https://<your-subdomain>.ngrok-free.app` URL. Keep this terminal open.*
+
+*   **Terminal 2 — Django Server**
+    ```bash
+    cd backend
+    python manage.py runserver
+    ```
+
+*   **Terminal 3 — Celery Worker**
+    *   **Windows**: Celery does not support standard unix-preforking natively. You **must** specify the `solo` pool:
+        ```bash
+        cd backend
+        .venv\Scripts\activate
+        celery -A config worker --loglevel=info --pool=solo
+        ```
+    *   **macOS / Linux**:
+        ```bash
+        cd backend
+        source .venv/bin/activate
+        celery -A config worker --loglevel=info
+        ```
+
+*   **Terminal 4 — Register Ultravox Webhooks**
+    Provide Ultravox with your public ngrok gateway to route transcript feeds and custom tool calls:
+    ```bash
+    cd backend
+    uv run manage.py setup_realtime_webhook
+    ```
+
+---
+
+### Method B: Docker Compose Development (Recommended for Isolation)
+
+Docker Compose containerizes PostgreSQL, Redis, Django, and Celery, running them in a Linux environment natively.
+
+#### Step 1: Run the Docker Stack
+```bash
+cp .env.example .env          # edit env values as needed
+docker compose up --build
+```
+*This command starts PostgreSQL, Redis, Django (on port 8000), Celery Worker (using standard preforking), and Celery Beat.*
+
+#### Step 2: Configure Webhooks for Ultravox (Realtime Call Loop)
+
+*   **Terminal 1 — ngrok Tunnel**
+    Expose the Docker-mapped port `8000` to the public internet:
+    ```bash
+    ngrok http 8000
+    ```
+
+*   **Terminal 2 — Webhook Registration**
+    Execute the webhook registration command inside the running Django container:
+    ```bash
+    docker compose exec web python manage.py setup_realtime_webhook
+    ```
 
 ---
 
