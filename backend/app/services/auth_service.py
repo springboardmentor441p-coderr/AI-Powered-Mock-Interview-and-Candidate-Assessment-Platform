@@ -1,7 +1,7 @@
 from sqlalchemy.orm import Session
 
 from app.repositories.user_repository import UserRepository
-from app.schemas.auth import AuthResponse, LoginRequest, RegisterRequest, UserResponse
+from app.schemas.auth import AuthResponse, LoginRequest, RegisterRequest, UserResponse, ResetPasswordRequest
 from app.utils.jwt_utils import decode_token
 from app.utils.security import create_access_token, hash_password, verify_password
 
@@ -35,3 +35,10 @@ class AuthService:
             return None
         subject = payload.get("sub")
         return int(subject) if subject and str(subject).isdigit() else None
+
+    def reset_password(self, payload: ResetPasswordRequest) -> None:
+        user = self.user_repository.get_by_email(payload.email.lower())
+        if not user:
+            raise ValueError("Email address not found")
+        password_hash = hash_password(payload.new_password)
+        self.user_repository.update_password(user, password_hash)

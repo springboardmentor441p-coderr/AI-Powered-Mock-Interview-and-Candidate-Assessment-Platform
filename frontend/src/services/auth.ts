@@ -170,6 +170,32 @@ export const authService = {
     localStorage.removeItem('accessToken')
     localStorage.removeItem('user')
   },
+
+  resetPassword: async (email: string, newPassword: string) => {
+    try {
+      return await apiClient.post('/auth/reset-password', { email, new_password: newPassword })
+    } catch (err: any) {
+      if (!shouldFallbackToLocal(err)) {
+        throw err
+      }
+
+      const users = getLocalUsers()
+      const userIdx = users.findIndex((user) => user.email.toLowerCase() === email.toLowerCase())
+      if (userIdx === -1) {
+        throw buildError('Email address not found.')
+      }
+
+      users[userIdx].password = newPassword
+      setLocalUsers(users)
+
+      return {
+        data: {
+          status: 'success',
+          message: 'Password reset locally.'
+        }
+      }
+    }
+  },
 }
 
 export default apiClient

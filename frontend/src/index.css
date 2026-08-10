@@ -4,7 +4,8 @@
 
 @layer base {
   body {
-    @apply bg-slate-950 text-gray-100 antialiased;
+    @apply bg-[#060814] text-slate-100 antialiased;
+    font-family: 'Plus Jakarta Sans', sans-serif;
   }
 }
 
@@ -28,6 +29,31 @@
   .fade-in-up {
     animation: fade-in-up 420ms ease-out both;
   }
+
+  /* Custom glassmorphism and glowing components */
+  .glass-card {
+    @apply bg-[#0d1226]/80 backdrop-blur-md border border-[#1e294b] shadow-[0_4px_30px_rgba(0,0,0,0.4)];
+  }
+
+  .glass-card-hover {
+    @apply transition-all duration-300 hover:border-[#3b4f8a] hover:shadow-[0_4px_30px_rgba(99,102,241,0.1)];
+  }
+
+  .glow-purple {
+    box-shadow: 0 0 20px rgba(139, 92, 246, 0.15);
+  }
+
+  .glow-blue {
+    box-shadow: 0 0 20px rgba(59, 130, 246, 0.15);
+  }
+
+  .glow-teal {
+    box-shadow: 0 0 20px rgba(20, 184, 166, 0.15);
+  }
+
+  .glow-indigo {
+    box-shadow: 0 0 20px rgba(79, 70, 229, 0.15);
+  }
 }
 
 @keyframes fade-in-up {
@@ -40,4 +66,23 @@
     opacity: 1;
     transform: translateY(0);
   }
+}
+
+/* Custom Scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: #060814;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #1e294b;
+  border-radius: 9999px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #3b4f8a;
 }

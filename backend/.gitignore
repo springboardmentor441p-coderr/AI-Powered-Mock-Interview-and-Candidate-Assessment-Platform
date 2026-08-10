@@ -1,0 +1,24 @@
+# Python bytecode & cache
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Virtual environments
+.env
+.venv
+venv/
+ENV/
+env/
+
+# pytest and typing cache
+.pytest_cache/
+.mypy_cache/
+
+# SQLite databases
+*.db
+*.db-journal
+mock_interview.db
+mock_interview.db-journal
+
+# Candidate uploads
+uploads/

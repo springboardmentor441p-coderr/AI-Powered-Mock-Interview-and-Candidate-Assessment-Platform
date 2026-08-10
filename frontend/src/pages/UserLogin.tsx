@@ -71,9 +71,9 @@ export default function UserLogin() {
             <input type="checkbox" className="rounded border-gray-300" />
             <span className="ml-2 text-sm text-gray-600">Remember me</span>
           </label>
-          <a href="#" className="text-sm text-primary-600 hover:text-primary-700 font-medium">
+          <Link to="/forgot-password" className="text-sm text-primary-600 hover:text-primary-700 font-medium">
             Forgot password?
-          </a>
+          </Link>
         </div>
 
         <button
