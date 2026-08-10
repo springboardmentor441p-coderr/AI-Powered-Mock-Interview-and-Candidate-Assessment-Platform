@@ -1,13 +1,8 @@
 from __future__ import annotations
 
 import re
-
-from sqlalchemy import select
-from sqlalchemy.orm import Session
-
-from backend.database import engine
+from backend.database import db
 from backend.models.candidate import Candidate
-from backend.models.user import User
 
 
 def extract_candidate_name(email: str) -> str:
@@ -19,18 +14,11 @@ def extract_candidate_name(email: str) -> str:
 
 
 def init_db() -> None:
-    from backend.database import Base
-
-    Base.metadata.create_all(bind=engine)
-
-
-init_db()
-
+    pass
 
 def load_candidates() -> list[dict]:
-    with Session(engine) as session:
-        candidates = session.scalars(select(Candidate)).all()
-        return [candidate.to_dict() for candidate in candidates]
+    docs = db.candidates.find()
+    return [Candidate.from_mongo(doc).to_dict() for doc in docs]
 
 
 def save_candidate(
@@ -43,20 +31,32 @@ def save_candidate(
     graduation_year: str | None = None,
     cgpa: str | None = None,
 ) -> dict:
-    with Session(engine) as session:
-        candidate = session.scalar(select(Candidate).where(Candidate.email == email))
-        if candidate is None:
-            candidate = Candidate(email=email, name=extract_candidate_name(email))
-            session.add(candidate)
-        candidate.name = extract_candidate_name(email)
-        candidate.resume_name = resume_name
-        candidate.resume_preview = resume_preview
-        candidate.resume_path = resume_path
-        candidate.resume_uploaded = bool(resume_name)
-        if college_name: candidate.college_name = college_name
-        if degree: candidate.degree = degree
-        if graduation_year: candidate.graduation_year = graduation_year
-        if cgpa: candidate.cgpa = cgpa
-        session.commit()
-        session.refresh(candidate)
-        return candidate.to_dict()
+    doc = db.candidates.find_one({"email": email})
+    if doc is None:
+        candidate = Candidate(email=email, name=extract_candidate_name(email))
+        doc_to_insert = candidate.model_dump(by_alias=True)
+        if "_id" in doc_to_insert and not doc_to_insert["_id"]:
+            del doc_to_insert["_id"]
+        result = db.candidates.insert_one(doc_to_insert)
+        candidate.id = str(result.inserted_id)
+    else:
+        candidate = Candidate.from_mongo(doc)
+
+    candidate.name = extract_candidate_name(email)
+    if resume_name is not None: candidate.resume_name = resume_name
+    if resume_preview is not None: candidate.resume_preview = resume_preview
+    if resume_path is not None: candidate.resume_path = resume_path
+    candidate.resume_uploaded = bool(candidate.resume_name)
+    if college_name is not None: candidate.college_name = college_name
+    if degree is not None: candidate.degree = degree
+    if graduation_year is not None: candidate.graduation_year = graduation_year
+    if cgpa is not None: candidate.cgpa = cgpa
+
+    update_data = candidate.model_dump(by_alias=True)
+    if "_id" in update_data:
+        del update_data["_id"]
+
+    db.candidates.update_one({"email": email}, {"$set": update_data})
+    
+    return candidate.to_dict()
+

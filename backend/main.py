@@ -7,13 +7,14 @@ API structure:
   /interview/*    — session lifecycle, Q&A, reports
   /dashboard/*    — analytics, progress, weak areas
   /ml/*           — model training, prediction, data export
+  /reports/*      — report export
   /health         — simple health check
 """
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from backend.routers import auth, candidates
-from backend.routers import interview, dashboard, ml_router
+from backend.routers import interview, dashboard, ml_router, report_export
 from backend.database import init_db
 
 # ── Create tables on startup ─────────────────────────────────────────────────
@@ -43,6 +44,7 @@ app.include_router(candidates.router,    prefix="/candidates",  tags=["Candidate
 app.include_router(interview.router,     prefix="/interview",   tags=["Interview"])
 app.include_router(dashboard.router,     prefix="/dashboard",   tags=["Dashboard"])
 app.include_router(ml_router.router,     prefix="/ml",          tags=["ML Training"])
+app.include_router(report_export.router, prefix="/reports",     tags=["Reports"])
 
 
 @app.get("/health", tags=["Health"])

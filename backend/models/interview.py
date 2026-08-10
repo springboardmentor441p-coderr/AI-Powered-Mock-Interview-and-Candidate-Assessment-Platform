@@ -3,99 +3,122 @@ Interview session, questions, responses, and scores.
 One InterviewSession → many Questions → each Question has one Response → one Score.
 """
 from datetime import datetime
-from sqlalchemy import DateTime, Float, ForeignKey, Integer, String, Text, JSON
-from sqlalchemy.orm import Mapped, mapped_column, relationship
-from backend.database import Base
+from typing import Optional, Dict, Any
+from pydantic import BaseModel, Field
+
+class InterviewSession(BaseModel):
+    id: str = Field(alias="_id", default="")
+    user_id: str
+    interview_type: str
+    domain: str
+    difficulty: str
+    status: str = "active"
+    total_questions: int = 10
+    started_at: datetime = Field(default_factory=datetime.utcnow)
+    ended_at: Optional[datetime] = None
+
+    def to_dict(self):
+        d = self.model_dump(by_alias=True)
+        d["id"] = str(d.pop("_id", self.id))
+        d["started_at"] = self.started_at.isoformat() if self.started_at else None
+        d["ended_at"] = self.ended_at.isoformat() if self.ended_at else None
+        return d
+        
+    @classmethod
+    def from_mongo(cls, data: dict):
+        if not data:
+            return None
+        if "_id" in data:
+            data["_id"] = str(data["_id"])
+        if "user_id" in data:
+            data["user_id"] = str(data["user_id"])
+        return cls(**data)
 
 
-class InterviewSession(Base):
-    __tablename__ = "interview_sessions"
+class Question(BaseModel):
+    id: str = Field(alias="_id", default="")
+    session_id: str
+    question_number: int
+    question_text: str
+    expected_keywords: Optional[str] = None
+    created_at: datetime = Field(default_factory=datetime.utcnow)
 
-    id: Mapped[int]           = mapped_column(primary_key=True, index=True)
-    user_id: Mapped[int]      = mapped_column(ForeignKey("users.id"), index=True)
-    interview_type: Mapped[str]  = mapped_column(String(50))   # Technical | HR | Behavioral | Aptitude
-    domain: Mapped[str]          = mapped_column(String(100))  # Web Dev | AI/ML | Finance ...
-    difficulty: Mapped[str]      = mapped_column(String(20))   # Easy | Medium | Hard
-    status: Mapped[str]          = mapped_column(String(20), default="active")  # active | completed
-    total_questions: Mapped[int] = mapped_column(Integer, default=10)
-    started_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
-    ended_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
-
-    # Relationships
-    questions: Mapped[list["Question"]] = relationship("Question", back_populates="session", cascade="all, delete")
-    score: Mapped["SessionScore | None"]  = relationship("SessionScore", back_populates="session", uselist=False, cascade="all, delete")
-
-
-class Question(Base):
-    __tablename__ = "questions"
-
-    id: Mapped[int]              = mapped_column(primary_key=True, index=True)
-    session_id: Mapped[int]      = mapped_column(ForeignKey("interview_sessions.id"), index=True)
-    question_number: Mapped[int] = mapped_column(Integer)
-    question_text: Mapped[str]   = mapped_column(Text)
-    expected_keywords: Mapped[str | None] = mapped_column(Text, nullable=True)  # comma-separated
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
-
-    session:  Mapped["InterviewSession"] = relationship("InterviewSession", back_populates="questions")
-    response: Mapped["Response | None"]  = relationship("Response", back_populates="question", uselist=False, cascade="all, delete")
+    def to_dict(self):
+        d = self.model_dump(by_alias=True)
+        d["id"] = str(d.pop("_id", self.id))
+        d["created_at"] = self.created_at.isoformat() if self.created_at else None
+        return d
+        
+    @classmethod
+    def from_mongo(cls, data: dict):
+        if not data:
+            return None
+        if "_id" in data:
+            data["_id"] = str(data["_id"])
+        if "session_id" in data:
+            data["session_id"] = str(data["session_id"])
+        return cls(**data)
 
 
-class Response(Base):
-    __tablename__ = "responses"
+class Response(BaseModel):
+    id: str = Field(alias="_id", default="")
+    question_id: str
+    session_id: str
+    transcript: Optional[str] = None
+    speech_features: Optional[Dict[str, Any]] = None
+    vision_features: Optional[Dict[str, Any]] = None
+    answer_score: Optional[float] = None
+    ai_feedback: Optional[str] = None
+    answered_at: datetime = Field(default_factory=datetime.utcnow)
 
-    id: Mapped[int]          = mapped_column(primary_key=True, index=True)
-    question_id: Mapped[int] = mapped_column(ForeignKey("questions.id"), index=True)
-    session_id: Mapped[int]  = mapped_column(ForeignKey("interview_sessions.id"), index=True)
-
-    # What the candidate said (from Whisper STT)
-    transcript: Mapped[str | None] = mapped_column(Text, nullable=True)
-
-    # Speech analysis features (stored as JSON for flexibility)
-    speech_features: Mapped[dict | None] = mapped_column(JSON, nullable=True)
-    # Example: {"word_count": 85, "filler_count": 3, "pace_wpm": 142,
-    #            "filler_words": ["um","uh"], "grammar_errors": 1}
-
-    # Vision features from webcam
-    vision_features: Mapped[dict | None] = mapped_column(JSON, nullable=True)
-    # Example: {"eye_contact_pct": 84, "emotion": "confident", "attention_score": 0.9}
-
-    # AI evaluation of answer quality
-    answer_score: Mapped[float | None]    = mapped_column(Float, nullable=True)  # 0-100
-    ai_feedback: Mapped[str | None]       = mapped_column(Text, nullable=True)
-
-    answered_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
-
-    question: Mapped["Question"] = relationship("Question", back_populates="response")
+    def to_dict(self):
+        d = self.model_dump(by_alias=True)
+        d["id"] = str(d.pop("_id", self.id))
+        d["answered_at"] = self.answered_at.isoformat() if self.answered_at else None
+        return d
+        
+    @classmethod
+    def from_mongo(cls, data: dict):
+        if not data:
+            return None
+        if "_id" in data:
+            data["_id"] = str(data["_id"])
+        if "question_id" in data:
+            data["question_id"] = str(data["question_id"])
+        if "session_id" in data:
+            data["session_id"] = str(data["session_id"])
+        return cls(**data)
 
 
-class SessionScore(Base):
-    """
-    Final weighted score for a completed interview session.
-    Formula: Communication×0.30 + Confidence×0.25 + Technical×0.30 + Professionalism×0.15
-    """
-    __tablename__ = "session_scores"
+class SessionScore(BaseModel):
+    id: str = Field(alias="_id", default="")
+    session_id: str
+    user_id: str
+    communication_score: float = 0
+    confidence_score: float = 0
+    technical_score: float = 0
+    professionalism_score: float = 0
+    overall_score: float = 0
+    rating: str = ""
+    strengths: Optional[str] = None
+    weaknesses: Optional[str] = None
+    suggestions: Optional[str] = None
+    scored_at: datetime = Field(default_factory=datetime.utcnow)
 
-    id: Mapped[int]         = mapped_column(primary_key=True, index=True)
-    session_id: Mapped[int] = mapped_column(ForeignKey("interview_sessions.id"), unique=True, index=True)
-    user_id: Mapped[int]    = mapped_column(ForeignKey("users.id"), index=True)
-
-    # Sub-scores (0-100)
-    communication_score: Mapped[float]    = mapped_column(Float, default=0)   # 30% weight
-    confidence_score: Mapped[float]       = mapped_column(Float, default=0)   # 25% weight
-    technical_score: Mapped[float]        = mapped_column(Float, default=0)   # 30% weight
-    professionalism_score: Mapped[float]  = mapped_column(Float, default=0)   # 15% weight
-
-    # Weighted final score
-    overall_score: Mapped[float] = mapped_column(Float, default=0)
-
-    # Rating label
-    rating: Mapped[str] = mapped_column(String(30), default="")  # Excellent|Good|Average|Needs Improvement|Poor
-
-    # AI-generated textual feedback
-    strengths: Mapped[str | None]     = mapped_column(Text, nullable=True)
-    weaknesses: Mapped[str | None]    = mapped_column(Text, nullable=True)
-    suggestions: Mapped[str | None]   = mapped_column(Text, nullable=True)
-
-    scored_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
-
-    session: Mapped["InterviewSession"] = relationship("InterviewSession", back_populates="score")
+    def to_dict(self):
+        d = self.model_dump(by_alias=True)
+        d["id"] = str(d.pop("_id", self.id))
+        d["scored_at"] = self.scored_at.isoformat() if self.scored_at else None
+        return d
+        
+    @classmethod
+    def from_mongo(cls, data: dict):
+        if not data:
+            return None
+        if "_id" in data:
+            data["_id"] = str(data["_id"])
+        if "session_id" in data:
+            data["session_id"] = str(data["session_id"])
+        if "user_id" in data:
+            data["user_id"] = str(data["user_id"])
+        return cls(**data)

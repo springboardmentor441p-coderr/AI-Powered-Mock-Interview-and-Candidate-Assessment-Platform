@@ -1,37 +1,24 @@
-"""
-database.py — SQLAlchemy engine + session factory
-All models import Base from here and call Base.metadata.create_all()
-"""
 import os
-from sqlalchemy import create_engine
-from sqlalchemy.orm import DeclarativeBase, sessionmaker
+from pymongo import MongoClient
 from dotenv import load_dotenv
 
 load_dotenv()
 
-DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///./smarthire.db")
+MONGO_URI = os.getenv("MONGO_URI", "mongodb+srv://swathikavasuki_db_user:KgdUPYg5a7K4OaFB@cluster0.t3obdko.mongodb.net/?appName=Cluster0")
+DB_NAME = "smarthire"
 
-# SQLite needs check_same_thread=False; PostgreSQL doesn't need it
-connect_args = {"check_same_thread": False} if DATABASE_URL.startswith("sqlite") else {}
-
-engine = create_engine(DATABASE_URL, connect_args=connect_args)
-SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
-
-
-class Base(DeclarativeBase):
-    pass
-
+client = MongoClient(MONGO_URI)
+db = client[DB_NAME]
 
 def get_db():
-    """FastAPI dependency — yields a DB session, always closes it after request."""
-    db = SessionLocal()
-    try:
-        yield db
-    finally:
-        db.close()
-
+    """FastAPI dependency — yields the MongoDB database instance."""
+    yield db
 
 def init_db():
-    """Create all tables if they don't exist yet."""
-    from backend.models import user, candidate, session, training  # noqa: F401
-    Base.metadata.create_all(bind=engine)
+    """Initialize collections or indexes if necessary."""
+    try:
+        db.users.create_index("email", unique=True)
+        db.candidates.create_index("email", unique=True)
+        print("[MongoDB] Database initialized.")
+    except Exception as e:
+        print(f"[MongoDB] Init error: {e}")

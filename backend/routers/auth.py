@@ -8,8 +8,8 @@ Endpoints:
 """
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
-from sqlalchemy.orm import Session
-from sqlalchemy import select
+from pymongo.database import Database
+from bson import ObjectId
 from pydantic import BaseModel, EmailStr
 
 
@@ -48,26 +48,30 @@ class TokenResponse(BaseModel):
 
 # ── Helpers ──────────────────────────────────────────────────────────────────
 
-def get_current_user(token: str = Depends(oauth2_scheme), db: Session = Depends(get_db)) -> User:
+def get_current_user(token: str = Depends(oauth2_scheme), db: Database = Depends(get_db)) -> User:
     """FastAPI dependency — decode JWT and return the User object."""
     try:
         payload = decode_access_token(token)
-        user_id = int(payload["sub"])
+        user_id = payload["sub"]
     except Exception:
         raise HTTPException(status_code=401, detail="Invalid or expired token")
 
-    user = db.scalar(select(User).where(User.id == user_id))
-    if not user:
+    try:
+        user_data = db.users.find_one({"_id": ObjectId(user_id)})
+    except Exception:
+        raise HTTPException(status_code=401, detail="Invalid user ID format")
+        
+    if not user_data:
         raise HTTPException(status_code=401, detail="User not found")
-    return user
+    return User.from_mongo(user_data)
 
 
 # ── Routes ───────────────────────────────────────────────────────────────────
 
 @router.post("/register", response_model=TokenResponse)
-def register(payload: RegisterRequest, db: Session = Depends(get_db)):
+def register(payload: RegisterRequest, db: Database = Depends(get_db)):
     """Register a new user and return JWT token immediately."""
-    existing = db.scalar(select(User).where(User.email == payload.email))
+    existing = db.users.find_one({"email": payload.email})
     if existing:
         raise HTTPException(status_code=400, detail="Email already registered")
 
@@ -77,19 +81,27 @@ def register(payload: RegisterRequest, db: Session = Depends(get_db)):
         full_name       = payload.full_name,
         role            = payload.role,
     )
-    db.add(user)
-    db.commit()
-    db.refresh(user)
+    # Insert without `_id` so Mongo auto-generates it
+    user_dict = user.model_dump(by_alias=True)
+    if "_id" in user_dict and not user_dict["_id"]:
+        del user_dict["_id"]
+        
+    result = db.users.insert_one(user_dict)
+    user.id = str(result.inserted_id)
 
     token = create_access_token(subject=user.id)
     return {"access_token": token, "token_type": "bearer", "user": user.to_dict()}
 
 
 @router.post("/login", response_model=TokenResponse)
-def login(form: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(get_db)):
+def login(form: OAuth2PasswordRequestForm = Depends(), db: Database = Depends(get_db)):
     """Standard OAuth2 login — returns JWT token."""
-    user = db.scalar(select(User).where(User.email == form.username))
-    if not user or not verify_password(form.password, user.hashed_password):
+    user_data = db.users.find_one({"email": form.username})
+    if not user_data:
+        raise HTTPException(status_code=401, detail="Incorrect email or password")
+        
+    user = User.from_mongo(user_data)
+    if not verify_password(form.password, user.hashed_password):
         raise HTTPException(status_code=401, detail="Incorrect email or password")
 
     token = create_access_token(subject=user.id)

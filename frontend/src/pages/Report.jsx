@@ -49,13 +49,22 @@ export default function Report({ navigate }) {
           <div className="px-4 py-3 rounded-xl bg-error/10 border border-error/20 text-error">{error}</div>
         ) : report && (
           <>
-            {/* Header */}
             <div className="flex items-center justify-between mb-10">
               <div>
                 <span className="font-mono-label text-mono-label text-primary uppercase tracking-[0.3em] block mb-1">Performance Index</span>
                 <h1 className="font-display-lg text-display-lg text-on-surface tracking-tighter">Session Report</h1>
               </div>
               <div className="flex gap-3">
+                <button onClick={() => {
+                  const params = new URLSearchParams(window.location.search);
+                  const sid = params.get('sid');
+                  if (sid) {
+                    api.downloadReport(sid).catch(err => alert("Download failed: " + err.message));
+                  }
+                }} className="flex items-center gap-2 px-5 py-2.5 bg-secondary-container text-on-secondary-container font-bold rounded-xl hover:scale-[1.02] transition-all">
+                  <span className="material-symbols-outlined text-[18px]">download</span>
+                  Download PDF
+                </button>
                 <button onClick={() => navigate('interview-setup')} className="flex items-center gap-2 px-5 py-2.5 bg-primary text-on-primary font-bold rounded-xl hover:scale-[1.02] transition-all shadow-[0_0_20px_rgba(0,240,255,0.2)]">
                   <span className="material-symbols-outlined text-[18px]">play_arrow</span>
                   Start Training Session

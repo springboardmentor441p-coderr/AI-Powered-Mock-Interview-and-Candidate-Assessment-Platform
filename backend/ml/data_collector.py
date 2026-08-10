@@ -12,80 +12,72 @@ to re-train or fine-tune the scoring model.
 import os
 import csv
 from pathlib import Path
-from sqlalchemy.orm import Session
-from sqlalchemy import select
+from bson import ObjectId
 
-from backend.database import engine
+from backend.database import db
 from backend.models.training import TrainingDataPoint
 from backend.models.session import InterviewAnswer, InterviewQuestion, InterviewSession
 
 EXPORT_PATH = Path(__file__).parent / "training_data" / "interview_data.csv"
 
-
-def collect_from_session(session_id: int) -> int:
+def collect_from_session(session_id: str) -> int:
     """
-    Pull all Q&A pairs from a completed session and save to training_data table.
+    Pull all Q&A pairs from a completed session and save to training_data collection.
     Returns number of rows saved.
     """
     rows_saved = 0
-    with Session(engine) as db:
-        # get session info
-        sess = db.scalar(select(InterviewSession).where(InterviewSession.id == session_id))
-        if not sess:
-            return 0
+    session_doc = db.interview_sessions.find_one({"_id": ObjectId(session_id)})
+    if not session_doc:
+        return 0
+    sess = InterviewSession.from_mongo(session_doc)
 
-        # get all questions for this session
-        questions = db.scalars(
-            select(InterviewQuestion).where(InterviewQuestion.session_id == session_id)
-        ).all()
+    q_docs = list(db.interview_questions.find({"session_id": session_id}))
+    for q_doc in q_docs:
+        q = InterviewQuestion.from_mongo(q_doc)
+        a_doc = db.interview_answers.find_one({"question_id": q.id})
+        if not a_doc:
+            continue
+        a = InterviewAnswer.from_mongo(a_doc)
 
-        for q in questions:
-            if not q.answer:
-                continue
-            a = q.answer
+        overall = (
+            a.communication_score   * 0.30 +
+            a.confidence_score      * 0.25 +
+            a.technical_score       * 0.30 +
+            a.professionalism_score * 0.15
+        )
 
-            # calculate overall from the per-answer scores
-            overall = (
-                a.communication_score   * 0.30 +
-                a.confidence_score      * 0.25 +
-                a.technical_score       * 0.30 +
-                a.professionalism_score * 0.15
-            )
+        point = TrainingDataPoint(
+            session_id         = session_id,
+            question_text      = q.question_text,
+            answer_text        = a.transcribed_text,
+            interview_type     = sess.interview_type,
+            domain             = sess.domain,
+            difficulty         = sess.difficulty,
+            communication_score   = a.communication_score,
+            technical_score       = a.technical_score,
+            confidence_score      = a.confidence_score,
+            professionalism_score = a.professionalism_score,
+            overall_score         = round(overall, 1),
+            word_count            = len((a.transcribed_text or "").split()),
+            filler_word_count     = a.filler_word_count,
+            words_per_minute      = a.words_per_minute,
+            answer_duration       = a.answer_duration,
+            source                = "gpt_evaluated",
+        )
+        p_dict = point.model_dump(by_alias=True)
+        if "_id" in p_dict and not p_dict["_id"]:
+            del p_dict["_id"]
+        db.training_data.insert_one(p_dict)
+        rows_saved += 1
 
-            point = TrainingDataPoint(
-                session_id         = session_id,
-                question_text      = q.question_text,
-                answer_text        = a.transcribed_text,
-                interview_type     = sess.interview_type,
-                domain             = sess.domain,
-                difficulty         = sess.difficulty,
-                communication_score   = a.communication_score,
-                technical_score       = a.technical_score,
-                confidence_score      = a.confidence_score,
-                professionalism_score = a.professionalism_score,
-                overall_score         = round(overall, 1),
-                word_count            = len(a.transcribed_text.split()),
-                filler_word_count     = a.filler_word_count,
-                words_per_minute      = a.words_per_minute,
-                answer_duration       = a.answer_duration,
-                source                = "gpt_evaluated",
-            )
-            db.add(point)
-            rows_saved += 1
-
-        db.commit()
     return rows_saved
 
 
 def export_to_csv() -> str:
-    """
-    Export all training data from DB to CSV file.
-    Returns path to the CSV file.
-    """
     EXPORT_PATH.parent.mkdir(parents=True, exist_ok=True)
 
-    with Session(engine) as db:
-        rows = db.scalars(select(TrainingDataPoint)).all()
+    docs = list(db.training_data.find())
+    rows = [TrainingDataPoint.from_mongo(d) for d in docs]
 
     fieldnames = [
         "id", "question_text", "answer_text", "interview_type", "domain", "difficulty",
@@ -105,9 +97,8 @@ def export_to_csv() -> str:
 
 
 def get_stats() -> dict:
-    """Return training data statistics."""
-    with Session(engine) as db:
-        rows = db.scalars(select(TrainingDataPoint)).all()
+    docs = list(db.training_data.find())
+    rows = [TrainingDataPoint.from_mongo(d) for d in docs]
 
     if not rows:
         return {"total_rows": 0}

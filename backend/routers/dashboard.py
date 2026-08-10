@@ -6,11 +6,11 @@ GET /dashboard/progress     — score trend over last N sessions
 GET /dashboard/weak-areas   — which dimensions score lowest
 """
 from fastapi import APIRouter, Depends
-from sqlalchemy.orm import Session
-from sqlalchemy import select, func
+from pymongo.database import Database
+import pymongo
 
 from backend.database import get_db
-from backend.models.session import InterviewSession, SessionReport
+from backend.models.session import SessionReport
 from backend.models.user import User
 from backend.routers.auth import get_current_user
 
@@ -19,15 +19,12 @@ router = APIRouter()
 
 @router.get("/stats")
 def get_stats(
-    db: Session = Depends(get_db),
+    db: Database = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
     """Return summary stats for the candidate dashboard header cards."""
-    reports = db.scalars(
-        select(SessionReport)
-        .where(SessionReport.user_id == current_user.id)
-        .order_by(SessionReport.created_at.desc())
-    ).all()
+    report_docs = list(db.session_reports.find({"user_id": current_user.id}).sort("created_at", pymongo.DESCENDING))
+    reports = [SessionReport.from_mongo(doc) for doc in report_docs]
 
     if not reports:
         return {
@@ -62,16 +59,12 @@ def get_stats(
 @router.get("/progress")
 def get_progress(
     limit: int = 10,
-    db: Session = Depends(get_db),
+    db: Database = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
     """Return score trend — last N sessions ordered oldest first (for chart)."""
-    reports = db.scalars(
-        select(SessionReport)
-        .where(SessionReport.user_id == current_user.id)
-        .order_by(SessionReport.created_at.desc())
-        .limit(limit)
-    ).all()
+    report_docs = list(db.session_reports.find({"user_id": current_user.id}).sort("created_at", pymongo.DESCENDING).limit(limit))
+    reports = [SessionReport.from_mongo(doc) for doc in report_docs]
 
     # Reverse so chart goes oldest → newest
     reports = list(reversed(reports))
@@ -92,13 +85,12 @@ def get_progress(
 
 @router.get("/weak-areas")
 def get_weak_areas(
-    db: Session = Depends(get_db),
+    db: Database = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
     """Identify which skill areas the candidate scores lowest on."""
-    reports = db.scalars(
-        select(SessionReport).where(SessionReport.user_id == current_user.id)
-    ).all()
+    report_docs = list(db.session_reports.find({"user_id": current_user.id}))
+    reports = [SessionReport.from_mongo(doc) for doc in report_docs]
 
     if not reports:
         return []
@@ -159,3 +151,4 @@ def chat_with_bot(
         return {"response": response.choices[0].message.content}
     except Exception as e:
         return {"response": f"Error: {str(e)}"}
+

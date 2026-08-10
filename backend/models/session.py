@@ -6,202 +6,174 @@ Each question gets one answer from the candidate.
 After all answers, a SessionReport is generated with scores.
 """
 from datetime import datetime
-from sqlalchemy import DateTime, Float, ForeignKey, Integer, String, Text, JSON
-from sqlalchemy.orm import Mapped, mapped_column, relationship
-from backend.database import Base
+from typing import Optional, List
+from pydantic import BaseModel, Field
 
-
-class InterviewSession(Base):
-    """One mock interview run by a candidate."""
-    __tablename__ = "interview_sessions"
-
-    id:             Mapped[int]  = mapped_column(primary_key=True, index=True)
-    user_id:        Mapped[int]  = mapped_column(Integer, ForeignKey("users.id"), index=True)
-    interview_type: Mapped[str]  = mapped_column(String(50))   # Technical | HR | Behavioral | Aptitude
-    domain:         Mapped[str]  = mapped_column(String(100))  # Web Dev | AI/ML | Finance | Core CS
-    difficulty:     Mapped[str]  = mapped_column(String(20))   # Easy | Medium | Hard
-    status:         Mapped[str]  = mapped_column(String(20), default="active")  # active | completed | abandoned
-    started_at:     Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
-    ended_at:       Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
-    rules_accepted_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+class InterviewSession(BaseModel):
+    id: str = Field(alias="_id", default="")
+    user_id: str
+    interview_type: str
+    domain: str
+    difficulty: str
+    status: str = "active"
+    started_at: datetime = Field(default_factory=datetime.utcnow)
+    ended_at: Optional[datetime] = None
+    rules_accepted_at: Optional[datetime] = None
     
-    # Scheduling fields
-    company_name:     Mapped[str | None] = mapped_column(String(100), nullable=True)
-    job_title:        Mapped[str | None] = mapped_column(String(100), nullable=True)
-    scheduled_start:  Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
-    duration_minutes: Mapped[int] = mapped_column(Integer, default=30)
-
-    # relationships
-    questions = relationship("InterviewQuestion", back_populates="session", cascade="all, delete")
-    report    = relationship("SessionReport", back_populates="session", uselist=False, cascade="all, delete")
+    company_name: Optional[str] = None
+    job_title: Optional[str] = None
+    scheduled_start: Optional[datetime] = None
+    duration_minutes: int = 30
+    
+    question_count: int = 0  # We store count directly since relationships aren't magic anymore
 
     def to_dict(self):
-        return {
-            "id": self.id,
-            "user_id": self.user_id,
-            "interview_type": self.interview_type,
-            "domain": self.domain,
-            "difficulty": self.difficulty,
-            "status": self.status,
-            "started_at": self.started_at.isoformat(),
-            "ended_at": self.ended_at.isoformat() if self.ended_at else None,
-            "rules_accepted_at": self.rules_accepted_at.isoformat() if getattr(self, 'rules_accepted_at', None) else None,
-            "company_name": getattr(self, 'company_name', None),
-            "job_title": getattr(self, 'job_title', None),
-            "scheduled_start": self.scheduled_start.isoformat() if getattr(self, 'scheduled_start', None) else None,
-            "duration_minutes": getattr(self, 'duration_minutes', 30),
-            "question_count": len(self.questions) if self.questions else 0,
-        }
+        d = self.model_dump(by_alias=True)
+        d["id"] = str(d.pop("_id", self.id))
+        d["started_at"] = self.started_at.isoformat() if self.started_at else None
+        d["ended_at"] = self.ended_at.isoformat() if self.ended_at else None
+        d["rules_accepted_at"] = self.rules_accepted_at.isoformat() if self.rules_accepted_at else None
+        d["scheduled_start"] = self.scheduled_start.isoformat() if self.scheduled_start else None
+        return d
+    
+    @classmethod
+    def from_mongo(cls, data: dict):
+        if not data:
+            return None
+        if "_id" in data:
+            data["_id"] = str(data["_id"])
+        if "user_id" in data:
+            data["user_id"] = str(data["user_id"])
+        return cls(**data)
 
 
-class InterviewQuestion(Base):
-    """One AI-generated question inside a session."""
-    __tablename__ = "interview_questions"
-
-    id:               Mapped[int] = mapped_column(primary_key=True, index=True)
-    session_id:       Mapped[int] = mapped_column(Integer, ForeignKey("interview_sessions.id"), index=True)
-    question_number:  Mapped[int] = mapped_column(Integer)          # 1..10
-    question_text:    Mapped[str] = mapped_column(Text)
-    expected_keywords: Mapped[str | None] = mapped_column(Text, nullable=True)  # CSV of expected key terms
-    question_type:    Mapped[str] = mapped_column(String(50))       # same as session type
-    created_at:       Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
-
-    session = relationship("InterviewSession", back_populates="questions")
-    answer  = relationship("InterviewAnswer", back_populates="question", uselist=False, cascade="all, delete")
+class InterviewQuestion(BaseModel):
+    id: str = Field(alias="_id", default="")
+    session_id: str
+    question_number: int
+    question_text: str
+    expected_keywords: Optional[str] = None
+    question_type: str
+    created_at: datetime = Field(default_factory=datetime.utcnow)
 
     def to_dict(self):
-        return {
-            "id": self.id,
-            "session_id": self.session_id,
-            "question_number": self.question_number,
-            "question_text": self.question_text,
-            "expected_keywords": self.expected_keywords,
-        }
+        d = self.model_dump(by_alias=True)
+        d["id"] = str(d.pop("_id", self.id))
+        d["created_at"] = self.created_at.isoformat() if self.created_at else None
+        return d
+    
+    @classmethod
+    def from_mongo(cls, data: dict):
+        if not data:
+            return None
+        if "_id" in data:
+            data["_id"] = str(data["_id"])
+        if "session_id" in data:
+            data["session_id"] = str(data["session_id"])
+        return cls(**data)
 
 
-class InterviewAnswer(Base):
-    """Candidate's spoken/typed answer to one question — with per-answer scores."""
-    __tablename__ = "interview_answers"
-
-    id:               Mapped[int]   = mapped_column(primary_key=True, index=True)
-    question_id:      Mapped[int]   = mapped_column(Integer, ForeignKey("interview_questions.id"), index=True)
-    session_id:       Mapped[int]   = mapped_column(Integer, ForeignKey("interview_sessions.id"), index=True)
-    transcribed_text: Mapped[str]   = mapped_column(Text)           # Whisper output
-    answer_duration:  Mapped[float] = mapped_column(Float, default=0)  # seconds
-
-    # Per-answer AI scores (0-100)
-    communication_score:   Mapped[float] = mapped_column(Float, default=0)
-    technical_score:       Mapped[float] = mapped_column(Float, default=0)
-    confidence_score:      Mapped[float] = mapped_column(Float, default=0)
-    professionalism_score: Mapped[float] = mapped_column(Float, default=0)
-
-    # Speech analysis details
-    filler_word_count: Mapped[int]        = mapped_column(Integer, default=0)
-    words_per_minute:  Mapped[float]      = mapped_column(Float, default=0)
-    ai_feedback:       Mapped[str | None] = mapped_column(Text, nullable=True)  # GPT feedback text
-
-    # Eye contact / emotion from webcam (sent from frontend)
-    eye_contact_score: Mapped[float] = mapped_column(Float, default=0)   # 0-100
-    emotion_label:     Mapped[str]   = mapped_column(String(50), default="neutral")
-
-    answered_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
-
-    question = relationship("InterviewQuestion", back_populates="answer")
+class InterviewAnswer(BaseModel):
+    id: str = Field(alias="_id", default="")
+    question_id: str
+    session_id: str
+    transcribed_text: str
+    answer_duration: float = 0
+    communication_score: float = 0
+    technical_score: float = 0
+    confidence_score: float = 0
+    professionalism_score: float = 0
+    filler_word_count: int = 0
+    words_per_minute: float = 0
+    ai_feedback: Optional[str] = None
+    eye_contact_score: float = 0
+    emotion_label: str = "neutral"
+    answered_at: datetime = Field(default_factory=datetime.utcnow)
 
     def to_dict(self):
-        return {
-            "id": self.id,
-            "question_id": self.question_id,
-            "transcribed_text": self.transcribed_text,
-            "communication_score": self.communication_score,
-            "technical_score": self.technical_score,
-            "confidence_score": self.confidence_score,
-            "professionalism_score": self.professionalism_score,
-            "filler_word_count": self.filler_word_count,
-            "words_per_minute": self.words_per_minute,
-            "ai_feedback": self.ai_feedback,
-            "eye_contact_score": self.eye_contact_score,
-            "emotion_label": self.emotion_label,
-        }
+        d = self.model_dump(by_alias=True)
+        d["id"] = str(d.pop("_id", self.id))
+        d["answered_at"] = self.answered_at.isoformat() if self.answered_at else None
+        return d
+    
+    @classmethod
+    def from_mongo(cls, data: dict):
+        if not data:
+            return None
+        if "_id" in data:
+            data["_id"] = str(data["_id"])
+        if "question_id" in data:
+            data["question_id"] = str(data["question_id"])
+        if "session_id" in data:
+            data["session_id"] = str(data["session_id"])
+        return cls(**data)
 
 
-class IntegrityEvent(Base):
-    """Timestamped flags for gaze tracking, multiple faces, etc."""
-    __tablename__ = "integrity_events"
-
-    id:               Mapped[int]   = mapped_column(primary_key=True, index=True)
-    session_id:       Mapped[int]   = mapped_column(Integer, ForeignKey("interview_sessions.id"), index=True)
-    event_type:       Mapped[str]   = mapped_column(String(50))   # NO_FACE_DETECTED, MULTIPLE_FACES, GAZE_AWAY
-    duration_seconds: Mapped[float] = mapped_column(Float, default=0)
-    description:      Mapped[str | None] = mapped_column(Text, nullable=True)
-    severity:         Mapped[str]   = mapped_column(String(20), default="medium") # low, medium, high
-    timestamp:        Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
-
-    session = relationship("InterviewSession", backref="integrity_events")
+class IntegrityEvent(BaseModel):
+    id: str = Field(alias="_id", default="")
+    session_id: str
+    event_type: str
+    duration_seconds: float = 0
+    description: Optional[str] = None
+    severity: str = "medium"
+    timestamp: datetime = Field(default_factory=datetime.utcnow)
 
     def to_dict(self):
-        return {
-            "id": self.id,
-            "session_id": self.session_id,
-            "event_type": self.event_type,
-            "duration_seconds": self.duration_seconds,
-            "description": self.description,
-            "severity": self.severity,
-            "timestamp": self.timestamp.isoformat(),
-        }
+        d = self.model_dump(by_alias=True)
+        d["id"] = str(d.pop("_id", self.id))
+        d["timestamp"] = self.timestamp.isoformat() if self.timestamp else None
+        return d
+        
+    @classmethod
+    def from_mongo(cls, data: dict):
+        if not data:
+            return None
+        if "_id" in data:
+            data["_id"] = str(data["_id"])
+        if "session_id" in data:
+            data["session_id"] = str(data["session_id"])
+        return cls(**data)
 
 
-class SessionReport(Base):
-    """Final aggregated report after all questions answered."""
-    __tablename__ = "session_reports"
-
-    id:         Mapped[int] = mapped_column(primary_key=True, index=True)
-    session_id: Mapped[int] = mapped_column(Integer, ForeignKey("interview_sessions.id"), unique=True)
-    user_id:    Mapped[int] = mapped_column(Integer, ForeignKey("users.id"), index=True)
-
-    # Weighted overall score (0-100)
-    overall_score:         Mapped[float] = mapped_column(Float)
-    communication_score:   Mapped[float] = mapped_column(Float)
-    confidence_score:      Mapped[float] = mapped_column(Float)
-    technical_score:       Mapped[float] = mapped_column(Float)
-    professionalism_score: Mapped[float] = mapped_column(Float)
-
-    # Performance rating
-    rating: Mapped[str] = mapped_column(String(30))  # Excellent|Good|Average|Needs Improvement|Poor
-
-    # AI generated text feedback
-    strengths:    Mapped[str | None] = mapped_column(Text, nullable=True)
-    weaknesses:   Mapped[str | None] = mapped_column(Text, nullable=True)
-    suggestions:  Mapped[str | None] = mapped_column(Text, nullable=True)
-
-    # Stats
-    total_questions:    Mapped[int]   = mapped_column(Integer, default=0)
-    avg_filler_words:   Mapped[float] = mapped_column(Float, default=0)
-    avg_words_per_min:  Mapped[float] = mapped_column(Float, default=0)
-    avg_eye_contact:    Mapped[float] = mapped_column(Float, default=0)
-    duration_minutes:   Mapped[float] = mapped_column(Float, default=0)
-
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
-
-    session = relationship("InterviewSession", back_populates="report")
+class SessionReport(BaseModel):
+    id: str = Field(alias="_id", default="")
+    session_id: str
+    user_id: str
+    overall_score: float
+    communication_score: float
+    confidence_score: float
+    technical_score: float
+    professionalism_score: float
+    rating: str
+    strengths: Optional[str] = None
+    weaknesses: Optional[str] = None
+    suggestions: Optional[str] = None
+    total_questions: int = 0
+    avg_filler_words: float = 0
+    avg_words_per_min: float = 0
+    avg_eye_contact: float = 0
+    duration_minutes: float = 0
+    created_at: datetime = Field(default_factory=datetime.utcnow)
 
     def to_dict(self):
-        return {
-            "id": self.id,
-            "session_id": self.session_id,
-            "overall_score": round(self.overall_score, 1),
-            "communication_score": round(self.communication_score, 1),
-            "confidence_score": round(self.confidence_score, 1),
-            "technical_score": round(self.technical_score, 1),
-            "professionalism_score": round(self.professionalism_score, 1),
-            "rating": self.rating,
-            "strengths": self.strengths,
-            "weaknesses": self.weaknesses,
-            "suggestions": self.suggestions,
-            "total_questions": self.total_questions,
-            "avg_filler_words": self.avg_filler_words,
-            "avg_words_per_min": self.avg_words_per_min,
-            "avg_eye_contact": self.avg_eye_contact,
-            "duration_minutes": self.duration_minutes,
-            "created_at": self.created_at.isoformat(),
-        }
+        d = self.model_dump(by_alias=True)
+        d["id"] = str(d.pop("_id", self.id))
+        d["overall_score"] = round(self.overall_score, 1)
+        d["communication_score"] = round(self.communication_score, 1)
+        d["confidence_score"] = round(self.confidence_score, 1)
+        d["technical_score"] = round(self.technical_score, 1)
+        d["professionalism_score"] = round(self.professionalism_score, 1)
+        d["created_at"] = self.created_at.isoformat() if self.created_at else None
+        return d
+        
+    @classmethod
+    def from_mongo(cls, data: dict):
+        if not data:
+            return None
+        if "_id" in data:
+            data["_id"] = str(data["_id"])
+        if "session_id" in data:
+            data["session_id"] = str(data["session_id"])
+        if "user_id" in data:
+            data["user_id"] = str(data["user_id"])
+        return cls(**data)

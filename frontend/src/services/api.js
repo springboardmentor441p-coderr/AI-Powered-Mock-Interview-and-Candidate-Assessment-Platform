@@ -58,6 +58,17 @@ export const api = {
   acceptRules: (id) => req(`/interview/${id}/accept-rules`, { method: 'POST', headers: headers() }),
   endSession: (id) => req('/interview/end', { method: 'POST', headers: headers(), body: JSON.stringify({ session_id: id }) }),
   getReport: (id) => req(`/interview/${id}/report`, { headers: headers() }),
+  downloadReport: async (id) => {
+    const blob = await req(`/reports/${id}/download`, { headers: headers(), _blob: true });
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `Report_${id}.pdf`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    window.URL.revokeObjectURL(url);
+  },
   getHistory: () => req('/interview/history', { headers: headers() }),
   getScheduledSessions: () => req('/interview/candidate/scheduled', { headers: headers() }),
   followUp: (id, data) => req(`/interview/${id}/follow-up`, { method: 'POST', headers: headers(), body: JSON.stringify(data) }),
