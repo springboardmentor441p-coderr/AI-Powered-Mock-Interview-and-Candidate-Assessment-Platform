@@ -18,6 +18,10 @@ class Candidate(Base):
     resume_preview: Mapped[str | None] = mapped_column(Text, nullable=True)
     resume_path: Mapped[str | None] = mapped_column(String(1024), nullable=True)
     resume_uploaded: Mapped[bool] = mapped_column(Boolean, default=False)
+    college_name: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    degree: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    graduation_year: Mapped[str | None] = mapped_column(String(50), nullable=True)
+    cgpa: Mapped[str | None] = mapped_column(String(50), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
 
     def to_dict(self) -> dict:
@@ -28,5 +32,9 @@ class Candidate(Base):
             "resume_name": self.resume_name,
             "resume_preview": self.resume_preview,
             "resume_uploaded": self.resume_uploaded,
+            "college_name": self.college_name,
+            "degree": self.degree,
+            "graduation_year": self.graduation_year,
+            "cgpa": self.cgpa,
             "created_at": self.created_at.isoformat(),
         }

@@ -1,23 +1,50 @@
+"""
+main.py — SmartHire AI FastAPI application entry point
+
+API structure:
+  /auth/*         — register, login, get current user
+  /candidates/*   — resume upload, candidate management
+  /interview/*    — session lifecycle, Q&A, reports
+  /dashboard/*    — analytics, progress, weak areas
+  /ml/*           — model training, prediction, data export
+  /health         — simple health check
+"""
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from backend.routers import auth, candidates
+from backend.routers import interview, dashboard, ml_router
+from backend.database import init_db
 
-app = FastAPI(title="SmartHire AI API", version="0.1.0")
+# ── Create tables on startup ─────────────────────────────────────────────────
+init_db()
 
-# Simple CORS for local development
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+# ── App ──────────────────────────────────────────────────────────────────────
+app = FastAPI(
+    title       = "SmartHire AI API",
+    description = "AI-powered mock interview platform — backend",
+    version     = "1.0.0",
+    docs_url    = "/docs",      # Swagger UI
+    redoc_url   = "/redoc",     # ReDoc
 )
 
-app.include_router(auth.router, prefix="/auth", tags=["auth"])
-app.include_router(candidates.router, prefix="/candidates", tags=["candidates"])
+# ── CORS (allow React frontend) ───────────────────────────────────────────────
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins     = ["http://localhost:5173", "http://localhost:5174", "http://localhost:5175", "http://localhost:3000"],
+    allow_credentials = True,
+    allow_methods     = ["*"],
+    allow_headers     = ["*"],
+)
+
+# ── Routers ───────────────────────────────────────────────────────────────────
+app.include_router(auth.router,          prefix="/auth",        tags=["Auth"])
+app.include_router(candidates.router,    prefix="/candidates",  tags=["Candidates"])
+app.include_router(interview.router,     prefix="/interview",   tags=["Interview"])
+app.include_router(dashboard.router,     prefix="/dashboard",   tags=["Dashboard"])
+app.include_router(ml_router.router,     prefix="/ml",          tags=["ML Training"])
 
 
-@app.get("/health")
-async def health_check() -> dict[str, str]:
-    return {"status": "ok"}
+@app.get("/health", tags=["Health"])
+def health():
+    return {"status": "ok", "service": "SmartHire AI API v1.0.0"}

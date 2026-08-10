@@ -38,6 +38,10 @@ def save_candidate(
     resume_name: str | None = None,
     resume_preview: str | None = None,
     resume_path: str | None = None,
+    college_name: str | None = None,
+    degree: str | None = None,
+    graduation_year: str | None = None,
+    cgpa: str | None = None,
 ) -> dict:
     with Session(engine) as session:
         candidate = session.scalar(select(Candidate).where(Candidate.email == email))
@@ -49,6 +53,10 @@ def save_candidate(
         candidate.resume_preview = resume_preview
         candidate.resume_path = resume_path
         candidate.resume_uploaded = bool(resume_name)
+        if college_name: candidate.college_name = college_name
+        if degree: candidate.degree = degree
+        if graduation_year: candidate.graduation_year = graduation_year
+        if cgpa: candidate.cgpa = cgpa
         session.commit()
         session.refresh(candidate)
         return candidate.to_dict()

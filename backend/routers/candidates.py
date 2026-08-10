@@ -50,6 +50,25 @@ async def upload_candidate_resume(email: str = Form(...), file: UploadFile = Fil
     return result
 
 
+class EducationPayload(BaseModel):
+    email: str
+    college_name: str
+    degree: str
+    graduation_year: str
+    cgpa: str
+
+
+@router.post("/update_education")
+def update_candidate_education(payload: EducationPayload) -> dict:
+    return save_candidate(
+        email=payload.email,
+        college_name=payload.college_name,
+        degree=payload.degree,
+        graduation_year=payload.graduation_year,
+        cgpa=payload.cgpa
+    )
+
+
 @router.get('/all')
 def list_candidates(limit: int = Query(20, ge=1), offset: int = Query(0, ge=0), q: str | None = None) -> List[dict]:
     # load all and filter in service for simplicity

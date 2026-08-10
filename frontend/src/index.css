@@ -1,0 +1,19 @@
+/* Minimal global CSS — all styling handled by Tailwind */
+*, *::before, *::after { box-sizing: border-box; }
+html, body { margin: 0; padding: 0; }
+body { overscroll-behavior: none; }
+::-webkit-scrollbar { display: none; }
+
+/* Material symbols fix */
+.material-symbols-outlined {
+  font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+  line-height: 1;
+  display: inline-flex;
+  align-items: center;
+  vertical-align: middle;
+  user-select: none;
+}
+
+/* Spin utility for Tailwind */
+@keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+.animate-spin-slow { animation: spin 1.5s linear infinite; }
