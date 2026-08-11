@@ -34,7 +34,7 @@ The platform leverages **Large Language Model (LLM)** capabilities across 4 core
                   │ 4. LLM Answer Evaluation & Feedback Engine               │
                   │    - Evaluates spoken transcripts against rubric factors  │
                   │      and generates strengths, weaknesses & tips.          │
-                  └──────────────────────────────────────────────────────────┘
+                  └────────────────────────────┴─────────────────────────────┘
 ```
 
 ---
@@ -81,9 +81,7 @@ Mentors can inspect and verify every module and source file directly using this 
 
 ## 📐 Scoring Formula & Performance Rubric
 
-```math
-\text{Overall Score} = (0.30 \times \text{Communication}) + (0.25 \times \text{Confidence}) + (0.30 \times \text{Technical Relevance}) + (0.15 \times \text{Professionalism})
-```
+$$\text{Overall Score} = (0.30 \times \text{Communication}) + (0.25 \times \text{Confidence}) + (0.30 \times \text{Technical Relevance}) + (0.15 \times \text{Professionalism})$$
 
 - **90–100**: Excellent
 - **75–89**: Good
@@ -118,11 +116,7 @@ Application running at: `http://localhost:3000`
 
 ---
 
-## 📦 GitHub Repository Sync Instructions
-
-To push all changes to your remote GitHub repository:
-```bash
-git add .
-git commit -m "Update: Added conversational AI interviewer agent, LLM architecture docs, and master README sitemap"
-git push origin main
-```
+## 📦 Deployment & CI/CD Pipeline
+- **Frontend Hosting Configuration**: `vercel.json`
+- **Backend Hosting Configuration**: `render.yaml` & `Dockerfile`
+- **Automated CI/CD Pipeline**: `.github/workflows/ci.yml`
