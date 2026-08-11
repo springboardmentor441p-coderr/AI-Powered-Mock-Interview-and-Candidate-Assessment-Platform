@@ -30,4 +30,7 @@ sentence-transformers==2.7.0
 python-dotenv==1.0.1
 httpx==0.27.0
 pymongo
+mongomock
+dnspython
+certifi
 reportlab

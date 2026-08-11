@@ -6,6 +6,7 @@ Endpoints:
   POST /auth/login     — returns JWT access token
   GET  /auth/me        — returns current user (requires token)
 """
+from datetime import datetime
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from pymongo.database import Database
@@ -112,3 +113,61 @@ def login(form: OAuth2PasswordRequestForm = Depends(), db: Database = Depends(ge
 def get_me(current_user: User = Depends(get_current_user)):
     """Return the currently logged-in user's profile."""
     return current_user.to_dict()
+
+
+class ForgotPasswordRequest(BaseModel):
+    email: EmailStr
+
+class VerifyCodeRequest(BaseModel):
+    email: EmailStr
+    code: str
+
+@router.post("/forgot-password")
+def forgot_password(payload: ForgotPasswordRequest, db: Database = Depends(get_db)):
+    import random
+    code = "".join(random.choices("0123456789", k=6))
+    
+    # Store or update verification code
+    db.verification_codes.update_one(
+        {"email": payload.email},
+        {"$set": {"code": code, "created_at": datetime.utcnow()}},
+        upsert=True
+    )
+    
+    # Print to console
+    print(f"\n==========================================")
+    print(f"[FORGOT PASSWORD] Code for {payload.email}: {code}")
+    print(f"==========================================\n")
+    
+    return {"message": "Verification code generated", "code_dev": code}
+
+
+@router.post("/verify-code", response_model=TokenResponse)
+def verify_code(payload: VerifyCodeRequest, db: Database = Depends(get_db)):
+    record = db.verification_codes.find_one({"email": payload.email})
+    if not record or record["code"] != payload.code:
+        raise HTTPException(status_code=400, detail="Invalid verification code")
+        
+    # Delete code after use
+    db.verification_codes.delete_one({"email": payload.email})
+    
+    user_data = db.users.find_one({"email": payload.email})
+    if not user_data:
+        # Auto-create user account if not registered yet
+        full_name = payload.email.split("@")[0].capitalize()
+        user = User(
+            email           = payload.email,
+            hashed_password = hash_password("default123"),
+            full_name       = full_name,
+            role            = "candidate",
+        )
+        user_dict = user.model_dump(by_alias=True)
+        if "_id" in user_dict and not user_dict["_id"]:
+            del user_dict["_id"]
+        result = db.users.insert_one(user_dict)
+        user.id = str(result.inserted_id)
+    else:
+        user = User.from_mongo(user_data)
+        
+    token = create_access_token(subject=user.id)
+    return {"access_token": token, "token_type": "bearer", "user": user.to_dict()}

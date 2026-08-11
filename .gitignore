@@ -7,3 +7,8 @@ __pycache__/
 dist/
 build/
 *.zip
+.vscode/
+smarthire.db
+smarthire_persistent_db.json
+stitch_nexiq_interactive_ai_interviews*
+

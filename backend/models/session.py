@@ -54,11 +54,15 @@ class InterviewQuestion(BaseModel):
     question_text: str
     expected_keywords: Optional[str] = None
     question_type: str
+    options: Optional[List[str]] = None
+    correct_answer: Optional[str] = None
+    starter_code: Optional[str] = None
     created_at: datetime = Field(default_factory=datetime.utcnow)
 
     def to_dict(self):
         d = self.model_dump(by_alias=True)
         d["id"] = str(d.pop("_id", self.id))
+        d["session_id"] = str(d.get("session_id", self.session_id))
         d["created_at"] = self.created_at.isoformat() if self.created_at else None
         return d
     

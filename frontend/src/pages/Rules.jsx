@@ -34,16 +34,15 @@ export default function Rules({ navigate }) {
 
   const handleStart = async () => {
     if (!agreed) return;
-    if (!extensionActive) {
-      setError("Please install and activate the SmartHire Secure Exam Extension to continue.");
+    if (hasExtension !== 'yes') {
+      setError("Please confirm you have the extension installed.");
       return;
     }
     setLoading(true);
     try {
       await api.acceptRules(sessionId);
-      // Let's add a small delay to simulate processing before navigating to LiveInterview
       setTimeout(() => {
-        window.location.hash = `live?sid=${sessionId}`;
+        navigate(`live-interview?sid=${sessionId}`);
       }, 500);
     } catch (err) {
       setError(err.message || "Failed to accept rules. Please try again.");

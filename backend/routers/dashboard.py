@@ -5,9 +5,13 @@ GET /dashboard/stats        — score summary, session counts, streak
 GET /dashboard/progress     — score trend over last N sessions
 GET /dashboard/weak-areas   — which dimensions score lowest
 """
+from datetime import datetime, timedelta
 from fastapi import APIRouter, Depends
+from pydantic import BaseModel
 from pymongo.database import Database
 import pymongo
+import os
+import openai
 
 from backend.database import get_db
 from backend.models.session import SessionReport
@@ -112,7 +116,6 @@ def _calculate_streak(reports) -> int:
     """Count consecutive days with at least one interview (simple version)."""
     if not reports:
         return 0
-    from datetime import datetime, timezone
     today  = datetime.now().date()
     streak = 0
     seen   = set()
@@ -120,15 +123,13 @@ def _calculate_streak(reports) -> int:
         day = r.created_at.date()
         if day not in seen:
             seen.add(day)
-            expected = today - __import__('datetime').timedelta(days=streak)
+            expected = today - timedelta(days=streak)
             if day == expected:
                 streak += 1
             else:
                 break
     return streak
 
-from pydantic import BaseModel
-import openai
 
 class ChatRequest(BaseModel):
     message: str
@@ -138,10 +139,13 @@ def chat_with_bot(
     req: ChatRequest,
     current_user: User = Depends(get_current_user)
 ):
+    api_key = os.getenv("OPENAI_API_KEY", "")
+    if not api_key or api_key.startswith("sk-your"):
+        return {"response": "NEXIQ AI Assistant requires a valid OpenAI API key configured on the backend server."}
     try:
-        client = openai.OpenAI()
+        client = openai.OpenAI(api_key=api_key)
         response = client.chat.completions.create(
-            model="gpt-4o",
+            model="gpt-3.5-turbo",
             messages=[
                 {"role": "system", "content": "You are NEXIQ AI, a helpful assistant for the SmartHire platform."},
                 {"role": "user", "content": req.message}
@@ -150,5 +154,5 @@ def chat_with_bot(
         )
         return {"response": response.choices[0].message.content}
     except Exception as e:
-        return {"response": f"Error: {str(e)}"}
+        return {"response": f"Assistant service currently unavailable: {str(e)}"}
 

@@ -46,12 +46,13 @@ chrome.tabs.onActivated.addListener(async (activeInfo) => {
 });
 
 // Detect DevTools opening (this is tricky, but we can detect attachment)
-// A common way in extensions is chrome.debugger
-chrome.debugger.onEvent.addListener((source, method, params) => {
-  if (currentSessionId) {
-    logEvent('DEVTOOLS_OPENED', 'Candidate opened developer tools.');
-  }
-});
+if (chrome.debugger && chrome.debugger.onEvent) {
+  chrome.debugger.onEvent.addListener((source, method, params) => {
+    if (currentSessionId) {
+      logEvent('DEVTOOLS_OPENED', 'Candidate opened developer tools.');
+    }
+  });
+}
 
 // To track blocked AI sites, we can use declarativeNetRequest.onRuleMatchedDebug
 // Note: This requires the extension to be unpacked and have declarativeNetRequestFeedback permission

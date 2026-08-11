@@ -2,10 +2,12 @@ import React, { useState } from 'react';
 import { api } from '../services/api';
 
 export default function Auth({ navigate }) {
-  const [mode, setMode] = useState('login');
+  const [mode, setMode] = useState('login'); // login, register, forgot, verify
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [name, setName] = useState('');
+  const [code, setCode] = useState('');
+  const [devCode, setDevCode] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
@@ -18,12 +20,21 @@ export default function Auth({ navigate }) {
         localStorage.setItem('nexiq_token', res.access_token);
         localStorage.setItem('nexiq_user', JSON.stringify(res.user || { email }));
         navigate('dashboard');
-      } else {
-        await api.register(name, email, password);
+      } else if (mode === 'register') {
+        await api.register({ email, password, full_name: name });
         const res = await api.login(email, password);
         localStorage.setItem('nexiq_token', res.access_token);
         localStorage.setItem('nexiq_user', JSON.stringify(res.user || { email, full_name: name }));
         navigate('onboarding');
+      } else if (mode === 'forgot') {
+        const res = await api.forgotPassword(email);
+        setDevCode(res.code_dev || '');
+        setMode('verify');
+      } else if (mode === 'verify') {
+        const res = await api.verifyCode(email, code);
+        localStorage.setItem('nexiq_token', res.access_token);
+        localStorage.setItem('nexiq_user', JSON.stringify(res.user || { email }));
+        navigate('dashboard');
       }
     } catch (err) {
       setError(err.message || 'Authentication failed.');
@@ -87,16 +98,28 @@ export default function Auth({ navigate }) {
                 <img src="/nexiq_logo.png" alt="NEXIQ" className="w-16 h-16 object-contain" onError={e => { e.target.style.display='none'; }} />
               </div>
               <h2 className="font-headline-md text-headline-md text-on-surface mb-2">
-                {mode === 'login' ? 'Welcome Back' : 'Create Account'}
+                {mode === 'login' && 'Welcome Back'}
+                {mode === 'register' && 'Create Account'}
+                {mode === 'forgot' && 'Reset Password'}
+                {mode === 'verify' && 'Enter Verification Code'}
               </h2>
               <p className="font-body-md text-on-surface-variant">
-                {mode === 'login' ? 'Enter your credentials to access the terminal.' : 'Join the NEXIQ platform.'}
+                {mode === 'login' && 'Enter your credentials to access the terminal.'}
+                {mode === 'register' && 'Join the NEXIQ platform.'}
+                {mode === 'forgot' && 'Enter your email to receive a 6-digit code.'}
+                {mode === 'verify' && 'We\'ve sent a code to your email.'}
               </p>
             </div>
 
             {error && (
               <div className="mb-6 px-4 py-3 rounded-xl bg-error/10 border border-error/20 text-error font-body-md text-sm">
                 {error}
+              </div>
+            )}
+
+            {mode === 'verify' && devCode && (
+              <div className="mb-6 px-4 py-3 rounded-xl bg-primary/10 border border-primary/20 text-primary font-mono-label text-sm animate-pulse">
+                [Dev Mode] Verification code is: {devCode}
               </div>
             )}
 
@@ -117,30 +140,55 @@ export default function Auth({ navigate }) {
                 </div>
               )}
 
-              <div className="space-y-1.5">
-                <label className="font-mono-label text-mono-label text-on-surface-variant uppercase ml-1">Email Address</label>
-                <div className="relative group">
-                  <span className="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-on-surface-variant/50 group-focus-within:text-primary transition-colors">alternate_email</span>
-                  <input
-                    className="w-full bg-surface-container-high/30 border-b border-outline-variant/30 py-4 pl-12 pr-4 rounded-xl text-on-surface focus:outline-none focus:border-primary focus:bg-surface-container-high/50 transition-all placeholder:text-on-surface-variant/30"
-                    type="email" placeholder="name@company.com" value={email} onChange={e => setEmail(e.target.value)} required
-                  />
+              {(mode === 'login' || mode === 'register' || mode === 'forgot') && (
+                <div className="space-y-1.5">
+                  <label className="font-mono-label text-mono-label text-on-surface-variant uppercase ml-1">Email Address</label>
+                  <div className="relative group">
+                    <span className="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-on-surface-variant/50 group-focus-within:text-primary transition-colors">alternate_email</span>
+                    <input
+                      className="w-full bg-surface-container-high/30 border-b border-outline-variant/30 py-4 pl-12 pr-4 rounded-xl text-on-surface focus:outline-none focus:border-primary focus:bg-surface-container-high/50 transition-all placeholder:text-on-surface-variant/30"
+                      type="email" placeholder="name@company.com" value={email} onChange={e => setEmail(e.target.value)} required
+                    />
+                  </div>
                 </div>
-              </div>
+              )}
 
-              <div className="space-y-1.5">
-                <div className="flex justify-between items-center px-1">
-                  <label className="font-mono-label text-mono-label text-on-surface-variant uppercase">Password</label>
-                  {mode === 'login' && <a className="font-label-md text-label-md text-primary-fixed-dim hover:text-primary transition-colors" href="#">Forgot?</a>}
+              {(mode === 'login' || mode === 'register') && (
+                <div className="space-y-1.5">
+                  <div className="flex justify-between items-center px-1">
+                    <label className="font-mono-label text-mono-label text-on-surface-variant uppercase">Password</label>
+                    {mode === 'login' && (
+                      <button 
+                        type="button" 
+                        onClick={() => { setMode('forgot'); setError(''); }} 
+                        className="font-label-md text-label-md text-primary-fixed-dim hover:text-primary transition-colors cursor-pointer"
+                      >
+                        Forgot?
+                      </button>
+                    )}
+                  </div>
+                  <div className="relative group">
+                    <span className="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-on-surface-variant/50 group-focus-within:text-primary transition-colors">lock</span>
+                    <input
+                      className="w-full bg-surface-container-high/30 border-b border-outline-variant/30 py-4 pl-12 pr-4 rounded-xl text-on-surface focus:outline-none focus:border-primary focus:bg-surface-container-high/50 transition-all placeholder:text-on-surface-variant/30"
+                      type="password" placeholder="••••••••" value={password} onChange={e => setPassword(e.target.value)} required
+                    />
+                  </div>
                 </div>
-                <div className="relative group">
-                  <span className="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-on-surface-variant/50 group-focus-within:text-primary transition-colors">lock</span>
-                  <input
-                    className="w-full bg-surface-container-high/30 border-b border-outline-variant/30 py-4 pl-12 pr-4 rounded-xl text-on-surface focus:outline-none focus:border-primary focus:bg-surface-container-high/50 transition-all placeholder:text-on-surface-variant/30"
-                    type="password" placeholder="••••••••" value={password} onChange={e => setPassword(e.target.value)} required
-                  />
+              )}
+
+              {mode === 'verify' && (
+                <div className="space-y-1.5">
+                  <label className="font-mono-label text-mono-label text-on-surface-variant uppercase ml-1">6-Digit Code</label>
+                  <div className="relative group">
+                    <span className="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-on-surface-variant/50 group-focus-within:text-primary transition-colors">pin</span>
+                    <input
+                      className="w-full bg-surface-container-high/30 border-b border-outline-variant/30 py-4 pl-12 pr-4 rounded-xl text-on-surface focus:outline-none focus:border-primary focus:bg-surface-container-high/50 transition-all placeholder:text-on-surface-variant/30"
+                      type="text" placeholder="123456" maxLength={6} value={code} onChange={e => setCode(e.target.value)} required
+                    />
+                  </div>
                 </div>
-              </div>
+              )}
 
               {mode === 'login' && (
                 <div className="flex items-center gap-3 py-2">
@@ -160,7 +208,12 @@ export default function Auth({ navigate }) {
                   <span className="material-symbols-outlined animate-spin">progress_activity</span>
                 ) : (
                   <>
-                    <span>{mode === 'login' ? 'SIGN IN TO TERMINAL' : 'CREATE ACCOUNT'}</span>
+                    <span>
+                      {mode === 'login' && 'SIGN IN TO TERMINAL'}
+                      {mode === 'register' && 'CREATE ACCOUNT'}
+                      {mode === 'forgot' && 'SEND CODE'}
+                      {mode === 'verify' && 'VERIFY & SIGN IN'}
+                    </span>
                     <span className="material-symbols-outlined group-hover:translate-x-1 transition-transform">arrow_forward</span>
                   </>
                 )}
@@ -195,10 +248,27 @@ export default function Auth({ navigate }) {
 
             <div className="mt-auto pt-10 text-center">
               <p className="font-body-md text-on-surface-variant">
-                {mode === 'login' ? 'New to Nexiq?' : 'Already have an account?'}
-                <a className="text-primary-fixed-dim font-bold hover:underline ml-1 cursor-pointer" onClick={() => { setMode(mode === 'login' ? 'register' : 'login'); setError(''); }}>
-                  {mode === 'login' ? 'Create Account' : 'Sign In'}
-                </a>
+                {mode === 'login' && (
+                  <>
+                    New to Nexiq?
+                    <a className="text-primary-fixed-dim font-bold hover:underline ml-1 cursor-pointer" onClick={() => { setMode('register'); setError(''); }}>
+                      Create Account
+                    </a>
+                  </>
+                )}
+                {mode === 'register' && (
+                  <>
+                    Already have an account?
+                    <a className="text-primary-fixed-dim font-bold hover:underline ml-1 cursor-pointer" onClick={() => { setMode('login'); setError(''); }}>
+                      Sign In
+                    </a>
+                  </>
+                )}
+                {(mode === 'forgot' || mode === 'verify') && (
+                  <a className="text-primary-fixed-dim font-bold hover:underline cursor-pointer" onClick={() => { setMode('login'); setError(''); setDevCode(''); }}>
+                    Back to Sign In
+                  </a>
+                )}
               </p>
             </div>
           </div>

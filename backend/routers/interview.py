@@ -9,15 +9,20 @@ GET  /interview/{id}/report    — retrieve final report
 GET  /interview/history        — list all sessions for current user
 """
 from datetime import datetime, timedelta
-from fastapi import APIRouter, Depends, HTTPException
+import io
+import os
+from fastapi import APIRouter, Depends, HTTPException, UploadFile, File
+from fastapi.responses import StreamingResponse
 from pymongo.database import Database
 import pymongo
 from bson import ObjectId
+from bson.errors import InvalidId
 from pydantic import BaseModel
+import openai
+from openai import AsyncOpenAI
 
 from backend.database import get_db
 from backend.models.session import InterviewSession, InterviewQuestion, InterviewAnswer, SessionReport, IntegrityEvent
-from backend.models.candidate import Candidate
 from backend.routers.auth import get_current_user
 from backend.models.user import User
 from backend.services.question_generator import generate_questions
@@ -29,14 +34,21 @@ from backend.ml.data_collector import collect_from_session
 
 router = APIRouter()
 
+def parse_object_id(id_str: str) -> ObjectId:
+    try:
+        return ObjectId(id_str)
+    except Exception:
+        raise HTTPException(status_code=400, detail=f"Invalid Object ID format: '{id_str}'")
+
 
 # ── Schemas ──────────────────────────────────────────────────────────────────
 
 class StartSessionRequest(BaseModel):
     interview_type: str = "Technical"
-    domain: str         = "Web development"
+    domain: str         = "Full Stack Web Development"
     difficulty: str     = "Medium"
-    num_questions: int  = 8
+    num_questions: int  = 5
+    question_format: str = "Mixed" # "Conceptual", "Coding", "MCQ", "Mixed"
 
 class SubmitAnswerRequest(BaseModel):
     question_id: str
@@ -90,11 +102,12 @@ def start_session(
 
         # Generate questions using OpenAI (or fallback)
         raw_questions = generate_questions(
-            skills         = skills,
-            interview_type = req.interview_type,
-            domain         = req.domain,
-            difficulty     = req.difficulty,
-            num_questions  = req.num_questions,
+            skills          = skills,
+            interview_type  = req.interview_type,
+            domain          = req.domain,
+            difficulty      = req.difficulty,
+            num_questions   = req.num_questions,
+            question_format = req.question_format,
         )
 
         # Save questions to DB
@@ -102,10 +115,13 @@ def start_session(
         for q in raw_questions:
             question = InterviewQuestion(
                 session_id        = session.id,
-                question_number   = q["question_number"],
-                question_text     = q["question_text"],
+                question_number   = q.get("question_number", len(saved_questions) + 1),
+                question_text     = q.get("question_text", ""),
                 expected_keywords = ",".join(q.get("expected_keywords", [])),
                 question_type     = q.get("question_type", req.interview_type),
+                options           = q.get("options"),
+                correct_answer    = q.get("correct_answer"),
+                starter_code      = q.get("starter_code"),
             )
             q_dict = question.model_dump(by_alias=True)
             if "_id" in q_dict and not q_dict["_id"]:
@@ -136,7 +152,7 @@ def get_questions(
     current_user: User = Depends(get_current_user),
 ):
     """Return all questions for a session."""
-    session_doc = db.interview_sessions.find_one({"_id": ObjectId(session_id)})
+    session_doc = db.interview_sessions.find_one({"_id": parse_object_id(session_id)})
     if not session_doc or session_doc.get("user_id") != current_user.id:
         raise HTTPException(status_code=404, detail="Session not found")
         
@@ -157,7 +173,7 @@ def get_questions(
             
         if now > end_window:
             if session.status == "scheduled":
-                db.interview_sessions.update_one({"_id": ObjectId(session_id)}, {"$set": {"status": "expired"}})
+                db.interview_sessions.update_one({"_id": parse_object_id(session_id)}, {"$set": {"status": "expired"}})
             return {"state": "EXPIRED"}
             
     if session.status in ["completed", "expired", "no_show"]:
@@ -188,7 +204,7 @@ def log_integrity_event(
     db: Database = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    session_doc = db.interview_sessions.find_one({"_id": ObjectId(session_id)})
+    session_doc = db.interview_sessions.find_one({"_id": parse_object_id(session_id)})
     if not session_doc or session_doc.get("user_id") != current_user.id:
         raise HTTPException(status_code=404, detail="Session not found")
         
@@ -212,13 +228,13 @@ def accept_rules(
     db: Database = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    session_doc = db.interview_sessions.find_one({"_id": ObjectId(session_id)})
+    session_doc = db.interview_sessions.find_one({"_id": parse_object_id(session_id)})
     if not session_doc or session_doc.get("user_id") != current_user.id:
         raise HTTPException(status_code=404, detail="Session not found")
         
     accepted_time = datetime.utcnow()
     db.interview_sessions.update_one(
-        {"_id": ObjectId(session_id)}, 
+        {"_id": parse_object_id(session_id)}, 
         {"$set": {"rules_accepted_at": accepted_time}}
     )
     return {"status": "ok", "rules_accepted_at": accepted_time.isoformat()}
@@ -309,7 +325,7 @@ def submit_answer(
     Submit candidate's transcribed answer for one question.
     Runs AI evaluation and saves scores.
     """
-    q_doc = db.interview_questions.find_one({"_id": ObjectId(req.question_id)})
+    q_doc = db.interview_questions.find_one({"_id": parse_object_id(req.question_id)})
     if not q_doc:
         raise HTTPException(status_code=404, detail="Question not found")
     question = InterviewQuestion.from_mongo(q_doc)
@@ -358,7 +374,7 @@ def end_session(
     Aggregates all answer scores → final weighted report → saves to DB.
     Also exports this session to ML training data.
     """
-    session_doc = db.interview_sessions.find_one({"_id": ObjectId(req.session_id)})
+    session_doc = db.interview_sessions.find_one({"_id": parse_object_id(req.session_id)})
     if not session_doc:
         raise HTTPException(status_code=404, detail="Session not found")
     session = InterviewSession.from_mongo(session_doc)
@@ -378,7 +394,7 @@ def end_session(
     ended_at = datetime.utcnow()
     duration_min = (ended_at - session.started_at).total_seconds() / 60
     db.interview_sessions.update_one(
-        {"_id": ObjectId(req.session_id)},
+        {"_id": parse_object_id(req.session_id)},
         {"$set": {"ended_at": ended_at, "status": "completed"}}
     )
 
@@ -446,10 +462,6 @@ def get_scheduled_sessions(db: Database = Depends(get_db), current_user: User = 
 
 
 # ── Priority 1 New Endpoints ──────────────────────────────────────────────────
-from fastapi.responses import StreamingResponse
-from fastapi import UploadFile, File
-import io
-import os
 
 @router.get("/tts")
 async def get_tts(text: str):
@@ -458,7 +470,6 @@ async def get_tts(text: str):
         raise HTTPException(status_code=400, detail="OpenAI API key not configured")
     
     try:
-        from openai import AsyncOpenAI
         client = AsyncOpenAI(api_key=api_key)
         response = await client.audio.speech.create(
             model="tts-1",
@@ -492,7 +503,6 @@ async def get_follow_up(session_id: str, req: FollowUpRequest):
         return {"follow_up": None}
     
     try:
-        from openai import AsyncOpenAI
         client = AsyncOpenAI(api_key=api_key)
         prompt = f"""
 Original Interview Question: {req.question_text}

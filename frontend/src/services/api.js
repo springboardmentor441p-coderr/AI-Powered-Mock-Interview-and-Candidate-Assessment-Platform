@@ -1,4 +1,4 @@
-const BASE = 'http://localhost:8000';
+const BASE = 'http://127.0.0.1:8000';
 
 function headers(formData = false) {
   const h = {};
@@ -17,7 +17,14 @@ async function req(path, opts = {}) {
       window.location.hash = 'auth';
     }
     let msg = `${res.status}`;
-    try { const j = await res.json(); msg = j.detail || j.message || msg; } catch {}
+    try { 
+      const j = await res.json(); 
+      if (j.detail) {
+        msg = typeof j.detail === 'string' ? j.detail : JSON.stringify(j.detail);
+      } else if (j.message) {
+        msg = typeof j.message === 'string' ? j.message : JSON.stringify(j.message);
+      }
+    } catch {}
     throw new Error(msg);
   }
   if (opts._blob) return res.blob();
@@ -34,6 +41,8 @@ export const api = {
   },
   register: (data) => req('/auth/register', { method: 'POST', headers: headers(), body: JSON.stringify(data) }),
   me: () => req('/auth/me', { headers: headers() }),
+  forgotPassword: (email) => req('/auth/forgot-password', { method: 'POST', headers: headers(), body: JSON.stringify({ email }) }),
+  verifyCode: (email, code) => req('/auth/verify-code', { method: 'POST', headers: headers(), body: JSON.stringify({ email, code }) }),
 
   // Candidates
   uploadResume: (email, file) => {
@@ -82,6 +91,7 @@ export const api = {
 
   // ── Admin endpoints ──
   getCandidates: (q) => req(`/candidates/all${q ? `?q=${encodeURIComponent(q)}` : ''}`, { headers: headers() }),
+  getCandidateProfile: (email) => req(`/candidates/profile?email=${encodeURIComponent(email)}`, { headers: headers() }),
   mlStatus: () => req('/ml/status', { headers: headers() }),
   mlStats: () => req('/ml/stats', { headers: headers() }),
   mlTrain: () => req('/ml/train', { method: 'POST', headers: headers() }),
