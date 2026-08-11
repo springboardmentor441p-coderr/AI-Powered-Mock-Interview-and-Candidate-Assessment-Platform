@@ -1,0 +1,821 @@
+# RE2JS is the JavaScript port of RE2, a regular expression engine that provides linear time matching
+[![Test/Build/Publish](https://github.com/le0pard/re2js/actions/workflows/ci.yml/badge.svg)](https://github.com/le0pard/re2js/actions/workflows/ci.yml)
+
+## [Playground](https://re2js.leopard.in.ua/)
+
+## What is RE2?
+
+RE2 is a regular expression engine designed to operate in time proportional to the size of the input, ensuring linear time complexity. RE2JS is a pure JavaScript port that achieves full architectural parity with the [Go regexp implementation](https://pkg.go.dev/regexp).
+
+JavaScript's standard regular expression engine, [RegExp](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Guide/Regular_expressions), and many other widely used packages (Perl, Python, PCRE) use a backtracking implementation strategy. When a pattern presents alternatives like `a|b`, the engine tries to match subpattern `a` first; if that fails, it resets the input and tries subpattern `b`.
+
+If such choices are deeply nested, this strategy requires an exponential number of passes over the input data, potentially exceeding the lifetime of the universe for large inputs. This creates a security risk known as Regular Expression Denial of Service (ReDoS) when accepting patterns from untrusted sources.
+
+In contrast, RE2JS utilizes a combination of Deterministic Finite Automaton (DFA) and Nondeterministic Finite Automaton (NFA) strategies to explore all matches simultaneously in a single pass over the input data. This approach guarantees $O(n)$ linear time complexity, providing a secure environment for both Node.js and browser applications.
+
+## Installation
+
+To install RE2JS:
+
+```bash
+# npm
+npm install re2js
+# yarn
+yarn add re2js
+# pnpm
+pnpm add re2js
+# bun
+bun add re2js
+```
+
+## Usage
+
+This document provides a series of examples demonstrating how to use RE2JS in your code. For more detailed information about regex syntax, please visit this page: [Google RE2 Syntax Documentation](https://github.com/google/re2/wiki/Syntax).
+
+You can utilize ECMAScript (ES6) imports to import and use the RE2JS library:
+
+```js
+import { RE2JS } from 're2js'
+```
+
+If you're using CommonJS, you can `require` the library:
+
+```js
+const { RE2JS } = require('re2js')
+```
+
+### Compiling Patterns
+
+You can compile a regex pattern using the `compile()` function:
+
+```js
+import { RE2JS } from 're2js'
+
+const p = RE2JS.compile('abc');
+console.log(p.pattern()); // Outputs: 'abc'
+console.log(p.flags()); // Outputs: 0
+```
+
+The `compile()` function also supports flags:
+
+```js
+import { RE2JS } from 're2js'
+
+const p = RE2JS.compile('abc', RE2JS.CASE_INSENSITIVE | RE2JS.MULTILINE);
+console.log(p.pattern()); // Outputs: 'abc'
+console.log(p.flags()); // Outputs: 5
+```
+
+#### Tagged Template Literals (No Double-Escaping)
+
+To avoid the tedious "double-backslash" escaping problem common with the `RE2JS.compile("\\d+")` syntax, the library provides a handy `re` tagged template literal. This allows you to write patterns exactly as they appear in standard JavaScript regex literals:
+
+```js
+import { re, RE2JS } from 're2js';
+
+// Instead of RE2JS.compile('\\b\\w+\\b')
+const p1 = re`\b\w+\b`;
+console.log(p1.pattern()); // Outputs: '\b\w+\b'
+
+// You can also pass flags by calling `re` as a function first:
+const p2 = re(RE2JS.CASE_INSENSITIVE | RE2JS.MULTILINE)`^foo\d+`;
+console.log(p2.test('FOO42')); // true
+```
+
+#### Supported flags:
+
+The `compile()` function and the `re()` template tag support the following flags:
+
+```js
+/**
+ * Flag: case insensitive matching.
+ */
+RE2JS.CASE_INSENSITIVE
+/**
+ * Flag: dot ({@code .}) matches all characters, including newline.
+ */
+RE2JS.DOTALL
+/**
+ * Flag: multiline matching: {@code ^} and {@code $} match at beginning and end of line, not just
+ * beginning and end of input.
+ */
+RE2JS.MULTILINE
+/**
+ * Flag: Unicode groups (e.g. {@code \p\ Greek\} ) will be syntax errors.
+ */
+RE2JS.DISABLE_UNICODE_GROUPS
+/**
+ * Flag: matches longest possible string (changes the match semantics to leftmost-longest).
+ */
+RE2JS.LONGEST_MATCH
+/**
+ * Flag: enable linear-time captureless lookbehinds.
+ */
+RE2JS.LOOKBEHINDS
+```
+
+### Checking for Matches
+
+RE2JS allows you to check if a string matches a given regex pattern using the `matches()` function.
+
+***Performance Note:** The `matches()` method is highly optimized. It performs a strict anchored check and runs directly on the high-speed DFA (Deterministic Finite Automaton) engine without tracking capture groups or instantiating a stateful `Matcher` object.*
+
+```js
+import { RE2JS } from 're2js'
+
+RE2JS.matches('ab+c', 'abbbc') // true
+RE2JS.matches('ab+c', 'cbbba') // false
+// or
+RE2JS.compile('ab+c').matches('abbbc') // true
+RE2JS.compile('ab+c').matches('cbbba') // false
+// with flags
+RE2JS.compile('ab+c', RE2JS.CASE_INSENSITIVE).matches('AbBBc') // true
+RE2JS.compile(
+  '^ab.*c$',
+  RE2JS.DOTALL | RE2JS.MULTILINE | RE2JS.CASE_INSENSITIVE
+).matches('AB\nc') // true
+```
+
+### High-Performance Boolean Testing
+
+If you only need to know **whether** a string matches a pattern (without extracting capture groups), you should use the `test()`, `testExact()`, or `matches()` methods. Unlike `.matcher()`, these methods do not instantiate stateful `Matcher` objects and request exactly `0` capture groups. This guarantees that execution is securely routed to the high-speed DFA (Deterministic Finite Automaton) engine whenever possible in linear `O(n)` time
+
+#### `test(input)`
+
+Tests if the regular expression matches **any part** of the provided input (unanchored). This method mirrors the standard JavaScript `RegExp.prototype.test()` API
+
+```js
+import { RE2JS } from 're2js';
+
+// Compile once, reuse often
+const re = RE2JS.compile('error|warning|critical');
+
+// Extremely fast, unanchored DFA search
+if (re.test('The system encountered a critical failure')) {
+  console.log('Log needs attention!');
+}
+```
+
+#### `testExact(input)`
+
+Tests if the regular expression matches the entire input string (anchored to both start and end).
+
+*Note: `RE2JS.matches()` delegates to this method, so they provide the exact same performance and behavior.*
+
+```js
+import { RE2JS } from 're2js';
+
+const isHex = RE2JS.compile('[0-9A-Fa-f]+');
+
+// Fast, anchored DFA validation
+console.log(isHex.testExact('1A4F'));      // true
+console.log(isHex.testExact('1A4F-xyz'));  // false
+```
+
+### Checking Initial Match
+
+The `lookingAt()` method determines whether the start of the given string matches the pattern
+
+```js
+import { RE2JS } from 're2js'
+
+RE2JS.compile('abc').matcher('abcdef').lookingAt() // true
+RE2JS.compile('abc').matcher('ab').lookingAt() // false
+```
+
+Note that the `lookingAt` method only checks the start of the string. It does not search the entire string for a match
+
+### Finding Matches
+
+To find a match for a given regex pattern in a string, you can use the `find()` function
+
+```js
+import { RE2JS } from 're2js'
+
+RE2JS.compile('ab+c').matcher('xxabbbc').find() // true
+RE2JS.compile('ab+c').matcher('cbbba').find() // false
+// with flags
+RE2JS.compile('ab+c', RE2JS.CASE_INSENSITIVE).matcher('abBBc').find() // true
+```
+
+Example to collect all matches in string
+
+```js
+import { RE2JS } from 're2js'
+
+const p = RE2JS.compile('abc+')
+const matchString = p.matcher('abc abcccc abcc')
+const results = []
+while (matchString.find()) {
+  results.push(matchString.group())
+}
+results // ['abc', 'abcccc', 'abcc']
+```
+
+The `find()` method searches for a pattern match in a string starting from a specific index
+
+```js
+import { RE2JS } from 're2js'
+
+const p = RE2JS.compile('.*[aeiou]')
+const matchString = p.matcher('abcdefgh')
+matchString.find(0) // true
+matchString.group() // 'abcde'
+matchString.find(1) // true
+matchString.group() // 'bcde'
+matchString.find(4) // true
+matchString.group() // 'e'
+matchString.find(7) // false
+```
+
+### Executing a Search (`exec`)
+
+If you want a native, 1:1 drop-in replacement for JavaScript's `RegExp.prototype.exec()`, you can use the `.exec()` method.
+
+Instead of dealing with a stateful `Matcher` object, `exec()` performs a single search and returns a standard `RegExpExecArray`-shaped result, or `null` if no match is found. It includes the `.index`, `.input`, and `.groups` properties, and accurately maps unmatched optional capture groups to `undefined` (just like native JavaScript).
+
+```js
+import { RE2JS } from 're2js'
+
+const re = RE2JS.compile('(?P<first>\\w+) (?:(?P<middle>\\w+) )?(?P<last>\\w+)');
+const result = re.exec('John Doe');
+
+if (result !== null) {
+  console.log(result[0]); // "John Doe" (Full match)
+  console.log(result[1]); // "John" (Group 1)
+  console.log(result[2]); // undefined (Group 2 didn't match)
+  console.log(result[3]); // "Doe" (Group 3)
+
+  console.log(result.index); // 0
+  console.log(result.input); // "John Doe"
+
+  // Named groups dictionary
+  console.log(result.groups.first);  // "John"
+  console.log(result.groups.middle); // undefined
+  console.log(result.groups.last);   // "Doe"
+}
+
+```
+
+***Performance Note:** If you are running `exec()` inside a `while` loop to manually extract multiple matches globally, it is highly recommended to use `.matchAll()` instead, as it is cleaner, strictly stateless, and avoids infinite loop pitfalls.*
+
+### Iterating Over Matches (`matchAll`)
+
+For a more modern, JavaScript-native developer experience, RE2JS provides a `.matchAll()` method. This returns an ES6 `IterableIterator`, allowing you to safely and cleanly iterate over matches using `for...of` loops or the array spread operator `[...]`.
+
+Unlike native `RegExp` objects with the `/g` flag, RE2JS is completely stateless. This means you don't have to worry about `.lastIndex` bugs—you can iterate over the same regex instance as many times as you want safely.
+
+The yielded match arrays perfectly mirror the shape of native JavaScript regex matches. They include `.index`, `.input`, and `.groups` properties, and properly map unmatched capture groups to `undefined`.
+
+```js
+import { RE2JS } from 're2js'
+
+const re2 = RE2JS.compile('(?P<year>\\d{4})-(?P<month>\\d{2})')
+const input = 'Dates: 2024-05 and 2025-11.'
+
+// Native ES6 Iteration
+for (const match of re2.matchAll(input)) {
+  console.log(match[0]); // "2024-05", then "2025-11"
+  console.log(match.index); // 7, then 19
+  console.log(match.groups); // { year: '2024', month: '05' } then { year: '2025', month: '11' }
+  console.log(match.groups.year); // "2024", then "2025"
+}
+
+// Or easily collect all matches into an array
+const allMatches = [...re2.matchAll(input)];
+console.log(allMatches.length); // 2
+```
+
+### Multi-Pattern Matching (RE2Set)
+
+RE2JS includes a highly optimized `RE2Set` API that allows you to match multiple regular expressions against a single string simultaneously. Instead of running 100 different regexes in a loop ($O(100n)$ time), `RE2Set` compiles them into a single state machine and finds all matches in a single pass ($O(n)$ linear time).
+
+This is incredibly powerful for profanity filters, routing engines, or log parsers.
+
+```js
+import { RE2Set } from 're2js'
+
+// Create a new set. You can optionally pass an anchor, public RE2JS flags, and a max memory limit for the DFA.
+// Default anchor: RE2Set.UNANCHORED
+const set = new RE2Set()
+
+// Add patterns to the set.
+// The add() method returns the integer ID of the pattern.
+set.add('error')    // ID: 0
+set.add('warning')  // ID: 1
+set.add('critical') // ID: 2
+
+// You must compile the set before matching!
+set.compile()
+
+// Match against a string.
+// Returns an array of IDs for all patterns that successfully matched.
+console.log(set.match('The system encountered a critical error.'))
+// Outputs: [0, 2]
+
+console.log(set.match('All systems operational.'))
+// Outputs: []
+```
+
+#### Anchoring a Set and Memory Limits
+
+You can strictly anchor the entire set by passing an anchor constant to the constructor (`RE2Set.UNANCHORED`, `RE2Set.ANCHOR_START`, or `RE2Set.ANCHOR_BOTH`).
+
+You can pass standard public `RE2JS` flags (like `CASE_INSENSITIVE` or `LOOKBEHINDS`) as the second argument to apply them to all patterns in the set.
+
+Additionally, the third argument allows you to specify a `maxMem` limit (in bytes) to prevent the underlying DFA from exploding and consuming too much memory on highly ambiguous patterns.
+The default is 8 * 1024 * 1024 (8MB).
+
+```js
+import { RE2Set, RE2JS } from 're2js'
+
+// Anchor the set to match the entire string, make it case-insensitive,
+// and limit the DFA memory usage to ~4MB (default is 8MB).
+const maxMem = 4 * 1024 * 1024;
+const set = new RE2Set(RE2Set.ANCHOR_BOTH, RE2JS.CASE_INSENSITIVE, maxMem)
+
+set.add('foo') // ID: 0
+set.add('bar') // ID: 1
+set.add('.*')  // ID: 2
+
+set.compile()
+
+console.log(set.match('FOO'))    // [0, 2] (Matches 'foo' and '.*' because of CASE_INSENSITIVE)
+console.log(set.match('foobar')) // [2] (Only '.*' matches the entire string because of ANCHOR_BOTH)
+```
+
+***Performance Note:** `RE2Set` heavily utilizes the high-speed DFA engine to process multi-pattern matches simultaneously. However, if your patterns contain boundaries (e.g., `\b`) or trigger a massive state explosion, it will seamlessly and safely fall back to the bounded NFA engine.*
+
+#### Example: Fast JS Routing with RE2Set
+
+```js
+import { RE2Set, RE2JS } from 're2js'
+
+class Router {
+  constructor() {
+    this.set = new RE2Set()
+    this.routes = []
+  }
+
+  addRoute(pattern, handler) {
+    // compile the individual regex (for extracting groups later)
+    const re = RE2JS.compile(pattern)
+
+    // add the raw string to the blazing-fast Set
+    const id = this.set.add(pattern)
+
+    // store them together
+    this.routes[id] = { re, handler }
+  }
+
+  compile() {
+    this.set.compile()
+  }
+
+  execute(path) {
+    // find WHICH routes matched in O(N) time
+    const matchedIDs = this.set.match(path)
+
+    if (matchedIDs.length === 0) {
+      return '404 Not Found'
+    }
+
+    // extract groups ONLY for the routes that won
+    for (const id of matchedIDs) {
+      const route = this.routes[id]
+      const matcher = route.re.matcher(path)
+
+      if (matcher.matches()) {
+        const params = matcher.getNamedGroups()
+        return route.handler(params)
+      }
+    }
+  }
+}
+
+// --- Usage ---
+const router = new Router()
+
+router.addRoute('^/users/(?P<id>\\d+)$', (params) => `User ID: ${params.id}`)
+router.addRoute('^/posts/(?P<slug>[a-z-]+)$', (params) => `Post: ${params.slug}`)
+
+router.compile()
+
+console.log(router.execute('/users/42')) // Outputs: "User ID: 42"
+```
+
+### Splitting Strings
+
+You can split a string based on a regex pattern using the `split()` function
+
+```js
+import { RE2JS } from 're2js'
+
+RE2JS.compile('/').split('abcde') // ['abcde']
+RE2JS.compile('/').split('a/b/cc//d/e//') // ['a', 'b', 'cc', '', 'd', 'e']
+RE2JS.compile(':').split(':a::b') // ['', 'a', '', 'b']
+```
+
+The `split()` function also supports a limit parameter
+
+```js
+import { RE2JS } from 're2js'
+
+RE2JS.compile('/').split('a/b/cc//d/e//', 3) // ['a', 'b', 'cc//d/e//']
+RE2JS.compile('/').split('a/b/cc//d/e//', 4) // ['a', 'b', 'cc', '/d/e//']
+RE2JS.compile('/').split('a/b/cc//d/e//', 9) // ['a', 'b', 'cc', '', 'd', 'e', '', '']
+RE2JS.compile(':').split('boo:and:foo', 2) // ['boo', 'and:foo']
+RE2JS.compile(':').split('boo:and:foo', 5) // ['boo', 'and', 'foo']
+```
+
+### Working with Groups
+
+RE2JS supports capturing groups in regex patterns
+
+#### Group Count
+
+You can get the count of groups in a pattern using the `groupCount()` function
+
+```js
+import { RE2JS } from 're2js'
+
+RE2JS.compile('(.*)ab(.*)a').groupCount() // 2
+RE2JS.compile('(.*)((a)b)(.*)a').groupCount() // 4
+RE2JS.compile('(.*)(\\(a\\)b)(.*)a').groupCount() // 3
+```
+
+#### Named Groups
+
+You can access the named groups in a pattern using the `namedGroups()` function
+
+```js
+import { RE2JS } from 're2js'
+
+RE2JS.compile('(?P<foo>\\d{2})').namedGroups() // { foo: 1 }
+RE2JS.compile('(?<bar>\\d{2})').namedGroups() // { bar: 1 }
+RE2JS.compile('\\d{2}').namedGroups() // {}
+RE2JS.compile('(?P<foo>.*)(?P<bar>.*)').namedGroups() // { foo: 1, bar: 2 }
+```
+
+#### Group Content
+
+The `group()` method retrieves the content matched by a specific capturing group
+
+```js
+import { RE2JS } from 're2js'
+
+const p = RE2JS.compile('(a)(b(c)?)d?(e)')
+const matchString = p.matcher('xabdez')
+if (matchString.find()) {
+  matchString.group(0) // 'abde'
+  matchString.group(1) // 'a'
+  matchString.group(2) // 'b'
+  matchString.group(3) // null
+  matchString.group(4) // 'e'
+}
+```
+
+#### Named Group Content
+
+The `group()` method retrieves the content matched by a specific name of capturing group
+
+```js
+import { RE2JS } from 're2js'
+
+// example with `(?P<name>expr)`
+const p = RE2JS.compile(
+  '(?P<baz>f(?P<foo>b*a(?P<another>r+)){0,10})(?P<bag>bag)?(?P<nomatch>zzz)?'
+)
+const matchString = p.matcher('fbbarrrrrbag')
+if (matchString.matches()) {
+  matchString.group('baz') // 'fbbarrrrr'
+  matchString.group('foo') // 'bbarrrrr'
+  matchString.group('another') // 'rrrrr'
+  matchString.group('bag') // 'bag'
+  matchString.group('nomatch') // null
+}
+
+// example with `(?<name>expr)`
+const m = RE2JS.compile(
+  '(?<baz>f(?<foo>b*a))'
+)
+const mString = m.matcher('fbba')
+if (mString.matches()) {
+  mString.group('baz') // 'fbba'
+  mString.group('foo') // 'bba'
+}
+```
+
+#### Extracting All Named Groups
+
+If you have multiple named capturing groups, the `getNamedGroups()` method provides a convenient way to retrieve all of them at once as a JavaScript dictionary (object). If an optional group was not matched, its value will be `null`.
+
+```js
+import { RE2JS } from 're2js'
+
+const p = RE2JS.compile('(?P<first>\\w+) (?:(?P<middle>\\w+) )?(?P<last>\\w+)')
+const matchString = p.matcher('John Doe')
+
+if (matchString.matches()) {
+  matchString.getNamedGroups()
+  // Returns:
+  // {
+  //   first: 'John',
+  //   middle: null,
+  //   last: 'Doe'
+  // }
+}
+```
+
+### Replacing Matches
+
+RE2JS allows you to replace all occurrences or the first occurrence of a pattern match in a string with a specific replacement string
+
+#### Replacing All Occurrences
+
+The `replaceAll()` method replaces all occurrences of a pattern match in a string with the given replacement
+
+```js
+import { RE2JS } from 're2js'
+
+RE2JS.compile('Frog')
+  .matcher("What the Frog's Eye Tells the Frog's Brain")
+  .replaceAll('Lizard') // "What the Lizard's Eye Tells the Lizard's Brain"
+RE2JS.compile('(.)(.)(.)(.)(.)(.)(.)(.)(.)(.)(.)(.)(.)')
+  .matcher('abcdefghijklmnopqrstuvwxyz123')
+  .replaceAll('$10$20') // 'jb0wo0123'
+```
+
+Note that the replacement string can include references to capturing groups from the pattern
+
+Parameters:
+- `replacement (String | Function)`: The string that replaces the substrings found, or a function invoked to create the new substring. When passing a string, capture groups and special characters have special behavior. For example:
+  - `$&` refers to the entire matched substring
+  - `$1, $2, ...` refer to the corresponding capture groups in the pattern
+  - `$$` inserts a literal `$`
+  - `$<name>` can be used to reference named capture groups
+  - `` $` `` inserts the portion of the string that precedes the matched substring
+  - `$'` inserts the portion of the string that follows the matched substring
+  - on invalid group - ignore it
+- `javaMode (Boolean)`: If set to `true`, the replacement follows Java's rules for replacement. Defaults to `false`. If `javaMode = true`, changed rules for capture groups and special characters:
+  - `$0` refers to the entire matched substring
+  - `$1, $2, ...` refer to the corresponding capture groups in the pattern
+  - `\$` inserts a literal `$`
+  - `${name}` can be used to reference named capture groups
+  - on invalid group - throw exception
+
+Examples:
+
+```js
+import { RE2JS } from 're2js'
+
+RE2JS.compile('(\\w+) (\\w+)')
+  .matcher('Hello World')
+  .replaceAll('$& - $&') // 'Hello World - Hello World'
+RE2JS.compile('(\\w+) (\\w+)')
+  .matcher('Hello World')
+  .replaceAll('$0 - $0', true) // 'Hello World - Hello World'
+```
+
+#### Replacing the First Occurrence
+
+The `replaceFirst()` method replaces the first occurrence of a pattern match in a string with the given replacement
+
+```js
+import { RE2JS } from 're2js'
+
+RE2JS.compile('Frog')
+  .matcher("What the Frog's Eye Tells the Frog's Brain")
+  .replaceFirst('Lizard') // "What the Lizard's Eye Tells the Frog's Brain"
+RE2JS.compile('(.)(.)(.)(.)(.)(.)(.)(.)(.)(.)(.)(.)(.)')
+  .matcher('abcdefghijklmnopqrstuvwxyz123')
+  .replaceFirst('$10$20') // 'jb0nopqrstuvwxyz123'
+```
+
+Function support second argument `javaMode`, which work in the same way, as for `replaceAll` function.
+
+#### Using a Replacer Function
+
+For a more modern JavaScript developer experience, RE2JS supports passing a **replacer function** to `replaceAll()` and `replaceFirst()`, perfectly mirroring native `String.prototype.replace(regex, replacer)` behavior while taking advantage of the high-speed linear-time engine.
+
+The replacer function is invoked for each match, and its return value is used as the replacement string. The function receives the following arguments:
+
+1. `match`: The matched substring.
+2. `p1, p2, ...`: The string found by a capture group (if any). Unmatched optional groups evaluate to `undefined`.
+3. `offset`: The offset of the matched substring within the whole string.
+4. `string`: The original input string (or byte array).
+5. `groups`: A dictionary object of named capture groups (if any exist in the pattern).
+
+```js
+import { RE2JS } from 're2js'
+
+// Example 1: Dynamic replacements
+const re1 = RE2JS.compile('\\d+');
+const m1 = re1.matcher('Numbers: 1, 2, 3');
+
+m1.replaceAll((match) => String(Number(match) * 10));
+// 'Numbers: 10, 20, 30'
+
+
+// Example 2: Using named capture groups and function signature
+const re2 = RE2JS.compile('(?P<first>\\w+) (?:(?P<middle>\\w+) )?(?P<last>\\w+)');
+const m2 = re2.matcher('Hello World');
+
+m2.replaceFirst((match, p1, p2, p3, offset, string, groups) => {
+  // 'middle' didn't match, so p2 and groups.middle will be undefined
+  return `${groups.last}, ${groups.first}`;
+});
+// 'World, Hello'
+
+```
+
+### Safe Replacements
+
+When using untrusted user input as a replacement string, you must escape special characters so they aren't accidentally evaluated as capture groups (e.g., `$1`).
+
+Use the static method `quoteReplacement(string, javaMode)` to safely escape these characters. **Note:** You must pass the same `javaMode` boolean to `quoteReplacement` that you plan to use in `replaceAll()` / `replaceFirst()`, because the two modes use different escaping logic
+
+```js
+import { RE2JS } from 're2js'
+
+const text = 'The cost is 100 bucks.'
+const regex = RE2JS.compile('100 bucks')
+const unsafeUserInput = '$500'
+
+// Safe (Default Mode)
+const safeDefault = RE2JS.quoteReplacement(unsafeUserInput) // "\$500"
+regex.matcher(text).replaceAll(safeDefault) // "The cost is $500."
+
+// Safe (Java Mode)
+const safeJava = RE2JS.quoteReplacement(unsafeUserInput, true) // "$$500"
+regex.matcher(text).replaceAll(safeJava, true) // "The cost is $500."
+```
+
+### Escaping Special Characters
+
+The `quote()` method returns a literal pattern string for the specified string. This can be useful if you want to search for a literal string pattern that may contain special characters
+
+```js
+import { RE2JS } from 're2js'
+
+const regexp = RE2JS.quote('ab+c') // 'ab\\+c'
+
+RE2JS.matches(regexp, 'ab+c') // true
+RE2JS.matches(regexp, 'abc') // false
+```
+
+### Program size
+
+The program size represents a very approximate measure of a regexp's "cost". Larger numbers are more expensive than smaller numbers
+
+```js
+import { RE2JS } from 're2js'
+
+console.log(RE2JS.compile('^').programSize()); // Outputs: 3
+console.log(RE2JS.compile('a+b').programSize()); // Outputs: 5
+console.log(RE2JS.compile('(a+b?)').programSize()); // Outputs: 8
+```
+
+### Translating Regular Expressions
+
+The `translateRegExp()` method preprocesses a given regular expression string or native RegExp object to ensure compatibility with RE2JS. It applies necessary transformations, such as escaping special characters, adjusting Unicode sequences, converting named capture groups, and mapping native execution flags
+
+```js
+import { RE2JS } from 're2js'
+
+const regexp = RE2JS.translateRegExp('(?<word>\\w+)') // '(?P<word>\\w+)'
+
+RE2JS.matches(regexp, 'hello') // true
+RE2JS.matches(regexp, '123') // true
+
+const unicodeRegexp = RE2JS.translateRegExp('\\u{1F600}') // '\\x{1F600}'
+
+RE2JS.matches(unicodeRegexp, '😀') // true
+RE2JS.matches(unicodeRegexp, '😃') // false
+
+// also support native Regex
+const translatedNative = RE2JS.translateRegExp(/foo/ims) // '(?ims)foo'
+
+const re = RE2JS.compile(translatedNative)
+re.test('FOO') // true
+
+RE2JS.translateRegExp(/bar/giy) // '(?i)bar'
+```
+
+## Performance and Architecture
+
+The RE2JS engine provides strict linear-time $O(n)$ safety guarantees against Regular Expression Denial of Service (ReDoS) attacks, a critical vulnerability inherent to native JavaScript `RegExp` objects.
+
+Originally, the C++ implementation of the RE2 engine included both NFA (Nondeterministic Finite Automaton) and DFA (Deterministic Finite Automaton) engines with highly optimized memory operations. Russ Cox later ported the core engine to Go, and Alan Donovan ported it to Java.
+
+`re2js` achieves full architectural parity with the highly optimized Go `regexp` package and incorporates advanced performance features from the original C++ engine. To maximize execution speed on everyday queries without ever sacrificing memory safety, `re2js` intelligently and dynamically routes execution through a highly advanced multi-tiered architecture:
+
+* **The Prefilter Engine:** Analyzes the Abstract Syntax Tree (AST) before execution to extract mandatory string literals (e.g., extracting `"error"` and `"critical"` from `/error.*critical/`). It uses blistering-fast native JavaScript `indexOf` to instantly reject mismatches, completely bypassing the regex state-machines.
+* **Aggressive AST Simplification:** Trims impossible match branches and collapses redundant logic prior to compilation, mathematically pruning dead execution paths to dramatically reduce the size of the generated state machine.
+* **Multi-Pattern Sets (`RE2Set`):** Combines hundreds or thousands of regular expressions into a single combined DFA, allowing you to search a string for all patterns simultaneously in strict $O(N)$ linear time.
+* **OnePass DFA:** Provides high-speed capture group extraction for mathematically 1-unambiguous patterns, bypassing thread queues entirely.
+* **Lazy Powerset DFA:** Executes high-speed boolean matches (e.g., `.test()`) by fusing active states dynamically on the fly.
+* **BitState Backtracker:** Avoids heavy object array allocations by using bitwise operations to extract captures on short-to-medium length strings.
+* **Pike VM (NFA):** Acts as the robust, bounded-memory fallback engine for complex, ambiguous patterns that exceed fast-path limits.
+
+Thanks to these dynamic fast-paths, `re2js` delivers performance comparable to native engines for simple queries, while remaining completely immune to catastrophic backtracking and stack overflow crashes.
+
+Should you require maximum absolute performance on the server side when using RE2, it would be beneficial to consider the following packages for JS:
+
+ - [Node-RE2](https://github.com/uhop/node-re2/): A powerful RE2 C++ binding for Node.js
+ - [RE2-WASM](https://github.com/google/re2-wasm/): This package is a WASM wrapper for RE2. Please note, as of now, it does not work in browsers
+
+### RE2JS vs RE2-Node (C++ Bindings)
+
+Because RE2JS's Lazy DFA, Prefilter, and OnePass engines operate efficiently within V8's Just-In-Time (JIT) compiler, they can outperform native C++ bindings (`re2-node`) for many operations by avoiding the cross-boundary serialization costs between JavaScript and C++.
+
+Here is a [benchmark running 30,000 items](src/__tests__/re2.bench.js) through both engines using their respective `.test()` fast-paths (averages of multiple runs):
+
+| Benchmark Scenario        | Pattern Example            | RE2JS (Pure JS) | RE2-Node (C++) | Result                      |
+|:--------------------------|:---------------------------|:----------------|:---------------|:----------------------------|
+| **ReDoS Attempt**         | `/(a+)+!/`                 | **2.16 ms**     | 15.94 ms       | `re2js` is **7.38x** faster |
+| **Simple Literal**        | `/damage/`                 | **2.58 ms**     | 12.39 ms       | `re2js` is **4.80x** faster |
+| **Deep State Machine**    | `/([0-9]+(/[0-9]+)+)/`     | **11.20 ms**    | 15.76 ms       | `re2js` is **1.41x** faster |
+| **Lazy Wildcard**         | `/enters.*?battlefield/`   | **9.78 ms**     | 12.99 ms       | `re2js` is **1.33x** faster |
+| **Greedy Wildcard**       | `/enters.*battlefield/`    | **9.90 ms**     | 12.99 ms       | `re2js` is **1.31x** faster |
+| **Massive Alternation**   | `/White\|Blue\|Black.../`  | **11.31 ms**    | 14.81 ms       | `re2js` is **1.31x** faster |
+| **Bounded Repetition**    | `/[A-Z][a-z]{5,15}/`       | 28.20 ms        | **13.60 ms**   | `re2-node` is 2.07x faster  |
+| **Case Insensitive**      | `/(?i)swamp/`              | 56.41 ms        | **16.13 ms**   | `re2-node` is 3.50x faster  |
+| **Word Boundaries (NFA)** | `/\b(Flying\|First...)\b/` | 107.12 ms       | **15.41 ms**   | `re2-node` is 6.95x faster  |
+
+**Takeaways:**
+* **Pure JS Strengths:** For complex state tracking (nested groups, wildcards) and literal string scanning, `re2js` actually beats the native C++ bindings. V8's Turbofan JIT compiler is able to heavily optimize the Pure JS DFA loop, bypassing the C++ boundary entirely.
+* **C++ Strengths:** For character class evaluations (Case Insensitivity, Bounded Repetitions), `re2-node` has a slight edge thanks to highly optimized, hardware-level memory tables.
+* **The NFA Fallback:** Pure DFA engines mathematically cannot track look-behind context like Word Boundaries (`\b`). When RE2JS encounters these, it safely bails out to its NFA engine. As shown in the benchmarks, the pure JS NFA is significantly slower than the C++ NFA. **For maximum performance in RE2JS, avoid `\b` when doing bulk boolean `.test()` matching.**
+
+
+### RE2JS vs JavaScript's native RegExp
+
+These examples illustrate the performance comparison between the RE2JS library and JavaScript's native `RegExp` for both a simple case and a ReDoS (Regular Expression Denial of Service) scenario.
+
+```js
+const regex = 'a+'
+const string = 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa!'
+
+// Running 30,000 iterations
+RE2JS.compile(regex).test(string) // Total time: ~9.87 ms
+new RegExp(regex).test(string)    // Total time: ~11.43 ms
+```
+
+For safe, simple patterns, the RE2JS DFA fast-path is heavily optimized and performs at parity with—or even slightly faster than—V8's native RegExp engine.
+
+```js
+const regex = '([a-z]+)+$'
+const string = 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa!'
+
+// Running 30,000 iterations
+RE2JS.compile(regex).test(string) // Total time: ~454.17 ms
+// Running EXACTLY 1 iteration
+new RegExp(regex).test(string)    // Total time: ~105802.02 ms (over 105 seconds)
+```
+
+In the second example, a ReDoS scenario is depicted. The regular expression `([a-z]+)+$` is a potentially problematic one because it contains a nested quantifier. In standard NFA engines (like JavaScript's native `RegExp`), nested quantifiers can cause catastrophic backtracking. If a malicious user inputs a carefully crafted string, it results in exponentially high processing times, leading to a Denial of Service (DoS) attack.
+
+RE2JS processed this poison-pill string **30,000 times in just ~454 milliseconds**, while the native RegExp completely locked up the main thread for **over 1 minute and 45 seconds trying to evaluate it just once**. This demonstrates why RE2JS is absolutely essential for securely handling untrusted regular expressions and protecting Node.js and browser applications against ReDoS attacks.
+
+## Lookbehinds (Linear-Time Execution)
+
+Historically, the RE2 specification has strictly forbidden lookaround assertions (like lookbehinds) because traditional regex engines use backtracking to evaluate them, leading to catastrophic exponential execution times and ReDoS vulnerabilities.
+
+However, `re2js` implements a breakthrough algorithmic approach ([developed by researchers at EPFL](https://arxiv.org/pdf/2311.17620), [RE2 guide how to add it](https://systemf.epfl.ch/blog/re2-lookbehinds/)) that evaluates **captureless lookbehinds in strict linear $O(n)$ time** without backtracking. Because this diverges from the standard RE2 specification and carries a slight performance trade-off, it is disabled by default.
+
+You can enable it by passing the `RE2JS.LOOKBEHINDS` flag during compilation:
+
+```js
+import { RE2JS } from 're2js';
+
+// Positive Lookbehind: Match 'bar' only if preceded by 'foo'
+const positive = RE2JS.compile('(?<=foo)bar', RE2JS.LOOKBEHINDS);
+positive.test('foobar'); // true
+positive.test('bazbar'); // false
+
+// Negative Lookbehind: Match 'bar' only if NOT preceded by 'foo'
+const negative = RE2JS.compile('(?<!foo)bar', RE2JS.LOOKBEHINDS);
+negative.test('bazbar'); // true
+negative.test('foobar'); // false
+```
+
+### Important Limitations and Warnings
+
+1. **Performance Overhead:** If a regex contains a lookbehind, the engine is forced to safely bypass the ultra-fast Lazy DFA and OnePass engines. It evaluates the lookbehinds using parallel automata running on the NFA (Pike VM). While execution remains mathematically safe and linear $O(n)$, the NFA engine is generally slower than the DFA fast-paths. Use lookbehinds only when necessary.
+2. **Prefix Acceleration is Disabled:** To ensure the parallel tracking automata initialize correctly, high-speed string prefix skipping (e.g., using `indexOf` to jump to a starting literal) is disabled when lookbehinds are present.
+3. **Captureless Guarantee:** To prevent state-explosion vulnerabilities and maintain strict safety invariants, lookbehinds are strictly evaluated as *captureless*. If you attempt to include a capturing group inside a lookbehind (e.g., `(?<=(foo))bar`), the engine will proactively throw a `SyntaxError` at compile time. Use non-capturing groups `(?:...)` instead.
+
+
+## Development
+
+Some files like `CharGroup.js` and `UnicodeTables.js` are generated and should be edited in their respective generator files:
+
+```bash
+./tools/scripts/make_perl_groups.pl > src/CharGroup.js
+yarn node ./tools/scripts/genUnicodeTable.js > src/UnicodeTables.js
+```
+
+To run `make_perl_groups.pl`, you need to have Perl installed (the required version is specified inside `.tool-versions`).
+
+[Playground website](https://re2js.leopard.in.ua/) maintained in `www` branch

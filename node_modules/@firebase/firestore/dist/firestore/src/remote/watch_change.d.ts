@@ -1,0 +1,322 @@
+/**
+ * @license
+ * Copyright 2017 Google LLC
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+import { DatabaseId } from '../core/database_info';
+import type { TargetOrPipeline } from '../core/pipeline-util';
+import { SnapshotVersion } from '../core/snapshot_version';
+import { RemoteTargetId } from '../core/types';
+import { ChangeType } from '../core/view_snapshot';
+import { TargetData } from '../local/target_data';
+import { DocumentKeySet } from '../model/collections';
+import { MutableDocument } from '../model/document';
+import { DocumentKey } from '../model/document_key';
+import { ByteString } from '../util/byte_string';
+import { FirestoreError } from '../util/error';
+import { ExistenceFilter } from './existence_filter';
+import { RemoteEvent, TargetChange } from './remote_event';
+/**
+ * Internal representation of the watcher API protocol buffers.
+ */
+export type WatchChange = DocumentWatchChange | WatchTargetChange | ExistenceFilterChange;
+/**
+ * Represents a changed document and a list of target ids to which this change
+ * applies.
+ *
+ * If document has been deleted NoDocument will be provided.
+ */
+export declare class DocumentWatchChange {
+    /** The new document applies to all of these targets. */
+    updatedTargetIds: RemoteTargetId[];
+    /** The new document is removed from all of these targets. */
+    removedTargetIds: RemoteTargetId[];
+    /** The key of the document for this change. */
+    key: DocumentKey;
+    /**
+     * The new document or NoDocument if it was deleted. Is null if the
+     * document went out of view without the server sending a new document.
+     */
+    newDoc: MutableDocument | null;
+    constructor(
+    /** The new document applies to all of these targets. */
+    updatedTargetIds: RemoteTargetId[], 
+    /** The new document is removed from all of these targets. */
+    removedTargetIds: RemoteTargetId[], 
+    /** The key of the document for this change. */
+    key: DocumentKey, 
+    /**
+     * The new document or NoDocument if it was deleted. Is null if the
+     * document went out of view without the server sending a new document.
+     */
+    newDoc: MutableDocument | null);
+}
+export declare class ExistenceFilterChange {
+    targetId: RemoteTargetId;
+    existenceFilter: ExistenceFilter;
+    constructor(targetId: RemoteTargetId, existenceFilter: ExistenceFilter);
+}
+export declare const enum WatchTargetChangeState {
+    NoChange = 0,
+    Added = 1,
+    Removed = 2,
+    Current = 3,
+    Reset = 4
+}
+export declare class WatchTargetChange {
+    /** What kind of change occurred to the watch target. */
+    state: WatchTargetChangeState;
+    /** The target IDs that were added/removed/set. */
+    targetIds: RemoteTargetId[];
+    /**
+     * An opaque, server-assigned token that allows watching a target to be
+     * resumed after disconnecting without retransmitting all the data that
+     * matches the target. The resume token essentially identifies a point in
+     * time from which the server should resume sending results.
+     */
+    resumeToken: ByteString;
+    /** An RPC error indicating why the watch failed. */
+    cause: FirestoreError | null;
+    constructor(
+    /** What kind of change occurred to the watch target. */
+    state: WatchTargetChangeState, 
+    /** The target IDs that were added/removed/set. */
+    targetIds: RemoteTargetId[], 
+    /**
+     * An opaque, server-assigned token that allows watching a target to be
+     * resumed after disconnecting without retransmitting all the data that
+     * matches the target. The resume token essentially identifies a point in
+     * time from which the server should resume sending results.
+     */
+    resumeToken?: ByteString, 
+    /** An RPC error indicating why the watch failed. */
+    cause?: FirestoreError | null);
+}
+/** Tracks the internal state of a Watch target. */
+export declare class TargetState {
+    private targetId;
+    /**
+     * Track the targetId for logging.
+     */
+    constructor(targetId: RemoteTargetId);
+    /**
+     * The number of pending responses (adds or removes) that we are waiting on.
+     * We only consider targets active that have no pending responses.
+     */
+    private pendingResponses;
+    /**
+     * Keeps track of the document changes since the last raised snapshot.
+     *
+     * These changes are continuously updated as we receive document updates and
+     * always reflect the current set of changes against the last issued snapshot.
+     */
+    private documentChanges;
+    /** See public getters for explanations of these fields. */
+    private _resumeToken;
+    private _current;
+    /**
+     * Whether this target state should be included in the next snapshot. We
+     * initialize to true so that newly-added targets are included in the next
+     * RemoteEvent.
+     */
+    private _hasPendingChanges;
+    /**
+     * Whether this target has been marked 'current'.
+     *
+     * 'Current' has special meaning in the RPC protocol: It implies that the
+     * Watch backend has sent us all changes up to the point at which the target
+     * was added and that the target is consistent with the rest of the watch
+     * stream.
+     */
+    get current(): boolean;
+    /** The last resume token sent to us for this target. */
+    get resumeToken(): ByteString;
+    /** Whether this target has pending target adds or target removes. */
+    get isPending(): boolean;
+    /** Whether we have modified any state that should trigger a snapshot. */
+    get hasPendingChanges(): boolean;
+    /**
+     * Applies the resume token to the TargetChange, but only when it has a new
+     * value. Empty resumeTokens are discarded.
+     */
+    updateResumeToken(resumeToken: ByteString): void;
+    /**
+     * Creates a target change from the current set of changes.
+     *
+     * To reset the document changes after raising this snapshot, call
+     * `clearPendingChanges()`.
+     */
+    toTargetChange(): TargetChange;
+    /**
+     * Resets the document changes and sets `hasPendingChanges` to false.
+     */
+    clearPendingChanges(): void;
+    addDocumentChange(key: DocumentKey, changeType: ChangeType): void;
+    removeDocumentChange(key: DocumentKey): void;
+    recordPendingTargetRequest(): void;
+    recordTargetResponse(): void;
+    markCurrent(): void;
+}
+/**
+ * Interface implemented by RemoteStore to expose target metadata to the
+ * WatchChangeAggregator.
+ */
+export interface TargetMetadataProvider {
+    /**
+     * Returns the set of remote document keys for the given target ID as of the
+     * last raised snapshot.
+     */
+    getRemoteKeysForTarget(targetId: RemoteTargetId): DocumentKeySet;
+    /**
+     * Returns the TargetData for an active target ID or 'null' if this target
+     * has become inactive
+     */
+    getTargetDataForTarget(targetId: RemoteTargetId): TargetData<RemoteTargetId> | null;
+    /**
+     * Returns the database ID of the Firestore instance.
+     */
+    getDatabaseId(): DatabaseId;
+}
+/**
+ * A helper class to accumulate watch changes into a RemoteEvent.
+ */
+export declare class WatchChangeAggregator {
+    private metadataProvider;
+    constructor(metadataProvider: TargetMetadataProvider);
+    /**
+     * The internal state of all tracked targets.
+     *
+     * Targets have the following lifecycle of [states] within the WatchChangeAggregator:
+     * [unknown] -> recordPendingTargetRequest(t)
+     *           -> [pending]
+     *           -> handleTargetChange(t, Added)
+     *           -> [added / !pending]
+     *           -> recordPendingTargetRequest(t)
+     *           -> [pending]
+     *           -> handleTargetChange(t, Removed)
+     *           -> [unknown]
+     *
+     * A reset on an [added] target leaves the target in an [added] state.
+     * [added / !pending] -> handleTargetChange(t, Reset)
+     *                    -> [added / !pending]
+     *
+     * [active]: is a substate of [added], where also `remoteStore.listenTargets.has(t) === true`.
+     *           Generally it is expected that when a target is [active / !pending]
+     *           then it is also [active], but the implementation does not guarantee
+     *           this will always be true.
+     *
+     */
+    private targetStates;
+    /** Keeps track of the documents to update since the last raised snapshot. */
+    private pendingDocumentUpdates;
+    private pendingDocumentUpdatesByTarget;
+    /** Keeps track of the augmented documents to update since the last raised snapshot. */
+    private pendingAugmentedDocumentUpdates;
+    /** A mapping of document keys to their set of target IDs. */
+    private pendingDocumentTargetMapping;
+    /**
+     * A map of targets with existence filter mismatches. These targets are
+     * known to be inconsistent and their listens needs to be re-established by
+     * RemoteStore.
+     */
+    private pendingTargetResets;
+    /**
+     * Processes and adds the DocumentWatchChange to the current set of changes.
+     */
+    handleDocumentChange(docChange: DocumentWatchChange): void;
+    /** Processes and adds the WatchTargetChange to the current set of changes. */
+    handleTargetChange(targetChange: WatchTargetChange): void;
+    /**
+     * Iterates over all targetIds that the watch change applies to: either the
+     * targetIds explicitly listed in the change or the targetIds of all currently
+     * active targets.
+     */
+    forEachTarget(targetChange: WatchTargetChange, fn: (targetId: RemoteTargetId) => void): void;
+    isSingleDocumentTarget(target: TargetOrPipeline): boolean;
+    /**
+     * Handles existence filters and synthesizes deletes for filter mismatches.
+     * Targets that are invalidated by filter mismatches are added to
+     * `pendingTargetResets`.
+     */
+    handleExistenceFilter(watchChange: ExistenceFilterChange): void;
+    /**
+     * Parse the bloom filter from the "unchanged_names" field of an existence
+     * filter.
+     */
+    private parseBloomFilter;
+    /**
+     * Apply bloom filter to remove the deleted documents, and return the
+     * application status.
+     */
+    private applyBloomFilter;
+    /**
+     * Filter out removed documents based on bloom filter membership result and
+     * return number of documents removed.
+     */
+    private filterRemovedDocuments;
+    /**
+     * Converts the currently accumulated state into a remote event at the
+     * provided snapshot version. Resets the accumulated changes before returning.
+     */
+    createRemoteEvent(snapshotVersion: SnapshotVersion): RemoteEvent<RemoteTargetId>;
+    /**
+     * Adds the provided document to the internal list of document updates and
+     * its document key to the given target's mapping.
+     */
+    addDocumentToTarget(targetId: RemoteTargetId, document: MutableDocument): void;
+    /**
+     * Removes the provided document from the target mapping. If the
+     * document no longer matches the target, but the document's state is still
+     * known (e.g. we know that the document was deleted or we received the change
+     * that caused the filter mismatch), the new document can be provided
+     * to update the remote document cache.
+     */
+    removeDocumentFromTarget(targetId: RemoteTargetId, key: DocumentKey, updatedDocument: MutableDocument | null): void;
+    removeTarget(targetId: RemoteTargetId): void;
+    /**
+     * Returns the current count of documents in the target. This includes both
+     * the number of documents that the LocalStore considers to be part of the
+     * target as well as any accumulated changes.
+     */
+    private getCurrentDocumentCountForTarget;
+    /**
+     * Increment the number of acks needed from watch before we can consider the
+     * server to be 'in-sync' with the client's active targets.
+     */
+    recordPendingTargetRequest(targetId: RemoteTargetId): void;
+    private ensureDocumentTargetMapping;
+    private ensureDocumentUpdateByTarget;
+    /**
+     * Verifies that the user is still interested in this target (by calling
+     * `getTargetDataForTarget()`) and that we are not waiting for pending ADDs
+     * from watch.
+     */
+    protected isActiveTarget(targetId: RemoteTargetId): boolean;
+    /**
+     * Returns the TargetData for an active target (i.e. a target that the user
+     * is still interested in that has no outstanding target change requests).
+     */
+    protected targetDataForActiveTarget(targetId: RemoteTargetId): TargetData<RemoteTargetId> | null;
+    /**
+     * Resets the state of a Watch target to its initial state (e.g. sets
+     * 'current' to false, clears the resume token and removes its target mapping
+     * from all documents).
+     */
+    private resetTarget;
+    /**
+     * Returns whether the LocalStore considers the document to be part of the
+     * specified target.
+     */
+    private targetContainsDocument;
+}
