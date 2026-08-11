@@ -1,0 +1,11 @@
+services:
+  - type: web
+    name: smarthire-backend-api
+    env: docker
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
+    plan: free
+    region: oregon
+    envVars:
+      - key: PORT
+        value: 8000
