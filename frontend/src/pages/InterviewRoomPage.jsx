@@ -15,7 +15,7 @@ export default function InterviewRoomPage({ sessionData, setActivePage, setFinal
   const [violationCount, setViolationCount] = useState(0);
   const [candidateAnswersList, setCandidateAnswersList] = useState([]);
   
-  // DYNAMIC LIVE TELEMETRY STATE (EYE CONTACT, ATTENTION, CONFIDENCE, PRESENCE, EMOTION)
+  // DYNAMIC LIVE TELEMETRY BARS
   const [telemetry, setTelemetry] = useState({
     eyeContactPct: 91,
     attentionPct: 96,
@@ -26,106 +26,106 @@ export default function InterviewRoomPage({ sessionData, setActivePage, setFinal
 
   const recognitionRef = useRef(null);
 
-  // REAL COMPANY INTERVIEW QUESTION FLOW
+  // REAL HUMAN-TO-HUMAN CONVERSATIONAL AI INTERVIEW QUESTION FLOW
   const domainQuestionsBank = {
     "AI / ML & Data Science": [
       {
         id: 1,
-        question_number: "Question 1 of 3 (Self Introduction)",
-        question_text: "Q1: Tell me about yourself, your academic background, and your key projects in Artificial Intelligence, Machine Learning, and Data Science.",
-        sample_answer: "Hello! I am a passionate developer specializing in Artificial Intelligence and Data Science. I have built projects including RAG pipelines, predictive machine learning models, and data analytics dashboards."
+        question_number: "Question 1 of 3 (Candidate Introduction)",
+        question_text: "Hello! My name is AIRA, and I will be conducting your AI mock interview today. To get started, please introduce yourself, your technical background, and your key projects in Artificial Intelligence, Machine Learning, and Data Science.",
+        sample_answer: "Hello AIRA! I am a software engineer specializing in AI and Data Science. I have built projects including RAG pipelines, predictive machine learning models, and analytics dashboards."
       },
       {
         id: 2,
-        question_number: "Question 2 of 3 (AI & LLMs)",
-        question_text: "Q2 [AI]: Explain how Retrieval-Augmented Generation (RAG) combines Vector Databases (ChromaDB) with LLMs to eliminate model hallucinations.",
-        sample_answer: "RAG retrieves relevant document chunks from ChromaDB using semantic vector search and injects context into LLM prompts, providing grounded and hallucination-free answers."
+        question_number: "Question 2 of 3 (AI & LLM Architecture)",
+        question_text: "Great introduction! Now, let's dive into core AI concepts. Explain how Retrieval-Augmented Generation (RAG) combines Vector Databases like ChromaDB with Large Language Models to eliminate model hallucinations.",
+        sample_answer: "RAG retrieves relevant document chunks from ChromaDB using semantic vector embeddings and injects context into LLM prompts, providing grounded and accurate answers."
       },
       {
         id: 3,
-        question_number: "Question 3 of 3 (Machine Learning)",
-        question_text: "Q3 [Machine Learning]: How do you handle missing dataset values, prevent model overfitting using cross-validation, and evaluate model performance?",
-        sample_answer: "I handle missing data using median imputation, prevent overfitting using 5-fold cross-validation with L2 regularization, and evaluate performance using F1-score and ROC-AUC metrics."
+        question_number: "Question 3 of 3 (Machine Learning Practical)",
+        question_text: "Excellent explanation. For our technical scenario: How do you handle missing values in datasets, prevent model overfitting using cross-validation, and evaluate performance using metrics like F1-score?",
+        sample_answer: "I impute missing values using dataset medians, prevent overfitting using 5-fold cross-validation with L2 regularization, and evaluate imbalanced datasets using F1-score and ROC-AUC."
       }
     ],
     "Backend Engineering": [
       {
         id: 1,
-        question_number: "Question 1 of 3 (Self Introduction)",
-        question_text: "Q1: Tell me about yourself and your experience building RESTful APIs, database schemas, and backend applications.",
-        sample_answer: "Hi! I am a backend software engineer with hands-on experience building REST APIs using Python FastAPI and PostgreSQL databases with JWT authentication."
+        question_number: "Question 1 of 3 (Candidate Introduction)",
+        question_text: "Hello! My name is AIRA, and I will be conducting your backend engineering mock interview today. To begin, please introduce yourself and summarize your experience building REST APIs and database applications.",
+        sample_answer: "Hello AIRA! I am a backend engineer with hands-on experience building RESTful APIs using Python FastAPI, PostgreSQL databases, and JWT authentication."
       },
       {
         id: 2,
         question_number: "Question 2 of 3 (Core Backend)",
-        question_text: "Q2: How do you identify slow SQL query bottlenecks and optimize execution speed using B-tree indexing and ORM connection pooling?",
-        sample_answer: "I analyze query execution plans using EXPLAIN ANALYZE, create B-tree indexes on high-frequency search columns, and configure SQLAlchemy connection pools."
+        question_text: "Nice to meet you! How do you identify slow SQL query execution bottlenecks and optimize database performance using B-tree indexing and ORM connection pooling?",
+        sample_answer: "I analyze query execution plans using EXPLAIN ANALYZE, create B-tree indexes on search columns, and configure connection pooling in SQLAlchemy."
       },
       {
         id: 3,
         question_number: "Question 3 of 3 (API Security)",
-        question_text: "Q3: How do you secure REST API endpoints using JWT access tokens, password hashing with bcrypt, and CORS headers?",
-        sample_answer: "I issue short-lived JWT access tokens, store hashed passwords securely using bcrypt, and enforce strict CORS origin policies on backend endpoints."
+        question_text: "Great answer. Lastly, how do you secure production REST API endpoints using short-lived JWT tokens, password hashing with bcrypt, and CORS origin headers?",
+        sample_answer: "I issue short-lived JWT access tokens, hash user passwords securely using bcrypt, and enforce strict CORS origin policies on FastAPI middleware."
       }
     ],
     "Cloud & DevOps": [
       {
         id: 1,
-        question_number: "Question 1 of 3 (Self Introduction)",
-        question_text: "Q1: Tell me about yourself and your background in cloud infrastructure, containerization, and automated deployments.",
-        sample_answer: "Hello! I am a DevOps engineer experienced in containerizing applications with Docker, writing Terraform infrastructure code, and configuring GitHub Actions CI/CD pipelines."
+        question_number: "Question 1 of 3 (Candidate Introduction)",
+        question_text: "Hello! My name is AIRA, and I will be conducting your Cloud & DevOps mock interview today. To start off, please introduce yourself and describe your background in cloud infrastructure and automated deployments.",
+        sample_answer: "Hello AIRA! I am a DevOps engineer experienced in containerizing apps with Docker, writing Terraform infrastructure code, and setting up GitHub Actions CI/CD pipelines."
       },
       {
         id: 2,
         question_number: "Question 2 of 3 (Containerization)",
-        question_text: "Q2: Describe how multi-stage Docker builds reduce container image sizes and optimize build speed for production cloud environments.",
-        sample_answer: "Multi-stage builds separate compilation dependencies from the final execution image, resulting in lightweight, secure container images for cloud deployment."
+        question_text: "Welcome! Describe how multi-stage Docker builds optimize container image sizes and speed up container deployment workflows.",
+        sample_answer: "Multi-stage builds separate build-time compilers from the runtime environment, resulting in minimal and secure Docker container images for cloud deployment."
       },
       {
         id: 3,
         question_number: "Question 3 of 3 (Kubernetes & Monitoring)",
-        question_text: "Q3: How do you orchestrate zero-downtime rolling updates in Kubernetes and set up monitoring alerts using Prometheus and Grafana?",
+        question_text: "Very clear. How do you orchestrate zero-downtime rolling updates in Kubernetes and set up monitoring alert dashboards using Prometheus and Grafana?",
         sample_answer: "I configure Kubernetes readiness probes for rolling updates and aggregate real-time server metrics into Prometheus scrapers linked to Grafana alert dashboards."
       }
     ],
     "Frontend Engineering": [
       {
         id: 1,
-        question_number: "Question 1 of 3 (Self Introduction)",
-        question_text: "Q1: Tell me about yourself and your experience crafting interactive web user interfaces using React.js and Tailwind CSS.",
-        sample_answer: "Hi! I am a frontend developer experienced in building modern, responsive single-page web applications using React.js, Tailwind CSS, and Web APIs."
+        question_number: "Question 1 of 3 (Candidate Introduction)",
+        question_text: "Hello! My name is AIRA, and I will be conducting your frontend engineering mock interview today. Please introduce yourself and discuss your experience crafting interactive web UIs using React.js and Tailwind CSS.",
+        sample_answer: "Hello AIRA! I am a frontend developer experienced in building modern, responsive single-page web applications using React.js, Tailwind CSS, and Web APIs."
       },
       {
         id: 2,
         question_number: "Question 2 of 3 (React Performance)",
-        question_text: "Q2: How do you optimize React web app performance using useMemo, useCallback, and React.memo to prevent unnecessary component re-renders?",
+        question_text: "Great to have you here! How do you optimize React web app performance using useMemo, useCallback, and React.memo to prevent unnecessary re-renders?",
         sample_answer: "I memoize heavy computation values with useMemo, preserve function references with useCallback, and wrap child components in React.memo."
       },
       {
         id: 3,
         question_number: "Question 3 of 3 (Web APIs)",
-        question_text: "Q3: Explain how you integrate Web Speech Synthesis for text-to-speech voiceover and SpeechRecognition for real-time microphone transcriptions.",
+        question_text: "Awesome. How do you integrate Web Speech Synthesis for text-to-speech voiceover and SpeechRecognition for real-time microphone transcriptions?",
         sample_answer: "I use SpeechSynthesisUtterance for browser text-to-speech playback and continuous webkitSpeechRecognition for real-time speech-to-text transcript streaming."
       }
     ],
     "HR & Behavioral": [
       {
         id: 1,
-        question_number: "Question 1 of 3 (Self Introduction)",
-        question_text: "Q1: Tell me about yourself, your career journey, and why you are interested in joining our engineering team.",
-        sample_answer: "Hello! I am an ambitious software engineer who enjoys solving complex problems, collaborating with cross-functional teams, and continuously improving my technical skills."
+        question_number: "Question 1 of 3 (Candidate Introduction)",
+        question_text: "Hello! My name is AIRA, and I will be conducting your behavioral interview today. Tell me about yourself, your career journey, and why you are passionate about software engineering.",
+        sample_answer: "Hello AIRA! I am an ambitious software engineer who enjoys solving complex technical problems, collaborating with cross-functional teams, and continuously learning."
       },
       {
         id: 2,
         question_number: "Question 2 of 3 (Problem Solving)",
-        question_text: "Q2: Describe a technical conflict or tight project deadline you encountered. How did you resolve it using the STAR framework?",
-        sample_answer: "In a past project, when faced with a tight deadline, I prioritized core MVP features, collaborated closely with team members, and delivered the working software on schedule."
+        question_text: "Thank you for sharing that! Describe a technical conflict or tight project deadline you encountered. How did you handle it using the STAR method?",
+        sample_answer: "When faced with a tight deadline, I prioritized core MVP features, communicated openly with team members, and delivered working software on schedule."
       },
       {
         id: 3,
         question_number: "Question 3 of 3 (Growth)",
-        question_text: "Q3: How do you handle feedback from code reviews and stay updated with new software technologies?",
-        sample_answer: "I view code reviews as learning opportunities, actively integrate feedback into my code, and read official technical documentation to stay updated."
+        question_text: "Wonderful. How do you incorporate constructive feedback from code reviews to improve your technical skills?",
+        sample_answer: "I view code reviews as valuable learning opportunities, actively integrate feedback into my code, and read official technical documentation to stay updated."
       }
     ]
   };
@@ -140,7 +140,7 @@ export default function InterviewRoomPage({ sessionData, setActivePage, setFinal
     return () => clearInterval(timer);
   }, []);
 
-  // REAL PROCTORING VIOLATION HANDLER (ONLY TRIGGERS WHEN CANDIDATE ACTUALLY SWITCHES TABS)
+  // REAL PROCTORING VIOLATION HANDLER (ONLY TRIGGERS WHEN CANDIDATE ACTUALLY SWITCHES BROWSER TABS)
   const triggerProctoringViolation = (reasonText) => {
     setViolationCount(prev => {
       const nextCount = prev + 1;
@@ -198,7 +198,7 @@ export default function InterviewRoomPage({ sessionData, setActivePage, setFinal
     setActivePage('interview-report');
   };
 
-  // Web Speech Synthesis (AIRA Voiceover)
+  // Web Speech Synthesis (AIRA Natural Voiceover)
   const speakQuestion = () => {
     try {
       if ('speechSynthesis' in window) {
