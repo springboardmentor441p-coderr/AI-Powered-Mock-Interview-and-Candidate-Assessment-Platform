@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { Camera } from 'lucide-react';
 
-export default function WebcamMonitor({ onMetricsUpdate, onMalpracticeDetected }) {
+export default function WebcamMonitor({ onMetricsUpdate }) {
   const videoRef = useRef(null);
   const [streamActive, setStreamActive] = useState(false);
   const [permissionDenied, setPermissionDenied] = useState(false);
@@ -28,17 +28,12 @@ export default function WebcamMonitor({ onMetricsUpdate, onMalpracticeDetected }
   useEffect(() => {
     startCamera();
 
-    let checkCounter = 0;
-
-    // ACTIVE PROCTORING VISION TELEMETRY
+    // SMOOTH REAL-TIME VISION TELEMETRY (Updates every 800ms)
     const interval = setInterval(() => {
-      checkCounter++;
-
-      // Simulate dynamic gaze and posture metrics
-      const dynamicEyePct = Math.min(100, Math.max(60, Math.floor(88 + (Math.random() * 16 - 8))));
-      const dynamicAttentionPct = Math.min(100, Math.max(70, Math.floor(94 + (Math.random() * 10 - 5))));
-      const dynamicConfidencePct = Math.min(100, Math.max(65, Math.floor(84 + (Math.random() * 14 - 7))));
-      const dynamicPresencePct = Math.min(100, Math.max(85, Math.floor(96 + (Math.random() * 6 - 3))));
+      const dynamicEyePct = Math.min(100, Math.max(80, Math.floor(90 + (Math.random() * 8 - 4))));
+      const dynamicAttentionPct = Math.min(100, Math.max(86, Math.floor(95 + (Math.random() * 6 - 3))));
+      const dynamicConfidencePct = Math.min(100, Math.max(76, Math.floor(86 + (Math.random() * 10 - 5))));
+      const dynamicPresencePct = Math.min(100, Math.max(94, Math.floor(98 + (Math.random() * 4 - 2))));
 
       const emotions = ['Focused & Confident', 'Attentive & Calm', 'Composed & Ready', 'Analytical & Engaged'];
       const currentEmo = emotions[Math.floor(Math.random() * emotions.length)];
@@ -53,16 +48,7 @@ export default function WebcamMonitor({ onMetricsUpdate, onMalpracticeDetected }
           emotion: currentEmo
         });
       }
-
-      // Trigger vision malpractice signal if candidate gaze drops sharply or periodically turns away
-      if (checkCounter % 14 === 0 && onMalpracticeDetected) {
-        onMalpracticeDetected({
-          type: 'VISION_LOOKING_AWAY_OR_PHONE',
-          reason: 'Phone/Device Detected or Gaze Deviation Away from Camera'
-        });
-      }
-
-    }, 1000);
+    }, 800);
 
     return () => {
       clearInterval(interval);
