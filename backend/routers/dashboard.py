@@ -28,7 +28,7 @@ def get_stats(
 ):
     """Return summary stats for the candidate dashboard header cards."""
     report_docs = list(db.session_reports.find({"user_id": current_user.id}).sort("created_at", pymongo.DESCENDING))
-    reports = [SessionReport.from_mongo(doc) for doc in report_docs]
+    reports = [r for doc in report_docs if (r := SessionReport.from_mongo(doc)) is not None]
 
     if not reports:
         return {
@@ -68,7 +68,7 @@ def get_progress(
 ):
     """Return score trend — last N sessions ordered oldest first (for chart)."""
     report_docs = list(db.session_reports.find({"user_id": current_user.id}).sort("created_at", pymongo.DESCENDING).limit(limit))
-    reports = [SessionReport.from_mongo(doc) for doc in report_docs]
+    reports = [r for doc in report_docs if (r := SessionReport.from_mongo(doc)) is not None]
 
     # Reverse so chart goes oldest → newest
     reports = list(reversed(reports))
@@ -94,7 +94,7 @@ def get_weak_areas(
 ):
     """Identify which skill areas the candidate scores lowest on."""
     report_docs = list(db.session_reports.find({"user_id": current_user.id}))
-    reports = [SessionReport.from_mongo(doc) for doc in report_docs]
+    reports = [r for doc in report_docs if (r := SessionReport.from_mongo(doc)) is not None]
 
     if not reports:
         return []
