@@ -14,18 +14,6 @@ export default function InterviewRoomPage({ sessionData, setActivePage, setFinal
   const [activePopup, setActivePopup] = useState(null);
   const [violationCount, setViolationCount] = useState(0);
   const [candidateAnswersList, setCandidateAnswersList] = useState([]);
-  const chatScrollRef = useRef(null);
-
-  // REAL-TIME MULTI-TURN CHAT CONVERSATION THREAD
-  const [chatMessages, setChatMessages] = useState([
-    {
-      id: 1,
-      sender: 'INTERVIEWER (IRA)',
-      text: "Hello! My name is AIRA, and I will be conducting your AI mock interview today. To get started, please introduce yourself, your technical background, and your key projects.",
-      type: 'interviewer',
-      time: 'Just now'
-    }
-  ]);
   
   // DYNAMIC LIVE TELEMETRY BARS
   const [telemetry, setTelemetry] = useState({
@@ -38,29 +26,26 @@ export default function InterviewRoomPage({ sessionData, setActivePage, setFinal
 
   const recognitionRef = useRef(null);
 
-  // REAL HUMAN-TO-HUMAN CONVERSATIONAL AI INTERVIEW QUESTION FLOW (INCLUDING PYTHON & DSA)
+  // REAL HUMAN-TO-HUMAN CONVERSATIONAL AI INTERVIEW QUESTION FLOW
   const domainQuestionsBank = {
     "Python Developer": [
       {
         id: 1,
         question_number: "Question 1 of 3 (Candidate Introduction)",
         question_text: "Hello! My name is AIRA, and I will be conducting your Python developer mock interview today. To get started, please introduce yourself and summarize your experience writing Python code.",
-        interviewer_feedback: "Great introduction! Nice experience with Python.",
         sample_answer: "Hello AIRA! I am Janitha Kavuturu. I am a Python developer with experience writing clean Python scripts, working with data structures like lists and dictionaries, and building web applications."
       },
       {
         id: 2,
         question_number: "Question 2 of 3 (Core Python Concepts)",
         question_text: "What is the key difference between Python Lists and Tuples, and when would you use a Dictionary?",
-        interviewer_feedback: "Very clear explanation of Python data structures!",
         sample_answer: "Lists are mutable and defined with square brackets, while Tuples are immutable and defined with parentheses. Dictionaries store key-value pairs for fast lookups."
       },
       {
         id: 3,
         question_number: "Question 3 of 3 (Python Features)",
         question_text: "Explain what List Comprehension is in Python and why it is useful.",
-        interviewer_feedback: "Excellent answer on clean Python code practices!",
-        sample_answer: "List comprehension provides a concise and readable way to create lists in Python in a single line of code, making programs much cleaner."
+        sample_answer: "List comprehension provides a concise and readable way to create lists in Python in a single line of code, making programs much cleaner and faster."
       }
     ],
     "Data Structures & Algorithms (DSA)": [
@@ -68,21 +53,18 @@ export default function InterviewRoomPage({ sessionData, setActivePage, setFinal
         id: 1,
         question_number: "Question 1 of 3 (Candidate Introduction)",
         question_text: "Hello! My name is AIRA, and I will be conducting your DSA mock interview today. Please introduce yourself and your knowledge of Data Structures and Algorithms.",
-        interviewer_feedback: "Welcome! Good background in core data structures.",
         sample_answer: "Hello AIRA! I am Janitha Kavuturu. I have good knowledge of fundamental data structures like Arrays, Linked Lists, Stacks, Queues, and basic searching and sorting algorithms."
       },
       {
         id: 2,
         question_number: "Question 2 of 3 (Stack vs Queue)",
         question_text: "What is the difference between a Stack and a Queue? Give real-world examples of both.",
-        interviewer_feedback: "Great real-world examples of Stack LIFO and Queue FIFO!",
         sample_answer: "A Stack follows Last-In-First-Out, like a stack of plates. A Queue follows First-In-First-Out, like a line of people standing at a ticket counter."
       },
       {
         id: 3,
         question_number: "Question 3 of 3 (Searching Algorithms)",
         question_text: "Explain the difference between Linear Search and Binary Search in terms of time complexity.",
-        interviewer_feedback: "Perfect comparison of O(N) versus O(log N) time complexities!",
         sample_answer: "Linear search checks elements one by one with time complexity O(N). Binary search repeatedly divides a sorted array in half with time complexity O(log N)."
       }
     ],
@@ -91,21 +73,18 @@ export default function InterviewRoomPage({ sessionData, setActivePage, setFinal
         id: 1,
         question_number: "Question 1 of 3 (Candidate Introduction)",
         question_text: "Hello! My name is AIRA, and I will be conducting your AI mock interview today. To get started, please introduce yourself, your technical background, and your key projects in Artificial Intelligence, Machine Learning, and Data Science.",
-        interviewer_feedback: "That's a solid technical background! Let me ask you about your core AI experience instead.",
         sample_answer: "Hello AIRA! I am a software engineer specializing in AI and Data Science. I have built projects including RAG pipelines, predictive machine learning models, and analytics dashboards."
       },
       {
         id: 2,
         question_number: "Question 2 of 3 (AI & LLM Architecture)",
         question_text: "Could you describe a specific technical challenge during development of your AI models where you encountered a significant bug or model hallucination? I'd like to hear about the steps you took to resolve it using RAG vector databases like ChromaDB.",
-        interviewer_feedback: "Great approach to diagnosing vector database embeddings!",
         sample_answer: "RAG retrieves relevant document chunks from ChromaDB using semantic vector embeddings and injects context into LLM prompts, providing grounded and accurate answers."
       },
       {
         id: 3,
         question_number: "Question 3 of 3 (Machine Learning Practical)",
         question_text: "When building predictive data models, how do you handle missing values in datasets, prevent model overfitting using cross-validation, and evaluate performance using metrics like F1-score?",
-        interviewer_feedback: "Excellent methodology for evaluating imbalanced datasets!",
         sample_answer: "I impute missing values using dataset medians, prevent overfitting using 5-fold cross-validation with L2 regularization, and evaluate imbalanced datasets using F1-score and ROC-AUC."
       }
     ],
@@ -114,21 +93,18 @@ export default function InterviewRoomPage({ sessionData, setActivePage, setFinal
         id: 1,
         question_number: "Question 1 of 3 (Candidate Introduction)",
         question_text: "Hello! My name is AIRA, and I will be conducting your backend engineering mock interview today. To begin, please introduce yourself and summarize your experience building REST APIs and database applications.",
-        interviewer_feedback: "Nice to meet you! Impressive backend application experience.",
         sample_answer: "Hello AIRA! I am a backend engineer with hands-on experience building RESTful APIs using Python FastAPI, PostgreSQL databases, and JWT authentication."
       },
       {
         id: 2,
         question_number: "Question 2 of 3 (Core Backend)",
         question_text: "Could you describe a time during backend development where you encountered a slow SQL query bottleneck? What steps did you take to identify the root cause and optimize performance using B-tree indexing?",
-        interviewer_feedback: "Solid strategy on database index optimization!",
         sample_answer: "I analyze query execution plans using EXPLAIN ANALYZE, create B-tree indexes on search columns, and configure connection pooling in SQLAlchemy."
       },
       {
         id: 3,
         question_number: "Question 3 of 3 (API Security)",
         question_text: "How do you secure production REST API endpoints using short-lived JWT access tokens, password hashing with bcrypt, and strict CORS origin headers?",
-        interviewer_feedback: "Great security setup for production API endpoints!",
         sample_answer: "I issue short-lived JWT access tokens, hash user passwords securely using bcrypt, and enforce strict CORS origin policies on FastAPI middleware."
       }
     ],
@@ -137,21 +113,18 @@ export default function InterviewRoomPage({ sessionData, setActivePage, setFinal
         id: 1,
         question_number: "Question 1 of 3 (Candidate Introduction)",
         question_text: "Hello! My name is AIRA, and I will be conducting your Cloud & DevOps mock interview today. To start off, please introduce yourself and describe your background in cloud infrastructure and automated deployments.",
-        interviewer_feedback: "Great background in cloud automation!",
         sample_answer: "Hello AIRA! I am a DevOps engineer experienced in containerizing apps with Docker, writing Terraform infrastructure code, and setting up GitHub Actions CI/CD pipelines."
       },
       {
         id: 2,
         question_number: "Question 2 of 3 (Containerization)",
         question_text: "Describe how multi-stage Docker builds optimize container image sizes and speed up container deployment workflows in production cloud environments.",
-        interviewer_feedback: "Clear breakdown of multi-stage Docker builds!",
         sample_answer: "Multi-stage builds separate build-time compilers from the runtime environment, resulting in minimal and secure Docker container images for cloud deployment."
       },
       {
         id: 3,
         question_number: "Question 3 of 3 (Kubernetes & Monitoring)",
         question_text: "How do you orchestrate zero-downtime rolling updates in Kubernetes and set up monitoring alert dashboards using Prometheus scrapers and Grafana?",
-        interviewer_feedback: "Excellent zero-downtime Kubernetes deployment strategy!",
         sample_answer: "I configure Kubernetes readiness probes for rolling updates and aggregate real-time server metrics into Prometheus scrapers linked to Grafana alert dashboards."
       }
     ],
@@ -160,21 +133,18 @@ export default function InterviewRoomPage({ sessionData, setActivePage, setFinal
         id: 1,
         question_number: "Question 1 of 3 (Candidate Introduction)",
         question_text: "Hello! My name is AIRA, and I will be conducting your frontend engineering mock interview today. Please introduce yourself and discuss your experience crafting interactive web UIs using React.js and Tailwind CSS.",
-        interviewer_feedback: "Awesome frontend project portfolio!",
         sample_answer: "Hello AIRA! I am a frontend developer experienced in building modern, responsive single-page web applications using React.js, Tailwind CSS, and Web APIs."
       },
       {
         id: 2,
         question_number: "Question 2 of 3 (React Performance)",
         question_text: "How do you optimize React web app performance using useMemo, useCallback, and React.memo to prevent unnecessary component re-renders?",
-        interviewer_feedback: "Great understanding of React performance hooks!",
         sample_answer: "I memoize heavy computation values with useMemo, preserve function references with useCallback, and wrap child components in React.memo."
       },
       {
         id: 3,
         question_number: "Question 3 of 3 (Web APIs)",
         question_text: "How do you integrate Web Speech Synthesis for text-to-speech voiceover and SpeechRecognition for real-time microphone transcriptions?",
-        interviewer_feedback: "Impressive integration of Web Speech APIs!",
         sample_answer: "I use SpeechSynthesisUtterance for browser text-to-speech playback and continuous webkitSpeechRecognition for real-time speech-to-text transcript streaming."
       }
     ],
@@ -209,13 +179,6 @@ export default function InterviewRoomPage({ sessionData, setActivePage, setFinal
     const timer = setInterval(() => setTimerSeconds(prev => prev + 1), 1000);
     return () => clearInterval(timer);
   }, []);
-
-  // Auto-scroll chat thread to bottom when new messages arrive
-  useEffect(() => {
-    if (chatScrollRef.current) {
-      chatScrollRef.current.scrollTop = chatScrollRef.current.scrollHeight;
-    }
-  }, [chatMessages, candidateAnswer]);
 
   // REAL PROCTORING VIOLATION HANDLER (ONLY TRIGGERS WHEN CANDIDATE ACTUALLY SWITCHES BROWSER TABS)
   const triggerProctoringViolation = (reasonText) => {
@@ -376,24 +339,13 @@ export default function InterviewRoomPage({ sessionData, setActivePage, setFinal
     return `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
   };
 
-  // SUBMIT CANDIDATE SPOKEN ANSWER -> APPEND TO CHAT THREAD -> PROGRESS TO NEXT TURN
+  // SUBMIT CANDIDATE SPOKEN ANSWER -> PROGRESS TO NEXT TURN
   const handleNextQuestion = async () => {
     stopSpeaking();
     stopMicRecording();
     setSubmitting(true);
 
     const finalAnswerText = candidateAnswer || currentQ.sample_answer;
-
-    // Append Candidate Message to Chat Thread
-    const candidateMsg = {
-      id: Date.now(),
-      sender: 'YOU (Candidate)',
-      text: finalAnswerText,
-      type: 'candidate',
-      time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-    };
-
-    setChatMessages(prev => [...prev, candidateMsg]);
 
     const answerEntry = {
       q_num: currentIdx + 1,
@@ -416,20 +368,6 @@ export default function InterviewRoomPage({ sessionData, setActivePage, setFinal
     setCandidateAnswer('');
     
     if (currentIdx < 2) {
-      const nextQObj = questions[currentIdx + 1];
-      
-      // Append AI Interviewer Follow-up Message to Chat Thread
-      setTimeout(() => {
-        const interviewerMsg = {
-          id: Date.now() + 1,
-          sender: 'INTERVIEWER (IRA)',
-          text: `${currentQ.interviewer_feedback} ${nextQObj.question_text}`,
-          type: 'interviewer',
-          time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-        };
-        setChatMessages(prev => [...prev, interviewerMsg]);
-      }, 500);
-
       setCurrentIdx(prev => prev + 1);
       setSubmitting(false);
     } else {
@@ -463,7 +401,7 @@ export default function InterviewRoomPage({ sessionData, setActivePage, setFinal
           <div className="w-3 h-3 rounded-full bg-red-500 animate-ping"></div>
           <div>
             <h1 className="text-sm font-bold text-white uppercase tracking-wider flex items-center gap-2">
-              AI Interview Room <span className="text-[10px] text-cyan-400 font-mono font-normal">• Session Tape Active</span>
+              AI Interview Room <span className="text-[10px] text-cyan-400 font-mono font-normal">• Live STT Active</span>
             </h1>
             <span className="text-[11px] text-indigo-300 font-mono">
               Domain: <strong className="text-white">{activeDomain}</strong> ({currentQ.question_number})
@@ -484,14 +422,14 @@ export default function InterviewRoomPage({ sessionData, setActivePage, setFinal
         </div>
       </div>
 
-      {/* MAIN TWO-COLUMN LAYOUT: LEFT (AIRA + LIVE TRANSCRIPT THREAD), RIGHT (WEBCAM + TELEMETRY BARS) */}
+      {/* MAIN TWO-COLUMN LAYOUT: LEFT (AIRA + CLEAN TURN TRANSCRIPT), RIGHT (WEBCAM + TELEMETRY BARS) */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
         
-        {/* LEFT COLUMN: AIRA AI CHARACTER & LIVE TRANSCRIPT CONVERSATION THREAD (8 COLS) */}
+        {/* LEFT COLUMN: AIRA AI CHARACTER & CLEAN TURN TRANSCRIPT BOX (8 COLS) */}
         <div className="lg:col-span-8 space-y-6">
           
           {/* Animated AI Character Center Panel */}
-          <div className="glass-card p-6 rounded-3xl border border-slate-800 bg-slate-950/90 flex flex-col items-center justify-center text-center space-y-3 relative min-h-[260px]">
+          <div className="glass-card p-6 rounded-3xl border border-slate-800 bg-slate-950/90 flex flex-col items-center justify-center text-center space-y-3 relative min-h-[240px]">
             
             {/* Glowing AI Ring */}
             <div className={`w-24 h-24 rounded-full bg-gradient-to-tr from-indigo-600 via-cyan-400 to-emerald-400 p-1 shadow-2xl transition-all ${
@@ -505,67 +443,45 @@ export default function InterviewRoomPage({ sessionData, setActivePage, setFinal
             <div>
               <h2 className="text-base font-bold text-white tracking-wide">AIRA</h2>
               <p className="text-xs font-mono text-cyan-400 mt-0.5">
-                {isSpeaking ? "AIRA is speaking..." : isRecording ? "AIRA is listening..." : "Evaluating response..."}
+                {isSpeaking ? "AIRA is speaking question..." : isRecording ? "AIRA is listening to your answer..." : "Evaluating response..."}
               </p>
-            </div>
-
-            {/* Current Question Overlay */}
-            <div className="p-3.5 px-6 rounded-2xl bg-slate-900/90 border border-slate-800 max-w-xl text-xs text-slate-200 leading-relaxed font-sans shadow-lg">
-              "{currentQ.question_text}"
             </div>
 
           </div>
 
-          {/* LIVE TRANSCRIPT CONVERSATION CHAT THREAD (INTERVIEWER ABOVE, YOU BELOW) */}
-          <div className="glass-card p-5 rounded-3xl border border-slate-800 space-y-3 shadow-xl">
+          {/* CLEAN CURRENT TURN TRANSCRIPT BOX (QUESTION TOP, SPOKEN ANSWER BOTTOM) */}
+          <div className="glass-card p-5 rounded-3xl border border-slate-800 space-y-4 shadow-xl">
             <div className="flex items-center justify-between border-b border-slate-800 pb-2">
               <span className="text-xs font-mono text-cyan-400 uppercase font-bold flex items-center gap-1.5">
-                <MessageSquare className="w-4 h-4 text-amber-400" /> Live Transcript Conversation
+                <MessageSquare className="w-4 h-4 text-amber-400" /> Live Transcript Stream
               </span>
               <span className="text-[10px] text-emerald-400 font-mono flex items-center gap-1">
                 <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping"></span> Real-time STT Active
               </span>
             </div>
 
-            {/* Scrollable Conversation Chat History */}
-            <div 
-              ref={chatScrollRef}
-              className="max-h-56 overflow-y-auto pr-2 py-2 space-y-3 font-sans text-xs"
-            >
-              {chatMessages.map((msg) => (
-                <div 
-                  key={msg.id} 
-                  className={`flex flex-col space-y-1 ${
-                    msg.type === 'candidate' ? 'items-end' : 'items-start'
-                  }`}
-                >
-                  <span className={`text-[10px] font-mono uppercase tracking-wider font-bold ${
-                    msg.type === 'candidate' ? 'text-amber-400/90 pr-2' : 'text-slate-400 pl-2'
-                  }`}>
-                    {msg.sender}
-                  </span>
-                  
-                  <div className={`p-3.5 rounded-2xl max-w-[85%] leading-relaxed shadow-xl text-xs ${
-                    msg.type === 'candidate'
-                      ? 'bg-amber-950/80 border border-amber-600/40 text-amber-100 rounded-tr-none'
-                      : 'bg-slate-900 border border-slate-800 text-slate-200 rounded-tl-none'
-                  }`}>
-                    {msg.text}
-                  </div>
-                </div>
-              ))}
+            <div className="space-y-4 font-sans text-xs">
+              
+              {/* TOP BOX: IRA QUESTION */}
+              <div className="p-4 rounded-2xl bg-slate-900/90 border border-slate-800 space-y-1.5">
+                <span className="text-[10px] font-mono text-cyan-400 uppercase tracking-wider font-bold">
+                  IRA (INTERVIEWER QUESTION):
+                </span>
+                <p className="text-slate-200 text-xs font-semibold leading-relaxed">
+                  "{currentQ.question_text}"
+                </p>
+              </div>
 
-              {/* Real-time Candidate Spoken Transcript Preview */}
-              {candidateAnswer && (
-                <div className="flex flex-col items-end space-y-1 animate-pulse">
-                  <span className="text-[10px] font-mono text-amber-400 uppercase tracking-wider font-bold pr-2">
-                    YOU (SPEAKING LIVE...):
-                  </span>
-                  <div className="p-3.5 rounded-2xl bg-amber-950/90 border border-amber-500/50 text-amber-100 max-w-[85%] italic">
-                    "{candidateAnswer}"
-                  </div>
-                </div>
-              )}
+              {/* BOTTOM BOX: YOU CANDIDATE SPOKEN ANSWER */}
+              <div className="p-4 rounded-2xl bg-indigo-950/40 border border-indigo-500/30 space-y-1.5">
+                <span className="text-[10px] font-mono text-amber-400 uppercase tracking-wider font-bold">
+                  YOU (CANDIDATE SPOKEN ANSWER):
+                </span>
+                <p className="text-slate-200 italic text-xs leading-relaxed">
+                  {candidateAnswer || "Speak your answer aloud into your microphone (your spoken words will transcribe here in real-time as you talk)..."}
+                </p>
+              </div>
+
             </div>
           </div>
 
@@ -669,7 +585,7 @@ export default function InterviewRoomPage({ sessionData, setActivePage, setFinal
           >
             {submitting ? "Analyzing..." : (
               currentIdx < 2 ? (
-                <>Submit Spoken Answer & Next Turn <ArrowRight className="w-4 h-4" /></>
+                <>Submit Spoken Answer & Next Question <ArrowRight className="w-4 h-4" /></>
               ) : (
                 <>Complete Interview & Generate Report <PhoneOff className="w-4 h-4" /></>
               )
