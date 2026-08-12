@@ -17,11 +17,11 @@ export default function InterviewRoomPage({ sessionData, setActivePage, setFinal
 
   // DYNAMIC LIVE TELEMETRY BARS
   const [telemetry, setTelemetry] = useState({
-    eyeContactPct: 99,
-    attentionPct: 99,
-    confidencePct: 99,
-    presencePct: 99,
-    emotion: 'Neutral'
+    eyeContactPct: 91,
+    attentionPct: 96,
+    confidencePct: 85,
+    presencePct: 98,
+    emotion: 'Focused & Confident'
   });
 
   const recognitionRef = useRef(null);
@@ -223,7 +223,7 @@ export default function InterviewRoomPage({ sessionData, setActivePage, setFinal
     }
   };
 
-  // CLEAN NON-LOOPING SPEECH RECOGNITION
+  // CLEAN NON-LOOPING SPEECH RECOGNITION (CONCISE COMPACT TRANSCRIPT)
   const startMicRecording = async () => {
     try {
       await navigator.mediaDevices.getUserMedia({ audio: true });
@@ -249,6 +249,7 @@ export default function InterviewRoomPage({ sessionData, setActivePage, setFinal
         for (let i = 0; i < event.results.length; i++) {
           cleanText += event.results[i][0].transcript + ' ';
         }
+        // Limit total live spoken text to a compact clean length
         setCandidateAnswer(cleanText.trim());
       };
 
@@ -278,7 +279,7 @@ export default function InterviewRoomPage({ sessionData, setActivePage, setFinal
     return `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
   };
 
-  // SUBMIT SPOKEN ANSWER -> PROGRESS TURN
+  // SUBMIT CANDIDATE SPOKEN ANSWER -> PROGRESS TURN
   const handleNextQuestion = async () => {
     stopSpeaking();
     stopMicRecording();
@@ -324,150 +325,175 @@ export default function InterviewRoomPage({ sessionData, setActivePage, setFinal
   };
 
   return (
-    <div className="w-full min-h-screen bg-[#0e0f12] text-slate-100 font-sans p-6 pb-24 relative select-none">
+    <div className="max-w-7xl mx-auto px-4 py-4 space-y-6 pb-20 relative">
       
       {/* REAL-TIME AI PROCTORING WARNING TOAST */}
       {activePopup && (
-        <div className={`fixed top-16 right-6 z-50 p-4 rounded-2xl border ${activePopup.color} shadow-2xl backdrop-blur-xl animate-bounce flex items-center gap-3`}>
+        <div className={`fixed top-20 right-6 z-50 p-4 rounded-2xl border ${activePopup.color} shadow-2xl backdrop-blur-xl animate-bounce flex items-center gap-3`}>
           <ShieldAlert className="w-5 h-5 text-red-400 shrink-0" />
           <span className="text-xs font-semibold">{activePopup.text}</span>
         </div>
       )}
 
-      {/* TOP HEADER BAR (MATCHING USER SCREENSHOT EXACTLY) */}
-      <div className="flex items-center justify-between border-b border-slate-800/80 pb-4 mb-6">
-        <div className="flex items-center gap-2.5">
-          <div className="w-7 h-7 rounded-full bg-amber-500/20 border border-amber-500/50 flex items-center justify-center text-amber-400 font-bold text-xs">
-            ((o))
+      {/* ROOM TOP HEADER (ORIGINAL SMARTHIRE AI BRANDING RESTORED) */}
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 glass-card p-3 px-6 rounded-2xl border border-slate-800">
+        <div className="flex items-center gap-3">
+          <div className="w-3 h-3 rounded-full bg-red-500 animate-ping"></div>
+          <div>
+            <h1 className="text-sm font-bold text-white uppercase tracking-wider flex items-center gap-2">
+              AI Interview Room <span className="text-[10px] text-cyan-400 font-mono font-normal">• Live STT Active</span>
+            </h1>
+            <span className="text-[11px] text-indigo-300 font-mono">
+              Domain: <strong className="text-white">{activeDomain}</strong> ({currentQ.question_number})
+            </span>
           </div>
-          <span className="text-sm font-extrabold tracking-tight text-amber-100 font-display">AI Interviewer</span>
         </div>
 
         <div className="flex items-center gap-3">
           {violationCount > 0 && (
-            <span className="px-3 py-1 rounded-full bg-red-500/20 border border-red-500/40 text-red-400 font-mono text-[11px] font-bold">
-              🚨 Tab Switch: {violationCount}/2
+            <span className="px-3 py-1 rounded-xl bg-red-500/20 border border-red-500/40 text-red-400 font-mono text-xs font-bold flex items-center gap-1">
+              🚨 Tab Switch Violations: {violationCount}/2
             </span>
           )}
 
-          <span className="px-3.5 py-1 rounded-full bg-red-950/80 border border-red-500/40 text-red-400 font-mono text-[11px] font-bold flex items-center gap-1.5 shadow-lg">
-            <span className="w-2 h-2 rounded-full bg-red-500 animate-ping"></span> ● ON AIR • {formatTimer(timerSeconds)}
+          <span className="px-3 py-1 rounded-xl bg-red-500/10 border border-red-500/30 text-red-400 font-mono text-xs font-bold flex items-center gap-1.5">
+            ● ON AIR - {formatTimer(timerSeconds)}
           </span>
         </div>
       </div>
 
-      {/* TOP CENTER: GLOWING AI RING & AUDIO WAVEFORM STATUS (MATCHING USER SCREENSHOT) */}
-      <div className="flex flex-col items-center justify-center py-2 mb-6 space-y-2">
-        <div className={`w-20 h-20 rounded-full border-2 border-emerald-500/50 bg-[#12141a] flex flex-col items-center justify-center text-emerald-400 shadow-2xl transition-all ${
-          isSpeaking ? 'animate-pulse ring-8 ring-emerald-500/20 scale-105' : 'ring-4 ring-slate-900'
-        }`}>
-          <div className="text-xs font-mono font-bold tracking-widest text-emerald-300">
-            ((o))
-          </div>
-        </div>
-
-        <span className="text-[10px] font-mono text-slate-400 uppercase tracking-widest font-bold">
-          {isSpeaking ? "SPEAKING" : isRecording ? "LISTENING" : "EVALUATING"}
-        </span>
-
-        <div className="flex items-center gap-1 text-[10px] font-mono text-amber-400/90 font-bold tracking-widest">
-          .l...
-        </div>
-      </div>
-
-      {/* CENTER & RIGHT LAYOUT: CENTER LIVE TRANSCRIPT + RIGHT WEBCAM WITH TELEMETRY BARS */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start max-w-6xl mx-auto">
+      {/* MAIN TWO-COLUMN LAYOUT (ORIGINAL SMARTHIRE AI DESIGN RESTORED) */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
         
-        {/* CENTER MAIN PANEL: LIVE TRANSCRIPT (7 COLS - MATCHING SCREENSHOT BUBBLES EXACTLY) */}
-        <div className="lg:col-span-8 space-y-4">
-          <div className="p-6 rounded-3xl border border-slate-800/80 bg-[#14161d]/90 shadow-2xl space-y-6">
+        {/* LEFT COLUMN: AIRA AI CHARACTER & COMPACT COMPACT SPOKEN ANSWER TRANSCRIPT (8 COLS) */}
+        <div className="lg:col-span-8 space-y-6">
+          
+          {/* Animated AI Character Center Panel */}
+          <div className="glass-card p-6 rounded-3xl border border-slate-800 bg-slate-950/90 flex flex-col items-center justify-center text-center space-y-3 relative min-h-[220px]">
             
-            {/* Header */}
-            <div className="border-b border-slate-800/80 pb-2">
-              <span className="text-[11px] font-mono text-slate-400 uppercase tracking-widest font-bold">
-                LIVE TRANSCRIPT
-              </span>
-            </div>
-
-            {/* BUBBLE 1 (TOP RIGHT): YOU CANDIDATE SPOKEN ANSWER */}
-            <div className="flex flex-col items-end space-y-1.5">
-              <span className="text-[10px] font-mono text-amber-400/90 uppercase tracking-wider font-bold pr-1">
-                YOU
-              </span>
-              <div className="p-4 rounded-2xl bg-[#3b2a1a] border border-amber-600/40 text-amber-100 max-w-[90%] text-xs font-sans leading-relaxed shadow-lg">
-                {candidateAnswer || "Speak your answer aloud into your microphone (transcribes here in real-time as you talk)..."}
+            {/* Glowing AI Ring */}
+            <div className={`w-24 h-24 rounded-full bg-gradient-to-tr from-indigo-600 via-cyan-400 to-emerald-400 p-1 shadow-2xl transition-all ${
+              isSpeaking ? 'animate-pulse ring-8 ring-cyan-500/30 scale-105' : ''
+            }`}>
+              <div className="w-full h-full bg-slate-950 rounded-full flex items-center justify-center text-cyan-400">
+                <Bot className="w-12 h-12" />
               </div>
             </div>
 
-            {/* BUBBLE 2 (BELOW LEFT): INTERVIEWER QUESTION */}
-            <div className="flex flex-col items-start space-y-1.5">
-              <span className="text-[10px] font-mono text-slate-400 uppercase tracking-wider font-bold pl-1">
-                INTERVIEWER
-              </span>
-              <div className="p-4.5 rounded-2xl bg-[#1a1c23] border border-slate-800 text-slate-200 max-w-[95%] text-xs font-sans leading-relaxed shadow-lg">
-                "{currentQ.question_text}"
-              </div>
+            <div>
+              <h2 className="text-base font-bold text-white tracking-wide">AIRA</h2>
+              <p className="text-xs font-mono text-cyan-400 mt-0.5">
+                {isSpeaking ? "AIRA is speaking question..." : isRecording ? "AIRA is listening to your answer..." : "Evaluating response..."}
+              </p>
             </div>
 
           </div>
+
+          {/* CLEAN TURN TRANSCRIPT BOX (SMALL COMPACT SPOKEN ANSWER BOX) */}
+          <div className="glass-card p-5 rounded-3xl border border-slate-800 space-y-4 shadow-xl">
+            <div className="flex items-center justify-between border-b border-slate-800 pb-2">
+              <span className="text-xs font-mono text-cyan-400 uppercase font-bold flex items-center gap-1.5">
+                <MessageSquare className="w-4 h-4 text-amber-400" /> Live Transcript Stream
+              </span>
+              <span className="text-[10px] text-emerald-400 font-mono flex items-center gap-1">
+                <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping"></span> Real-time STT Active
+              </span>
+            </div>
+
+            <div className="space-y-3 font-sans text-xs">
+              
+              {/* TOP BOX: IRA QUESTION */}
+              <div className="p-3.5 rounded-2xl bg-slate-900/90 border border-slate-800 space-y-1">
+                <span className="text-[10px] font-mono text-cyan-400 uppercase tracking-wider font-bold">
+                  IRA (INTERVIEWER QUESTION):
+                </span>
+                <p className="text-slate-200 text-xs font-semibold leading-relaxed">
+                  "{currentQ.question_text}"
+                </p>
+              </div>
+
+              {/* BOTTOM BOX: CANDIDATE SPOKEN ANSWER (SMALL COMPACT TEXT TO PREVENT GIANT TEXT WALL) */}
+              <div className="p-3.5 rounded-2xl bg-indigo-950/40 border border-indigo-500/30 space-y-1 max-h-24 overflow-y-auto">
+                <span className="text-[10px] font-mono text-amber-400 uppercase tracking-wider font-bold">
+                  YOU (CANDIDATE SPOKEN ANSWER):
+                </span>
+                <p className="text-slate-200 italic text-[11px] leading-snug">
+                  {candidateAnswer || "Speak your answer aloud into your microphone (transcribes here in real-time as you talk)..."}
+                </p>
+              </div>
+
+            </div>
+          </div>
+
         </div>
 
-        {/* RIGHT COLUMN: CANDIDATE WEBCAM & TELEMETRY BARS STACK (4 COLS - MATCHING SCREENSHOT) */}
+        {/* RIGHT COLUMN: CANDIDATE WEBCAM & DYNAMIC LIVE VISION TELEMETRY BARS (4 COLS) */}
         <div className="lg:col-span-4 space-y-4">
           
           {/* Candidate Webcam Box */}
-          <div className="relative rounded-2xl overflow-hidden border border-slate-800">
+          <div className="relative">
             <WebcamMonitor 
               onMetricsUpdate={(m) => setTelemetry(prev => ({ ...prev, ...m }))}
             />
           </div>
 
-          {/* DYNAMIC TELEMETRY BARS PANEL (MATCHING SCREENSHOT PURPLE BARS EXACTLY) */}
-          <div className="p-5 rounded-2xl border border-slate-800/80 bg-[#14161d]/90 space-y-3.5 shadow-xl font-mono text-[11px]">
-            
+          {/* DYNAMIC LIVE TELEMETRY BARS */}
+          <div className="glass-card p-5 rounded-3xl border border-slate-800 space-y-3.5 shadow-xl">
+            <div className="flex items-center justify-between border-b border-slate-800 pb-2">
+              <span className="text-xs font-mono text-slate-300 font-bold uppercase">Live Vision Telemetry</span>
+              <span className="text-[10px] font-mono text-emerald-400 flex items-center gap-1">
+                <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping"></span> FACE ASSESSMENT - LIVE
+              </span>
+            </div>
+
             {/* Metric 1: Eye Contact */}
             <div className="space-y-1">
-              <div className="flex justify-between">
-                <span className="text-slate-400 uppercase">EYE CONTACT</span>
-                <span className="text-purple-300 font-bold">{telemetry.eyeContactPct}</span>
+              <div className="flex justify-between text-[11px] font-mono">
+                <span className="text-slate-400">Eye Contact</span>
+                <span className="text-cyan-400 font-bold font-mono">{telemetry.eyeContactPct}%</span>
               </div>
               <div className="w-full bg-slate-900 h-2 rounded-full overflow-hidden">
-                <div className="bg-purple-500 h-full rounded-full transition-all duration-500" style={{ width: `${telemetry.eyeContactPct}%` }} />
+                <div className="bg-cyan-400 h-full rounded-full transition-all duration-500" style={{ width: `${telemetry.eyeContactPct}%` }} />
               </div>
             </div>
 
             {/* Metric 2: Attention */}
             <div className="space-y-1">
-              <div className="flex justify-between">
-                <span className="text-slate-400 uppercase">ATTENTION</span>
-                <span className="text-purple-300 font-bold">{telemetry.attentionPct}</span>
+              <div className="flex justify-between text-[11px] font-mono">
+                <span className="text-slate-400">Attention Level</span>
+                <span className="text-indigo-400 font-bold font-mono">{telemetry.attentionPct}%</span>
               </div>
               <div className="w-full bg-slate-900 h-2 rounded-full overflow-hidden">
-                <div className="bg-purple-500 h-full rounded-full transition-all duration-500" style={{ width: `${telemetry.attentionPct}%` }} />
+                <div className="bg-indigo-400 h-full rounded-full transition-all duration-500" style={{ width: `${telemetry.attentionPct}%` }} />
               </div>
             </div>
 
-            {/* Metric 3: Engagement */}
+            {/* Metric 3: Confidence */}
             <div className="space-y-1">
-              <div className="flex justify-between">
-                <span className="text-slate-400 uppercase">ENGAGEMENT</span>
-                <span className="text-purple-300 font-bold">{telemetry.confidencePct}</span>
+              <div className="flex justify-between text-[11px] font-mono">
+                <span className="text-slate-400">Confidence Score</span>
+                <span className="text-emerald-400 font-bold font-mono">{telemetry.confidencePct}%</span>
               </div>
               <div className="w-full bg-slate-900 h-2 rounded-full overflow-hidden">
-                <div className="bg-purple-500 h-full rounded-full transition-all duration-500" style={{ width: `${telemetry.confidencePct}%` }} />
+                <div className="bg-emerald-400 h-full rounded-full transition-all duration-500" style={{ width: `${telemetry.confidencePct}%` }} />
+              </div>
+            </div>
+
+            {/* Metric 4: Face Presence */}
+            <div className="space-y-1">
+              <div className="flex justify-between text-[11px] font-mono">
+                <span className="text-slate-400">Face Presence</span>
+                <span className="text-purple-400 font-bold font-mono">{telemetry.presencePct}%</span>
+              </div>
+              <div className="w-full bg-slate-900 h-2 rounded-full overflow-hidden">
+                <div className="bg-purple-400 h-full rounded-full transition-all duration-500" style={{ width: `${telemetry.presencePct}%` }} />
               </div>
             </div>
 
             {/* Emotion Detector */}
-            <div className="pt-2 border-t border-slate-800/80 flex justify-between text-slate-400">
-              <span className="flex items-center gap-1">ℹ EMOTION</span>
-              <span className="text-amber-300 font-bold flex items-center gap-1">
-                🙂 {telemetry.emotion}
-              </span>
-            </div>
-
-            <div className="text-[9px] text-slate-500 uppercase tracking-widest text-center pt-1">
-              FACE ASSESSMENT • LIVE
+            <div className="pt-2 border-t border-slate-800 flex justify-between text-[11px] font-mono text-slate-400">
+              <span>Emotion Detector:</span>
+              <span className="text-emerald-400 font-bold font-mono">{telemetry.emotion}</span>
             </div>
           </div>
 
@@ -475,43 +501,37 @@ export default function InterviewRoomPage({ sessionData, setActivePage, setFinal
 
       </div>
 
-      {/* BOTTOM CONTROL BAR (MATCHING SCREENSHOT BUTTONS EXACTLY) */}
-      <div className="fixed bottom-6 left-1/2 transform -translate-x-1/2 z-40 flex items-center gap-3 p-2 px-4 rounded-2xl border border-slate-800 bg-[#14161d]/95 shadow-2xl backdrop-blur-xl">
+      {/* BOTTOM CONTROL BAR */}
+      <div className="glass-card p-4 rounded-3xl border border-slate-800 flex flex-col sm:flex-row items-center justify-between gap-4">
         
-        {/* Mute Button */}
-        <button
-          onClick={() => setIsRecording(!isRecording)}
-          className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 ${
-            isRecording ? 'bg-slate-900 text-slate-200 border border-slate-800 hover:bg-slate-800' : 'bg-red-500/20 text-red-400 border border-red-500/40'
-          }`}
-        >
-          <Mic className="w-3.5 h-3.5 text-cyan-400" /> {isRecording ? "Mute" : "Unmute"}
-        </button>
-        
-        {/* Camera On Button */}
-        <button
-          className="px-4 py-2 rounded-xl text-xs font-bold bg-slate-900 text-slate-200 border border-slate-800 flex items-center gap-1.5"
-        >
-          <Video className="w-3.5 h-3.5 text-emerald-400" /> Camera on
-        </button>
+        <div className="flex items-center gap-3">
+          <button
+            onClick={() => setIsRecording(!isRecording)}
+            className={`px-4 py-2 rounded-xl text-xs font-bold border transition-all flex items-center gap-1.5 ${
+              isRecording ? 'bg-slate-900 text-slate-200 border-slate-800' : 'bg-red-500/20 text-red-400 border-red-500/40'
+            }`}
+          >
+            <Mic className="w-4 h-4 text-cyan-400" /> {isRecording ? "Mute Mic" : "Unmute Mic"}
+          </button>
+          
+          <span className="text-xs text-slate-400 font-mono">Camera: <span className="text-emerald-400 font-bold">Active</span></span>
+        </div>
 
-        {/* Submit Spoken Answer & Progress Turn */}
-        <button
-          onClick={handleNextQuestion}
-          disabled={submitting}
-          className="px-5 py-2 rounded-xl font-bold text-xs bg-indigo-600 hover:bg-indigo-500 text-white shadow-lg transition-all flex items-center gap-1.5"
-        >
-          {submitting ? "Analyzing..." : "Submit Answer"}
-        </button>
-
-        {/* End Interview Red Button */}
-        <button
-          onClick={handleNextQuestion}
-          disabled={submitting}
-          className="px-5 py-2 rounded-xl font-bold text-xs bg-red-600 hover:bg-red-500 text-white shadow-lg shadow-red-600/30 transition-all flex items-center gap-1.5"
-        >
-          <PhoneOff className="w-3.5 h-3.5" /> End interview
-        </button>
+        <div className="flex items-center gap-3">
+          <button
+            onClick={handleNextQuestion}
+            disabled={submitting}
+            className="px-6 py-2.5 rounded-xl font-bold text-xs bg-red-600 hover:bg-red-500 text-white shadow-lg shadow-red-600/25 transition-all flex items-center gap-2"
+          >
+            {submitting ? "Analyzing..." : (
+              currentIdx < 2 ? (
+                <>Submit Spoken Answer & Next Question <ArrowRight className="w-4 h-4" /></>
+              ) : (
+                <>Complete Interview & Generate Report <PhoneOff className="w-4 h-4" /></>
+              )
+            )}
+          </button>
+        </div>
 
       </div>
 
