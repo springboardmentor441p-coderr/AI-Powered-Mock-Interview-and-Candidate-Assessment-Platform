@@ -250,11 +250,16 @@ export default function InterviewRoomPage({ sessionData, setActivePage, setFinal
         utterance.pitch = 1.05;
         utterance.lang = 'en-US';
 
-        utterance.onstart = () => setIsSpeaking(true);
+        utterance.onstart = () => {
+          setIsSpeaking(true);
+          stopMicRecording(); // Stop mic while AIRA is speaking to avoid hearing laptop speakers!
+        };
+        
         utterance.onend = () => {
           setIsSpeaking(false);
-          startMicRecording();
+          startMicRecording(); // Start mic AFTER AIRA finishes speaking
         };
+        
         utterance.onerror = () => setIsSpeaking(false);
 
         window.speechSynthesis.speak(utterance);
@@ -278,7 +283,7 @@ export default function InterviewRoomPage({ sessionData, setActivePage, setFinal
     }
   };
 
-  // REAL-TIME CONTINUOUS SPEECH RECOGNITION
+  // CLEAN NON-LOOPING SPEECH-TO-TEXT RECOGNITION
   const startMicRecording = async () => {
     try {
       await navigator.mediaDevices.getUserMedia({ audio: true });
@@ -300,17 +305,11 @@ export default function InterviewRoomPage({ sessionData, setActivePage, setFinal
       };
 
       recognition.onresult = (event) => {
-        let liveTranscript = '';
-        for (let i = event.resultIndex; i < event.results.length; i++) {
-          liveTranscript += event.results[i][0].transcript;
+        let cleanText = '';
+        for (let i = 0; i < event.results.length; i++) {
+          cleanText += event.results[i][0].transcript + ' ';
         }
-        if (liveTranscript.trim()) {
-          setCandidateAnswer(prev => {
-            const trimmedNew = liveTranscript.trim();
-            if (prev.endsWith(trimmedNew)) return prev;
-            return prev ? `${prev} ${trimmedNew}` : trimmedNew;
-          });
-        }
+        setCandidateAnswer(cleanText.trim());
       };
 
       recognition.onend = () => {
@@ -429,14 +428,14 @@ export default function InterviewRoomPage({ sessionData, setActivePage, setFinal
         <div className="lg:col-span-8 space-y-6">
           
           {/* Animated AI Character Center Panel */}
-          <div className="glass-card p-6 rounded-3xl border border-slate-800 bg-slate-950/90 flex flex-col items-center justify-center text-center space-y-3 relative min-h-[240px]">
+          <div className="glass-card p-6 rounded-3xl border border-slate-800 bg-slate-950/90 flex flex-col items-center justify-center text-center space-y-3 relative min-h-[220px]">
             
             {/* Glowing AI Ring */}
-            <div className={`w-24 h-24 rounded-full bg-gradient-to-tr from-indigo-600 via-cyan-400 to-emerald-400 p-1 shadow-2xl transition-all ${
+            <div className={`w-20 h-20 rounded-full bg-gradient-to-tr from-indigo-600 via-cyan-400 to-emerald-400 p-1 shadow-2xl transition-all ${
               isSpeaking ? 'animate-pulse ring-8 ring-cyan-500/30 scale-105' : ''
             }`}>
               <div className="w-full h-full bg-slate-950 rounded-full flex items-center justify-center text-cyan-400">
-                <Bot className="w-12 h-12" />
+                <Bot className="w-10 h-10" />
               </div>
             </div>
 
@@ -449,7 +448,7 @@ export default function InterviewRoomPage({ sessionData, setActivePage, setFinal
 
           </div>
 
-          {/* CLEAN CURRENT TURN TRANSCRIPT BOX (QUESTION TOP, SPOKEN ANSWER BOTTOM) */}
+          {/* CLEAN TURN TRANSCRIPT BOX (NO REPEATED WALL OF TEXT) */}
           <div className="glass-card p-5 rounded-3xl border border-slate-800 space-y-4 shadow-xl">
             <div className="flex items-center justify-between border-b border-slate-800 pb-2">
               <span className="text-xs font-mono text-cyan-400 uppercase font-bold flex items-center gap-1.5">
@@ -472,13 +471,13 @@ export default function InterviewRoomPage({ sessionData, setActivePage, setFinal
                 </p>
               </div>
 
-              {/* BOTTOM BOX: YOU CANDIDATE SPOKEN ANSWER */}
-              <div className="p-4 rounded-2xl bg-indigo-950/40 border border-indigo-500/30 space-y-1.5">
+              {/* BOTTOM BOX: YOU CANDIDATE SPOKEN ANSWER (STRICT MAX-HEIGHT TO PREVENT TEXT WALL) */}
+              <div className="p-4 rounded-2xl bg-indigo-950/40 border border-indigo-500/30 space-y-1.5 max-h-36 overflow-y-auto">
                 <span className="text-[10px] font-mono text-amber-400 uppercase tracking-wider font-bold">
                   YOU (CANDIDATE SPOKEN ANSWER):
                 </span>
                 <p className="text-slate-200 italic text-xs leading-relaxed">
-                  {candidateAnswer || "Speak your answer aloud into your microphone (your spoken words will transcribe here in real-time as you talk)..."}
+                  {candidateAnswer || "Speak your answer aloud into your microphone (transcribes here in real-time as you talk)..."}
                 </p>
               </div>
 
