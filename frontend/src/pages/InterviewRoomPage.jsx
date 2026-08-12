@@ -14,7 +14,7 @@ export default function InterviewRoomPage({ sessionData, setActivePage, setFinal
   const [activePopup, setActivePopup] = useState(null);
   const [violationCount, setViolationCount] = useState(0);
   const [candidateAnswersList, setCandidateAnswersList] = useState([]);
-
+  
   // DYNAMIC LIVE TELEMETRY BARS
   const [telemetry, setTelemetry] = useState({
     eyeContactPct: 91,
@@ -26,7 +26,7 @@ export default function InterviewRoomPage({ sessionData, setActivePage, setFinal
 
   const recognitionRef = useRef(null);
 
-  // REAL HUMAN-TO-HUMAN CONVERSATIONAL AI INTERVIEW QUESTION FLOW
+  // REAL HUMAN-TO-HUMAN CONVERSATIONAL AI INTERVIEW QUESTION FLOW WITH WARM PRAISE FEEDBACK
   const domainQuestionsBank = {
     "Python Developer": [
       {
@@ -38,13 +38,13 @@ export default function InterviewRoomPage({ sessionData, setActivePage, setFinal
       {
         id: 2,
         question_number: "Question 2 of 3 (Core Python Concepts)",
-        question_text: "What is the key difference between Python Lists and Tuples, and when would you use a Dictionary?",
+        question_text: "Nice! Good to see your strong background in Python development. You are very good at this! Now for our second question: What is the key difference between Python Lists and Tuples, and when would you use a Dictionary?",
         sample_answer: "Lists are mutable and defined with square brackets, while Tuples are immutable and defined with parentheses. Dictionaries store key-value pairs for fast lookups."
       },
       {
         id: 3,
         question_number: "Question 3 of 3 (Python Features)",
-        question_text: "Explain what List Comprehension is in Python and why it is useful.",
+        question_text: "Great answer! You explained that core concept really well. Excellent response! Now for our final technical question: Explain what List Comprehension is in Python and why it is useful.",
         sample_answer: "List comprehension provides a concise and readable way to create lists in Python in a single line of code, making programs much cleaner and faster."
       }
     ],
@@ -52,19 +52,19 @@ export default function InterviewRoomPage({ sessionData, setActivePage, setFinal
       {
         id: 1,
         question_number: "Question 1 of 3 (Candidate Introduction)",
-        question_text: "Hello! My name is AIRA, and I will be conducting your DSA mock interview today. Please introduce yourself and your knowledge of Data Structures and Algorithms.",
+        question_text: "Hello! My name is AIRA, and I will be conducting your DSA mock interview today. To start off, please introduce yourself and your knowledge of Data Structures and Algorithms.",
         sample_answer: "Hello AIRA! I am Janitha Kavuturu. I have good knowledge of fundamental data structures like Arrays, Linked Lists, Stacks, Queues, and basic searching and sorting algorithms."
       },
       {
         id: 2,
         question_number: "Question 2 of 3 (Stack vs Queue)",
-        question_text: "What is the difference between a Stack and a Queue? Give real-world examples of both.",
+        question_text: "Nice introduction! Good to see your solid understanding of data structures. You are doing great! Now: What is the difference between a Stack and a Queue? Give real-world examples of both.",
         sample_answer: "A Stack follows Last-In-First-Out, like a stack of plates. A Queue follows First-In-First-Out, like a line of people standing at a ticket counter."
       },
       {
         id: 3,
         question_number: "Question 3 of 3 (Searching Algorithms)",
-        question_text: "Explain the difference between Linear Search and Binary Search in terms of time complexity.",
+        question_text: "Awesome response! Excellent explanation of LIFO and FIFO. Now for our final question: Explain the difference between Linear Search and Binary Search in terms of time complexity.",
         sample_answer: "Linear search checks elements one by one with time complexity O(N). Binary search repeatedly divides a sorted array in half with time complexity O(log N)."
       }
     ],
@@ -78,13 +78,13 @@ export default function InterviewRoomPage({ sessionData, setActivePage, setFinal
       {
         id: 2,
         question_number: "Question 2 of 3 (AI & LLM Architecture)",
-        question_text: "Could you describe a specific technical challenge during development of your AI models where you encountered a significant bug or model hallucination? I'd like to hear about the steps you took to resolve it using RAG vector databases like ChromaDB.",
+        question_text: "Nice! Good to see your strong AI project background. You are very good at this! Now: Could you describe how Retrieval-Augmented Generation (RAG) combines Vector Databases like ChromaDB with Large Language Models to eliminate model hallucinations?",
         sample_answer: "RAG retrieves relevant document chunks from ChromaDB using semantic vector embeddings and injects context into LLM prompts, providing grounded and accurate answers."
       },
       {
         id: 3,
         question_number: "Question 3 of 3 (Machine Learning Practical)",
-        question_text: "When building predictive data models, how do you handle missing values in datasets, prevent model overfitting using cross-validation, and evaluate performance using metrics like F1-score?",
+        question_text: "Great answer! Excellent breakdown of RAG vector embeddings. Now for our final question: How do you handle missing values in datasets, prevent model overfitting using cross-validation, and evaluate performance using metrics like F1-score?",
         sample_answer: "I impute missing values using dataset medians, prevent overfitting using 5-fold cross-validation with L2 regularization, and evaluate imbalanced datasets using F1-score and ROC-AUC."
       }
     ],
@@ -98,13 +98,13 @@ export default function InterviewRoomPage({ sessionData, setActivePage, setFinal
       {
         id: 2,
         question_number: "Question 2 of 3 (Core Backend)",
-        question_text: "Could you describe a time during backend development where you encountered a slow SQL query bottleneck? What steps did you take to identify the root cause and optimize performance using B-tree indexing?",
+        question_text: "Nice to meet you! Good to see your experience in backend API development. You are doing very well! Now: How do you identify slow SQL query bottlenecks and optimize performance using B-tree indexing?",
         sample_answer: "I analyze query execution plans using EXPLAIN ANALYZE, create B-tree indexes on search columns, and configure connection pooling in SQLAlchemy."
       },
       {
         id: 3,
         question_number: "Question 3 of 3 (API Security)",
-        question_text: "How do you secure production REST API endpoints using short-lived JWT access tokens, password hashing with bcrypt, and strict CORS origin headers?",
+        question_text: "Great answer! Excellent explanation of database index tuning. Now for our final question: How do you secure production REST API endpoints using short-lived JWT tokens and password hashing?",
         sample_answer: "I issue short-lived JWT access tokens, hash user passwords securely using bcrypt, and enforce strict CORS origin policies on FastAPI middleware."
       }
     ]
@@ -223,7 +223,7 @@ export default function InterviewRoomPage({ sessionData, setActivePage, setFinal
     }
   };
 
-  // CLEAN NON-LOOPING SPEECH RECOGNITION (CONCISE COMPACT TRANSCRIPT)
+  // CLEAN NON-LOOPING SPEECH RECOGNITION
   const startMicRecording = async () => {
     try {
       await navigator.mediaDevices.getUserMedia({ audio: true });
@@ -249,7 +249,6 @@ export default function InterviewRoomPage({ sessionData, setActivePage, setFinal
         for (let i = 0; i < event.results.length; i++) {
           cleanText += event.results[i][0].transcript + ' ';
         }
-        // Limit total live spoken text to a compact clean length
         setCandidateAnswer(cleanText.trim());
       };
 
@@ -335,7 +334,7 @@ export default function InterviewRoomPage({ sessionData, setActivePage, setFinal
         </div>
       )}
 
-      {/* ROOM TOP HEADER (ORIGINAL SMARTHIRE AI BRANDING RESTORED) */}
+      {/* ROOM TOP HEADER */}
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 glass-card p-3 px-6 rounded-2xl border border-slate-800">
         <div className="flex items-center gap-3">
           <div className="w-3 h-3 rounded-full bg-red-500 animate-ping"></div>
@@ -362,10 +361,10 @@ export default function InterviewRoomPage({ sessionData, setActivePage, setFinal
         </div>
       </div>
 
-      {/* MAIN TWO-COLUMN LAYOUT (ORIGINAL SMARTHIRE AI DESIGN RESTORED) */}
+      {/* MAIN TWO-COLUMN LAYOUT: LEFT (AIRA + CLEAN TURN TRANSCRIPT), RIGHT (WEBCAM + TELEMETRY BARS) */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
         
-        {/* LEFT COLUMN: AIRA AI CHARACTER & COMPACT COMPACT SPOKEN ANSWER TRANSCRIPT (8 COLS) */}
+        {/* LEFT COLUMN: AIRA AI CHARACTER & CLEAN TURN TRANSCRIPT BOX (8 COLS) */}
         <div className="lg:col-span-8 space-y-6">
           
           {/* Animated AI Character Center Panel */}
@@ -389,7 +388,7 @@ export default function InterviewRoomPage({ sessionData, setActivePage, setFinal
 
           </div>
 
-          {/* CLEAN TURN TRANSCRIPT BOX (SMALL COMPACT SPOKEN ANSWER BOX) */}
+          {/* CLEAN TURN TRANSCRIPT BOX WITH CONVERSATIONAL FEEDBACK */}
           <div className="glass-card p-5 rounded-3xl border border-slate-800 space-y-4 shadow-xl">
             <div className="flex items-center justify-between border-b border-slate-800 pb-2">
               <span className="text-xs font-mono text-cyan-400 uppercase font-bold flex items-center gap-1.5">
@@ -402,17 +401,17 @@ export default function InterviewRoomPage({ sessionData, setActivePage, setFinal
 
             <div className="space-y-3 font-sans text-xs">
               
-              {/* TOP BOX: IRA QUESTION */}
+              {/* TOP BOX: IRA QUESTION WITH CONVERSATIONAL FEEDBACK */}
               <div className="p-3.5 rounded-2xl bg-slate-900/90 border border-slate-800 space-y-1">
                 <span className="text-[10px] font-mono text-cyan-400 uppercase tracking-wider font-bold">
-                  IRA (INTERVIEWER QUESTION):
+                  IRA (INTERVIEWER QUESTION & CONVERSATIONAL RESPONSE):
                 </span>
                 <p className="text-slate-200 text-xs font-semibold leading-relaxed">
                   "{currentQ.question_text}"
                 </p>
               </div>
 
-              {/* BOTTOM BOX: CANDIDATE SPOKEN ANSWER (SMALL COMPACT TEXT TO PREVENT GIANT TEXT WALL) */}
+              {/* BOTTOM BOX: CANDIDATE SPOKEN ANSWER */}
               <div className="p-3.5 rounded-2xl bg-indigo-950/40 border border-indigo-500/30 space-y-1 max-h-24 overflow-y-auto">
                 <span className="text-[10px] font-mono text-amber-400 uppercase tracking-wider font-bold">
                   YOU (CANDIDATE SPOKEN ANSWER):
