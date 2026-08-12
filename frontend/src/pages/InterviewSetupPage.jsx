@@ -5,7 +5,7 @@ import { startInterviewSession } from '../services/api';
 export default function InterviewSetupPage({ setActivePage, setInterviewSession }) {
   const [step, setStep] = useState(1); // 1: Setup Domain, 2: Welcome & System Readiness Check
   const [category, setCategory] = useState('Technical Interview');
-  const [domain, setDomain] = useState('AI / ML & Data Science');
+  const [domain, setDomain] = useState('Python Developer');
   const [difficulty, setDifficulty] = useState('Medium');
   const [numQuestions, setNumQuestions] = useState(3);
   const [loading, setLoading] = useState(false);
@@ -17,6 +17,8 @@ export default function InterviewSetupPage({ setActivePage, setInterviewSession 
   const [agreedToRules, setAgreedToRules] = useState(false);
 
   const domainsList = [
+    'Python Developer',
+    'Data Structures & Algorithms (DSA)',
     'AI / ML & Data Science',
     'Backend Engineering',
     'Cloud & DevOps',
@@ -135,7 +137,7 @@ export default function InterviewSetupPage({ setActivePage, setInterviewSession 
         </div>
       )}
 
-      {/* STEP 2: WELCOME TO YOUR AI INTERVIEW & SYSTEM READINESS CHECK (INTERNSHALA / MERCOR MATCH) */}
+      {/* STEP 2: WELCOME TO YOUR AI INTERVIEW & SYSTEM READINESS CHECK */}
       {step === 2 && (
         <div className="space-y-6">
           
@@ -208,7 +210,7 @@ export default function InterviewSetupPage({ setActivePage, setInterviewSession 
               <li>Find a quiet, well-lit space with a stable internet connection.</li>
               <li>Ensure you sit upright with your face clearly visible in the video stream.</li>
               <li>Speak your answers clearly into your microphone when AIRA finishes asking each question.</li>
-              <li><strong className="text-red-400">Anti-Malpractice Warning:</strong> Switching browser tabs, using external phones/devices, or turning away will result in warning alerts and instant session disqualification.</li>
+              <li><strong className="text-red-400">Anti-Malpractice Warning:</strong> Switching browser tabs or turning away will result in warning alerts and instant session disqualification.</li>
             </ul>
 
             {/* AGREEMENT CHECKBOX */}

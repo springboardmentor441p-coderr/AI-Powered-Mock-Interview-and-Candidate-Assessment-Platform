@@ -16,12 +16,12 @@ export default function InterviewRoomPage({ sessionData, setActivePage, setFinal
   const [candidateAnswersList, setCandidateAnswersList] = useState([]);
   const chatScrollRef = useRef(null);
 
-  // REAL-TIME MULTI-TURN CHAT CONVERSATION THREAD (INTERVIEWER ABOVE, YOU BELOW)
+  // REAL-TIME MULTI-TURN CHAT CONVERSATION THREAD
   const [chatMessages, setChatMessages] = useState([
     {
       id: 1,
       sender: 'INTERVIEWER (IRA)',
-      text: "Hello! My name is AIRA, and I will be conducting your AI mock interview today. To get started, please introduce yourself, your technical background, and your primary engineering projects.",
+      text: "Hello! My name is AIRA, and I will be conducting your AI mock interview today. To get started, please introduce yourself, your technical background, and your key projects.",
       type: 'interviewer',
       time: 'Just now'
     }
@@ -38,8 +38,54 @@ export default function InterviewRoomPage({ sessionData, setActivePage, setFinal
 
   const recognitionRef = useRef(null);
 
-  // REAL HUMAN-TO-HUMAN CONVERSATIONAL AI INTERVIEW QUESTION FLOW
+  // REAL HUMAN-TO-HUMAN CONVERSATIONAL AI INTERVIEW QUESTION FLOW (INCLUDING PYTHON & DSA)
   const domainQuestionsBank = {
+    "Python Developer": [
+      {
+        id: 1,
+        question_number: "Question 1 of 3 (Candidate Introduction)",
+        question_text: "Hello! My name is AIRA, and I will be conducting your Python developer mock interview today. To get started, please introduce yourself and summarize your experience writing Python code.",
+        interviewer_feedback: "Great introduction! Nice experience with Python.",
+        sample_answer: "Hello AIRA! I am Janitha Kavuturu. I am a Python developer with experience writing clean Python scripts, working with data structures like lists and dictionaries, and building web applications."
+      },
+      {
+        id: 2,
+        question_number: "Question 2 of 3 (Core Python Concepts)",
+        question_text: "What is the key difference between Python Lists and Tuples, and when would you use a Dictionary?",
+        interviewer_feedback: "Very clear explanation of Python data structures!",
+        sample_answer: "Lists are mutable and defined with square brackets, while Tuples are immutable and defined with parentheses. Dictionaries store key-value pairs for fast lookups."
+      },
+      {
+        id: 3,
+        question_number: "Question 3 of 3 (Python Features)",
+        question_text: "Explain what List Comprehension is in Python and why it is useful.",
+        interviewer_feedback: "Excellent answer on clean Python code practices!",
+        sample_answer: "List comprehension provides a concise and readable way to create lists in Python in a single line of code, making programs much cleaner."
+      }
+    ],
+    "Data Structures & Algorithms (DSA)": [
+      {
+        id: 1,
+        question_number: "Question 1 of 3 (Candidate Introduction)",
+        question_text: "Hello! My name is AIRA, and I will be conducting your DSA mock interview today. Please introduce yourself and your knowledge of Data Structures and Algorithms.",
+        interviewer_feedback: "Welcome! Good background in core data structures.",
+        sample_answer: "Hello AIRA! I am Janitha Kavuturu. I have good knowledge of fundamental data structures like Arrays, Linked Lists, Stacks, Queues, and basic searching and sorting algorithms."
+      },
+      {
+        id: 2,
+        question_number: "Question 2 of 3 (Stack vs Queue)",
+        question_text: "What is the difference between a Stack and a Queue? Give real-world examples of both.",
+        interviewer_feedback: "Great real-world examples of Stack LIFO and Queue FIFO!",
+        sample_answer: "A Stack follows Last-In-First-Out, like a stack of plates. A Queue follows First-In-First-Out, like a line of people standing at a ticket counter."
+      },
+      {
+        id: 3,
+        question_number: "Question 3 of 3 (Searching Algorithms)",
+        question_text: "Explain the difference between Linear Search and Binary Search in terms of time complexity.",
+        interviewer_feedback: "Perfect comparison of O(N) versus O(log N) time complexities!",
+        sample_answer: "Linear search checks elements one by one with time complexity O(N). Binary search repeatedly divides a sorted array in half with time complexity O(log N)."
+      }
+    ],
     "AI / ML & Data Science": [
       {
         id: 1,
@@ -154,8 +200,8 @@ export default function InterviewRoomPage({ sessionData, setActivePage, setFinal
     ]
   };
 
-  const activeDomain = sessionData?.domain || sessionData?.category || "AI / ML & Data Science";
-  const questions = (domainQuestionsBank[activeDomain] || domainQuestionsBank["AI / ML & Data Science"]).slice(0, 3);
+  const activeDomain = sessionData?.domain || sessionData?.category || "Python Developer";
+  const questions = (domainQuestionsBank[activeDomain] || domainQuestionsBank["Python Developer"]).slice(0, 3);
   const currentQ = questions[currentIdx] || questions[0];
 
   // Timer effect
