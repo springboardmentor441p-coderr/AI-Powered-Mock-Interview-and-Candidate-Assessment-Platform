@@ -13,6 +13,7 @@ Responsible for:
 from __future__ import annotations
 
 import logging
+import json
 import re
 from difflib import SequenceMatcher
 
@@ -39,6 +40,7 @@ from app.models.interview_models import (
     AnswerEvaluation,
     EvaluationDimension,
     InterviewFeedback,
+    PendingAnswer,
     QuestionEvaluation,
 )
 
@@ -159,29 +161,15 @@ class InterviewAgent:
             message=answer,
         )
 
-        # ---------------------------------------------------------
-        # Evaluate answer
-        # ---------------------------------------------------------
-        evaluation = self.evaluate_answer(
+        # Keep a snapshot for deferred scoring. Answer evaluation is intentionally
+        # performed only when the final report is requested, keeping live turns fast.
+        session.pending_answers.append(PendingAnswer(
             question=session.questions_asked[-1],
             answer=answer,
-        )
-
-        # ---------------------------------------------------------
-        # Update running scores
-        # ---------------------------------------------------------
-        InterviewScorer.update_scores(
-            session.scores,
-            evaluation,
-        )
-
-        question_evaluation = self._record_question_evaluation_safely(
-            session=session,
-            question=session.questions_asked[-1],
-            answer=answer,
-            evaluation=evaluation,
-        )
-        self._update_difficulty(session, question_evaluation.overall_score)
+            stage=session.current_stage,
+            difficulty=session.difficulty,
+        ))
+        session.metrics.answered_questions = len(session.pending_answers)
         TimeManager.update_session_time(session)
 
         # ---------------------------------------------------------
@@ -209,16 +197,8 @@ class InterviewAgent:
         # ---------------------------------------------------------
         # Decide whether to ask a follow-up question
         # ---------------------------------------------------------
-        elif evaluation.needs_followup:
-            next_question = self._generate_next_question_safely(
-                session=session,
-                candidate_answer=answer,
-            )
-
         else:
-
             self._advance_stage(session)
-
             next_question = self._generate_next_question_safely(
                 session=session,
                 candidate_answer=answer,
@@ -407,8 +387,13 @@ class InterviewAgent:
 
         response = chat_with_groq(
             messages=messages,
-            temperature=0.4,
+            temperature=0.3,
+            json_output=True,
+            max_tokens=220,
         )
+
+        response_json = parse_llm_json_response(response)
+        response = str(response_json.get("turn") or "")
 
         question = self._clean_generated_question(response)
 
@@ -457,8 +442,23 @@ class InterviewAgent:
             flags=re.IGNORECASE,
         ).strip().strip('"\'\u201c\u201d')
 
+        # A valid interviewer turn must contain a complete question. Reject
+        # truncated answers and echoed prompt instructions so they never reach TTS.
         if "?" not in cleaned:
-            return cleaned.strip()
+            return ""
+
+        prompt_leak_markers = (
+            "you are sarah chen",
+            "you are emily rodriguez",
+            "you read the complete latest candidate answer",
+            "you start with a brief",
+            "you then ask exactly",
+            "current interview state",
+            "generate the next interviewer turn",
+        )
+        if any(marker in cleaned.lower() for marker in prompt_leak_markers):
+            questions = re.findall(r"[^.!?]*\?", cleaned)
+            return questions[-1].strip() if questions else ""
 
         sentences = [
             sentence.strip()
@@ -550,6 +550,7 @@ class InterviewAgent:
                 messages=messages,
                 temperature=0,
                 json_output=True,
+                max_tokens=240,
             )
 
             response_json = parse_llm_json_response(raw_response)
@@ -580,6 +581,76 @@ class InterviewAgent:
                 needs_followup=True,
                 reason=f"Evaluation failed: {exc}",
             )
+
+    def evaluate_pending_answers(self, session) -> None:
+        """Evaluate stored answers once, immediately before report generation."""
+        if session.question_evaluations or not session.pending_answers:
+            return
+
+        evaluations = self.evaluate_answers_batch(session.pending_answers)
+        original_stage = session.current_stage
+        original_difficulty = session.difficulty
+        try:
+            for pending, evaluation in zip(session.pending_answers, evaluations):
+                session.current_stage = pending.stage
+                session.difficulty = pending.difficulty
+                InterviewScorer.update_scores(session.scores, evaluation)
+                self._record_question_evaluation_safely(
+                    session=session,
+                    question=pending.question,
+                    answer=pending.answer,
+                    evaluation=evaluation,
+                )
+        finally:
+            session.current_stage = original_stage
+            session.difficulty = original_difficulty
+
+    @staticmethod
+    def evaluate_answers_batch(pending_answers: list[PendingAnswer]) -> list[AnswerEvaluation]:
+        """Evaluate every transcript in a single structured LLM request."""
+        payload = [
+            {"question": item.question, "answer": item.answer}
+            for item in pending_answers
+        ]
+        messages = [
+            {
+                "role": "system",
+                "content": (
+                    "You are an interview evaluator. Evaluate every Q&A item. Return only "
+                    "JSON as {\"evaluations\":[...]}. Preserve input order and return exactly "
+                    "one result per item. Each result requires quality (good/average/weak), "
+                    "technical, communication, confidence, problem_solving (integers 0-10), "
+                    "needs_followup (boolean), and reason (brief string)."
+                ),
+            },
+            {"role": "user", "content": json.dumps(payload, separators=(",", ":"))},
+        ]
+        try:
+            raw = chat_with_groq(
+                messages=messages,
+                temperature=0,
+                json_output=True,
+                max_tokens=min(1800, 120 + len(pending_answers) * 150),
+            )
+            parsed = parse_llm_json_response(raw)
+            items = parsed.get("evaluations")
+            if not isinstance(items, list) or len(items) != len(pending_answers):
+                raise ValueError("Batch evaluation count did not match answer count.")
+            return [AnswerEvaluation(**item) for item in items]
+        except Exception as exc:
+            logger.exception("Batch answer evaluation failed; using neutral fallback scores.")
+            return [
+                AnswerEvaluation(
+                    quality="average",
+                    technical=5,
+                    communication=5,
+                    confidence=5,
+                    problem_solving=5,
+                    needs_followup=False,
+                    reason=f"Batch evaluation failed: {exc}",
+                )
+                for _ in pending_answers
+            ]
         
     def generate_feedback(
         self,

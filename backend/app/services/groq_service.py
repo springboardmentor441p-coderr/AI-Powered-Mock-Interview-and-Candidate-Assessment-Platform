@@ -9,6 +9,7 @@ from __future__ import annotations
 import json
 import logging
 import time
+from threading import Lock
 from typing import Any
 from urllib.parse import urljoin
 
@@ -17,6 +18,28 @@ import httpx
 from app.config import settings
 
 logger = logging.getLogger(__name__)
+
+_client: httpx.Client | None = None
+_client_lock = Lock()
+
+
+def get_groq_client() -> httpx.Client:
+    """Return one thread-safe pooled client for the lifetime of the process."""
+    global _client
+    if _client is None:
+        with _client_lock:
+            if _client is None:
+                _client = httpx.Client(timeout=_groq_timeout())
+    return _client
+
+
+def close_groq_client() -> None:
+    """Close the pooled Groq transport during application shutdown."""
+    global _client
+    with _client_lock:
+        if _client is not None:
+            _client.close()
+            _client = None
 
 
 class GroqConnectionError(Exception):
@@ -113,16 +136,15 @@ def _post_groq_chat(payload: dict[str, Any]) -> dict[str, Any]:
     }
 
     try:
-        with httpx.Client(timeout=timeout) as client:
-            response = client.post(url, json=payload, headers=headers)
-            elapsed = time.perf_counter() - started
-            logger.info(
-                "Groq chat HTTP response received: status=%s elapsed=%.2fs",
-                response.status_code,
-                elapsed,
-            )
-            response.raise_for_status()
-            data = response.json()
+        response = get_groq_client().post(url, json=payload, headers=headers)
+        elapsed = time.perf_counter() - started
+        logger.info(
+            "Groq chat HTTP response received: status=%s elapsed=%.2fs",
+            response.status_code,
+            elapsed,
+        )
+        response.raise_for_status()
+        data = response.json()
 
     except httpx.TimeoutException as exc:
         elapsed = time.perf_counter() - started
@@ -166,6 +188,7 @@ def chat_with_groq(
     model: str | None = None,
     temperature: float = 0.2,
     json_output: bool = False,
+    max_tokens: int | None = None,
 ) -> str:
     """
     Run a Groq chat completion and return raw assistant text.
@@ -175,7 +198,7 @@ def chat_with_groq(
         "model": selected_model,
         "messages": messages,
         "temperature": temperature,
-        "max_tokens": settings.GROQ_MAX_TOKENS,
+        "max_tokens": max_tokens or settings.GROQ_MAX_TOKENS,
     }
 
     if json_output:

@@ -73,12 +73,10 @@ class VoiceInterviewService:
                     "Speech recognition did not return a transcript for this audio."
                 )
 
-            # InterviewAgent is currently synchronous and may call Groq, so run
-            # it off the event loop while keeping the existing API unchanged.
-            interview_result = await run_in_threadpool(
-                self.interview_agent.submit_answer,
+            return await self.process_transcript_answer(
                 session_id=cleaned_session_id,
-                answer=transcript,
+                transcript=transcript,
+                session=session,
             )
         except (
             InterviewSessionNotFound,
@@ -95,6 +93,27 @@ class VoiceInterviewService:
                 "The interview engine could not process this answer: "
                 f"{type(exc).__name__}: {reason}"
             ) from exc
+        finally:
+            if session.processing_started_at is not None:
+                TimeManager.resume(session)
+
+    async def process_transcript_answer(
+        self,
+        *,
+        session_id: str,
+        transcript: str,
+        session=None,
+    ) -> dict[str, object]:
+        """Advance an interview from a transcript already produced by live STT."""
+        cleaned_session_id = session_id.strip()
+        session = session or self.interview_agent.state.get_session(cleaned_session_id)
+        TimeManager.pause(session)
+        try:
+            interview_result = await run_in_threadpool(
+                self.interview_agent.submit_answer,
+                session_id=cleaned_session_id,
+                answer=transcript.strip(),
+            )
         finally:
             TimeManager.resume(session)
 

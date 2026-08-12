@@ -1,6 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
 import Button from '../Button/Button.jsx';
-import Loader from '../Loader/Loader.jsx';
 import { createVoiceStreamSocket } from '../../services/voiceService.js';
 import './AudioRecorder.css';
 
@@ -30,6 +29,9 @@ function AudioRecorder({
   const isStreamingRef = useRef(false);
   const recordedChunksRef = useRef([]);
   const shouldSubmitRecordingRef = useRef(false);
+  const chunkSendChainRef = useRef(Promise.resolve());
+  const latencyStartedAtRef = useRef(null);
+  const latencyIntervalRef = useRef(null);
   const isListeningRef = useRef(false);
   const streamRunIdRef = useRef(0);
 
@@ -40,9 +42,15 @@ function AudioRecorder({
   const [permissionStatus, setPermissionStatus] = useState('Microphone ready');
   const [textAnswer, setTextAnswer] = useState('');
   const [mode, setMode] = useState('voice');
+  const [latencyMs, setLatencyMs] = useState(0);
+  const [lastLatencyMs, setLastLatencyMs] = useState(null);
+  const [isWaitingForQuestion, setIsWaitingForQuestion] = useState(false);
 
   useEffect(() => {
-    return () => stopStreaming();
+    return () => {
+      stopStreaming();
+      if (latencyIntervalRef.current) window.clearInterval(latencyIntervalRef.current);
+    };
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const cleanupAudio = () => {
@@ -65,6 +73,7 @@ function AudioRecorder({
     speakingStartedAtRef.current = null;
     silenceStartedAtRef.current = null;
     recordedChunksRef.current = [];
+    chunkSendChainRef.current = Promise.resolve();
     shouldSubmitRecordingRef.current = false;
   };
 
@@ -105,6 +114,28 @@ function AudioRecorder({
   const waitForPostTtsGuard = () =>
     new Promise((resolve) => window.setTimeout(resolve, POST_TTS_GUARD_MS));
 
+  const startLatencyTimer = () => {
+    const startedAt = performance.now();
+    latencyStartedAtRef.current = startedAt;
+    setLatencyMs(0);
+    setIsWaitingForQuestion(true);
+    if (latencyIntervalRef.current) window.clearInterval(latencyIntervalRef.current);
+    latencyIntervalRef.current = window.setInterval(() => {
+      setLatencyMs(performance.now() - startedAt);
+    }, 100);
+  };
+
+  const stopLatencyTimer = () => {
+    if (!latencyStartedAtRef.current) return;
+    const elapsed = performance.now() - latencyStartedAtRef.current;
+    latencyStartedAtRef.current = null;
+    if (latencyIntervalRef.current) window.clearInterval(latencyIntervalRef.current);
+    latencyIntervalRef.current = null;
+    setLatencyMs(elapsed);
+    setLastLatencyMs(elapsed);
+    setIsWaitingForQuestion(false);
+  };
+
   const endCurrentTurn = () => {
     if (!isTurnOpenRef.current || isAiThinkingRef.current) return;
     isTurnOpenRef.current = false;
@@ -113,7 +144,8 @@ function AudioRecorder({
     setIsAiThinking(true);
     onProcessingChange?.(true);
     setIsSpeaking(false);
-    setPermissionStatus('Answer captured. AI is thinking...');
+    setPermissionStatus('Answer captured. Preparing the next question...');
+    startLatencyTimer();
     if (mediaRecorderRef.current?.state === 'recording') {
       shouldSubmitRecordingRef.current = true;
       mediaRecorderRef.current.stop();
@@ -148,6 +180,12 @@ function AudioRecorder({
     mediaRecorder.ondataavailable = (event) => {
       if (event.data.size > 0) {
         recordedChunksRef.current.push(event.data);
+        chunkSendChainRef.current = chunkSendChainRef.current.then(async () => {
+          const activeSocket = socketRef.current;
+          if (activeSocket?.readyState === WebSocket.OPEN) {
+            activeSocket.send(await event.data.arrayBuffer());
+          }
+        });
       }
     };
     mediaRecorder.onstop = async () => {
@@ -166,9 +204,10 @@ function AudioRecorder({
         if (recordedBlob.size === 0) {
           throw new Error('No audio was recorded.');
         }
-        activeSocket.send(recordedBlob);
+        await chunkSendChainRef.current;
         sendControl({ type: 'end_utterance' });
       } catch (err) {
+        stopLatencyTimer();
         isAiThinkingRef.current = false;
         setIsAiThinking(false);
         onProcessingChange?.(false);
@@ -182,10 +221,8 @@ function AudioRecorder({
       type: 'start_utterance',
       mime_type: mediaRecorder.mimeType || supportedMimeType || 'audio/webm',
     });
-    // With no timeslice, the browser emits one finalized media file on stop.
-    // Concatenating periodic MediaRecorder fragments is not portable across
-    // browsers and can produce a blob that transcription APIs cannot decode.
-    mediaRecorder.start();
+    // Send encoded media fragments continuously to the backend's live STT socket.
+    mediaRecorder.start(250);
   };
 
   const monitorSilence = () => {
@@ -252,10 +289,11 @@ function AudioRecorder({
           return;
         }
         if (data.type === 'processing') {
-          setPermissionStatus('Processing your answer...');
+          setPermissionStatus('Preparing the next question...');
           return;
         }
         if (data.type === 'error') {
+          stopLatencyTimer();
           isAiThinkingRef.current = false;
           setIsAiThinking(false);
           onProcessingChange?.(false);
@@ -264,6 +302,7 @@ function AudioRecorder({
           return;
         }
         if (data.type === 'interviewer_turn') {
+          stopLatencyTimer();
           setMicrophoneEnabled(false);
           setPermissionStatus('Interviewer is speaking...');
           try {
@@ -285,11 +324,13 @@ function AudioRecorder({
       };
 
       socket.onerror = () => {
+        stopLatencyTimer();
         setError('Realtime voice connection failed.');
         stopStreaming();
       };
 
       socket.onclose = () => {
+        stopLatencyTimer();
         setIsStreaming(false);
         isStreamingRef.current = false;
         setIsSpeaking(false);
@@ -344,9 +385,12 @@ function AudioRecorder({
     setError('');
     if (onTextSubmit) {
       try {
+        startLatencyTimer();
         await onTextSubmit(textAnswer.trim());
+        stopLatencyTimer();
         setTextAnswer('');
       } catch (err) {
+        stopLatencyTimer();
         setError(err.message || 'Failed to submit answer.');
       }
     }
@@ -415,12 +459,17 @@ function AudioRecorder({
             disabled={isSubmitting}
           />
           <Button disabled={isSubmitting || !textAnswer.trim()} type="submit">
-            {isSubmitting ? 'Evaluating Answer...' : 'Submit Text Answer'}
+            {isSubmitting ? 'Sending answer...' : 'Submit Text Answer'}
           </Button>
         </form>
       )}
 
-      {(isSubmitting || isAiThinking) && <Loader label="Evaluating answer and generating next question..." />}
+      {(isWaitingForQuestion || lastLatencyMs !== null) && (
+        <div className={`latency-display${isWaitingForQuestion ? ' is-active' : ''}`} role="status">
+          <span>{isWaitingForQuestion ? 'Waiting for next question' : 'Last response latency'}</span>
+          <strong>{((isWaitingForQuestion ? latencyMs : lastLatencyMs) / 1000).toFixed(1)}s</strong>
+        </div>
+      )}
       {error && <p className="audio-recorder__error">{error}</p>}
     </div>
   );

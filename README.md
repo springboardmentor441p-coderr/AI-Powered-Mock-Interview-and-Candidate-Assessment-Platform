@@ -283,14 +283,14 @@ Open the local URL printed by Vite. The default backend URL in the example confi
 
 | Variable | Required | Default | Description |
 | --- | --- | --- | --- |
-| `GROQ_API_KEY` | Yes | — | Groq credential used for resume parsing, interviewer generation, evaluation, feedback, and default Whisper transcription |
+| `GROQ_API_KEY` | Yes | — | Groq credential used for resume parsing, interviewer generation, batch evaluation, feedback, and optional Whisper fallback transcription |
 | `GROQ_BASE_URL` | No | `https://api.groq.com/openai/v1` | Base URL for the Groq OpenAI-compatible API |
 | `GROQ_MODEL` | No | `llama-3.1-8b-instant` | Chat model used by Groq-backed interview services |
 | `GROQ_TIMEOUT_SECONDS` | No | `60` | Overall Groq request timeout in seconds |
 | `GROQ_CONNECT_TIMEOUT_SECONDS` | No | `10` | Groq connection timeout in seconds |
 | `GROQ_MAX_TOKENS` | No | `2048` | Maximum generated tokens for Groq chat requests |
 | `DEEPGRAM_API_KEY` | Required for voice | — | Deepgram credential used for TTS and Deepgram speech recognition |
-| `VOICE_STT_PROVIDER` | No | `groq` | Primary speech-to-text provider; use `groq` or configure Deepgram behavior |
+| `VOICE_STT_PROVIDER` | No | `deepgram` | Speech-to-text provider; `deepgram` enables live streaming and `groq` uses buffered Whisper transcription |
 | `DEEPGRAM_STT_MODEL` | No | `nova-3` | Deepgram prerecorded speech-to-text model |
 | `DEEPGRAM_LIVE_MODEL` | No | `nova-3` | Model used when creating a Deepgram live connection |
 | `DEEPGRAM_TTS_MODEL` | No | `aura-2-thalia-en` | Deepgram voice model used for interviewer speech |
@@ -313,7 +313,7 @@ Never commit real API keys. Keep secrets in `backend/.env` or your deployment pl
 2. Upload a PDF or DOCX resume and wait for the candidate profile preview.
 3. Choose a technical or HR interview, enter the target role, and select a duration.
 4. Start the interview and join the voice session, or switch to text responses.
-5. Answer one question at a time. Verixa evaluates the response and asks a contextual follow-up or moves to the next interview stage.
+5. Answer one question at a time. Verixa stores the transcript and asks a contextual next question without blocking on evaluation.
 6. Continue until the configured limit or timer completes, or end the interview manually.
 7. Review the generated report, competency scores, question-level feedback, strengths, weaknesses, and recommendations.
 8. Reopen locally saved reports from **History**.
@@ -346,9 +346,10 @@ With the backend running at `http://127.0.0.1:8000`, FastAPI provides:
 
 - **Conversation-first interviewing:** questions acknowledge and build upon the candidate's latest response instead of behaving like an unrelated question bank.
 - **Resume-grounded personalization:** projects, skills, experience, and target-role context guide the interview without inventing candidate details.
-- **Adaptive control:** difficulty, interview stages, follow-up depth, and wrap-up behavior respond to performance and remaining time.
+- **Time-aware control:** interview stages and wrap-up behavior respond to interview progress and remaining time.
 - **Safe voice turn-taking:** interviewer playback completes before candidate listening begins, reducing self-transcription and race conditions.
-- **Multidimensional evaluation:** each answer contributes to communication, technical relevance, confidence, and professionalism scores.
+- **Deferred multidimensional evaluation:** answers are batch-scored for communication, technical relevance, confidence, and professionalism when the report is generated.
+- **Live incremental transcription:** browser audio is forwarded to Deepgram throughout the candidate's answer instead of uploaded only after it ends.
 - **Graceful degradation:** deterministic resume parsing, evaluation fallbacks, and browser speech synthesis keep core flows usable when an external AI service fails.
 
 ## Testing
@@ -377,7 +378,7 @@ The following items are planned directions and are **not implemented yet**:
 - Recruiter and organization workspaces
 - Candidate invitations and shareable assessment links
 - Coding exercises with sandboxed execution
-- Live incremental transcription and interviewer streaming
+- Incremental interviewer text and audio streaming
 - AI interviewer avatars and richer meeting experiences
 - Applicant tracking system integrations
 - Company-specific question libraries and competency frameworks

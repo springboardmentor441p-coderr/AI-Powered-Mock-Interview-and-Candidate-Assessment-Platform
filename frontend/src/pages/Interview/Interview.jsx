@@ -3,11 +3,10 @@ import { useNavigate } from 'react-router-dom';
 import AudioRecorder from '../../components/AudioRecorder/AudioRecorder.jsx';
 import { DifficultyBadge, StageBadge } from '../../components/Badge/Badge.jsx';
 import Button from '../../components/Button/Button.jsx';
-import Loader from '../../components/Loader/Loader.jsx';
 import { useInterview } from '../../context/InterviewContext.jsx';
 import { getApiErrorMessage, submitAnswer } from '../../services/interviewService.js';
 import { endInterview } from '../../services/reportService.js';
-import { playAiAudio, playAiText } from '../../services/voiceService.js';
+import { playAiAudio, playAiText, prepareAiText } from '../../services/voiceService.js';
 import './Interview.css';
 
 function Interview() {
@@ -38,6 +37,16 @@ function Interview() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState('');
   const isGeneratingReportRef = useRef(false);
+
+  // Start preparing the deterministic opening question as soon as this page
+  // receives it. Joining voice then reuses this promise instead of starting TTS.
+  useEffect(() => {
+    if (currentQuestion && questionNumber <= 1 && interviewStatus === 'in_progress') {
+      prepareAiText(currentQuestion).catch(() => {
+        // playAiText will use browser speech if server-side TTS is unavailable.
+      });
+    }
+  }, [currentQuestion, questionNumber, interviewStatus]);
 
   // Automatically generate the report when the backend marks the interview complete.
   useEffect(() => {
@@ -198,6 +207,14 @@ function Interview() {
             <span className="status-label">Remaining Time</span>
             <strong className="timer-value">{formatTime(remainingTime)}</strong>
           </div>
+          <Button
+            className="header-end-interview"
+            onClick={handleManualEnd}
+            variant="danger"
+            disabled={isSubmitting}
+          >
+            End interview
+          </Button>
         </div>
       </div>
 
@@ -285,11 +302,6 @@ function Interview() {
 
             {error && <div className="error-banner">{error}</div>}
 
-            <div className="finish-early-box">
-              <Button onClick={handleManualEnd} variant="danger" disabled={isSubmitting}>
-                End interview and generate report
-              </Button>
-            </div>
           </div>
         </div>
       </div>

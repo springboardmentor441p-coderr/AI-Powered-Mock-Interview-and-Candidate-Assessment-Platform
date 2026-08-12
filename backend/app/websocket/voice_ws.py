@@ -13,6 +13,7 @@ from __future__ import annotations
 import logging
 import json
 import tempfile
+import asyncio
 from pathlib import Path
 from uuid import uuid4
 
@@ -84,6 +85,8 @@ async def voice_stream(websocket: WebSocket, session_id: str) -> None:
     utterance_chunks: list[bytes] = []
     utterance_started = False
     mime_type = "audio/webm"
+    live_context = None
+    live_socket = None
 
     await websocket.send_json({
         "type": "ready",
@@ -101,6 +104,8 @@ async def voice_stream(websocket: WebSocket, session_id: str) -> None:
             if "bytes" in event and event["bytes"] is not None:
                 if utterance_started:
                     utterance_chunks.append(event["bytes"])
+                    if live_socket is not None:
+                        await live_socket.send_media(event["bytes"])
                 continue
 
             if "text" not in event or event["text"] is None:
@@ -118,6 +123,14 @@ async def voice_stream(websocket: WebSocket, session_id: str) -> None:
                 utterance_started = True
                 utterance_chunks = []
                 mime_type = data.get("mime_type") or "audio/webm"
+                if settings.VOICE_STT_PROVIDER == "deepgram":
+                    try:
+                        live_context = deepgram.connect_live(interim_results=True)
+                        live_socket = await live_context.__aenter__()
+                    except Exception:
+                        logger.exception("Could not open live Deepgram STT; using buffered fallback")
+                        live_context = None
+                        live_socket = None
                 await websocket.send_json({
                     "type": "listening",
                     "message": "Listening for your answer.",
@@ -127,6 +140,10 @@ async def voice_stream(websocket: WebSocket, session_id: str) -> None:
             if event_type == "cancel_utterance":
                 utterance_started = False
                 utterance_chunks = []
+                if live_context is not None:
+                    await live_context.__aexit__(None, None, None)
+                live_context = None
+                live_socket = None
                 await websocket.send_json({
                     "type": "cancelled",
                     "message": "Current utterance cancelled.",
@@ -139,6 +156,10 @@ async def voice_stream(websocket: WebSocket, session_id: str) -> None:
 
             utterance_started = False
             if not utterance_chunks:
+                if live_context is not None:
+                    await live_context.__aexit__(None, None, None)
+                live_context = None
+                live_socket = None
                 await _send_error(websocket, "No audio was received for this answer.", "empty_audio")
                 continue
 
@@ -146,6 +167,10 @@ async def voice_stream(websocket: WebSocket, session_id: str) -> None:
             utterance_chunks = []
 
             if len(audio_bytes) > settings.DEEPGRAM_MAX_AUDIO_BYTES:
+                if live_context is not None:
+                    await live_context.__aexit__(None, None, None)
+                live_context = None
+                live_socket = None
                 await _send_error(websocket, "Audio answer is too large.", "audio_too_large")
                 continue
 
@@ -158,18 +183,44 @@ async def voice_stream(websocket: WebSocket, session_id: str) -> None:
                     "message": "Processing your answer.",
                 })
 
-                with tempfile.NamedTemporaryFile(
-                    suffix=suffix,
-                    prefix=f"stream_answer_{uuid4().hex}_",
-                    delete=False,
-                ) as temp_file:
-                    temp_file.write(audio_bytes)
-                    temp_path = Path(temp_file.name)
+                transcript = ""
+                if live_socket is not None:
+                    await live_socket.send_finalize()
+                    final_segments: list[str] = []
+                    try:
+                        while True:
+                            response = await asyncio.wait_for(live_socket.recv(), timeout=5.0)
+                            text, is_final, from_finalize = deepgram.extract_live_transcript(response)
+                            if text and is_final:
+                                final_segments.append(text)
+                            if from_finalize:
+                                break
+                    except asyncio.TimeoutError:
+                        logger.warning("Timed out waiting for finalized live transcript")
+                    finally:
+                        if live_context is not None:
+                            await live_context.__aexit__(None, None, None)
+                        live_context = None
+                        live_socket = None
+                    transcript = " ".join(final_segments).strip()
 
-                result = await service.process_audio_answer(
-                    session_id=session_id,
-                    audio_path=temp_path,
-                )
+                if transcript:
+                    result = await service.process_transcript_answer(
+                        session_id=session_id,
+                        transcript=transcript,
+                    )
+                else:
+                    with tempfile.NamedTemporaryFile(
+                        suffix=suffix,
+                        prefix=f"stream_answer_{uuid4().hex}_",
+                        delete=False,
+                    ) as temp_file:
+                        temp_file.write(audio_bytes)
+                        temp_path = Path(temp_file.name)
+                    result = await service.process_audio_answer(
+                        session_id=session_id,
+                        audio_path=temp_path,
+                    )
                 result["audio_url"] = _audio_url(websocket, result["audio_file"])
                 result["type"] = "interviewer_turn"
 
@@ -194,3 +245,9 @@ async def voice_stream(websocket: WebSocket, session_id: str) -> None:
 
     except WebSocketDisconnect:
         logger.info("Realtime voice websocket disconnected for session %s", session_id)
+    finally:
+        if live_context is not None:
+            try:
+                await live_context.__aexit__(None, None, None)
+            except Exception:
+                logger.debug("Failed to close live Deepgram socket", exc_info=True)

@@ -5,6 +5,7 @@
 .header-meta-group, .header-status-group, .status-item { display: flex; align-items: center; }
 .header-meta-group { gap: 8px; font-size: 12px; }
 .header-status-group { gap: 20px; }
+.header-end-interview { white-space: nowrap; }
 .status-item { gap: 8px; }
 .meta-label, .status-label { color: var(--color-text-faint); font-size: 10px; font-weight: 550; text-transform: uppercase; letter-spacing: .04em; }
 .meta-val { color: var(--color-text); font-weight: 550; }
@@ -45,8 +46,6 @@
 .candidate-card__details div { display: flex; flex-direction: column; gap: 4px; }
 .candidate-card__details dt { color: var(--color-text-faint); font-size: 9px; text-transform: uppercase; }
 .candidate-card__details dd { color: var(--color-text-muted); font-size: 10px; }
-.finish-early-box { padding-top: 16px; border-top: 1px solid var(--color-border); }
-.finish-early-box .button { width: 100%; }
 .interview-empty { display: flex; flex-direction: column; align-items: center; gap: 16px; padding: 48px; text-align: center; }
 @media (max-width: 1050px) { .interview-main-grid { grid-template-columns: 1fr; } .right-column { display: grid; grid-template-columns: 1fr 1fr; } }
-@media (max-width: 700px) { .right-column { display: flex; } .interview-header-bar { align-items: flex-start; flex-direction: column; } .header-status-group { width: 100%; justify-content: space-between; gap: 8px; } .status-label { display: none; } }
+@media (max-width: 700px) { .right-column { display: flex; } .interview-header-bar { align-items: flex-start; flex-direction: column; } .header-status-group { width: 100%; flex-wrap: wrap; justify-content: space-between; gap: 8px; } .status-label { display: none; } .header-end-interview { margin-left: auto; } }

@@ -17,4 +17,8 @@
 .audio-recorder__actions .button { width: 100%; }
 .text-answer-input { width: 100%; min-height: 112px; padding: 10px 11px; resize: vertical; border: 1px solid var(--color-border-strong); border-radius: 7px; background: var(--color-bg); color: var(--color-text); font-size: 12px; line-height: 1.5; }
 .text-answer-input:focus { border-color: var(--color-primary); outline: 2px solid rgba(59,130,246,.22); outline-offset: 0; }
+.latency-display { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 10px 12px; border: 1px solid var(--color-border); border-radius: 7px; background: var(--color-bg); color: var(--color-text-faint); font-size: 10px; }
+.latency-display strong { color: var(--color-text-muted); font-size: 13px; font-variant-numeric: tabular-nums; }
+.latency-display.is-active { border-color: rgba(59,130,246,.35); }
+.latency-display.is-active strong { color: var(--color-primary-light); }
 .audio-recorder__error { padding: 9px 10px; border: 1px solid rgba(248,113,113,.2); border-radius: 7px; background: rgba(248,113,113,.06); color: var(--color-danger); font-size: 10px; }

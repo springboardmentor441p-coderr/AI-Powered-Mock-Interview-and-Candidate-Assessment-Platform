@@ -45,7 +45,7 @@ class Settings:
     # ==========================================================
 
     DEEPGRAM_API_KEY: str | None = os.getenv("DEEPGRAM_API_KEY")
-    VOICE_STT_PROVIDER: str = os.getenv("VOICE_STT_PROVIDER", "groq").strip().lower()
+    VOICE_STT_PROVIDER: str = os.getenv("VOICE_STT_PROVIDER", "deepgram").strip().lower()
     DEEPGRAM_STT_MODEL: str = os.getenv("DEEPGRAM_STT_MODEL", "nova-3")
     DEEPGRAM_LIVE_MODEL: str = os.getenv("DEEPGRAM_LIVE_MODEL", "nova-3")
     DEEPGRAM_TTS_MODEL: str = os.getenv("DEEPGRAM_TTS_MODEL", "aura-2-thalia-en")

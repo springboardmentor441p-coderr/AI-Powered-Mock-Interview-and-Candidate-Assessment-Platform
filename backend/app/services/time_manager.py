@@ -95,13 +95,13 @@ class TimeManager:
         session.metrics.interview_progress = timing["progress_percentage"]
 
         if last_response_time_seconds is not None and last_response_time_seconds > 0:
-            current_eval_count = len(session.question_evaluations)
-            if current_eval_count > 0:
+            current_answer_count = len(session.pending_answers)
+            if current_answer_count > 0:
                 total_time = (
-                    session.average_answer_time * (current_eval_count - 1)
+                    session.average_answer_time * (current_answer_count - 1)
                     + last_response_time_seconds
                 )
-                session.average_answer_time = round(total_time / current_eval_count, 2)
+                session.average_answer_time = round(total_time / current_answer_count, 2)
             else:
                 session.average_answer_time = round(last_response_time_seconds, 2)
             session.metrics.average_response_time = session.average_answer_time

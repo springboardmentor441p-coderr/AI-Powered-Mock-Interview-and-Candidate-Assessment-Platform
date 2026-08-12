@@ -11,6 +11,8 @@ const MIME_EXTENSION_MAP = {
   'audio/x-wav': '.wav',
 };
 
+const preparedSpeech = new Map();
+
 function resolveAudioExtension(blob) {
   const mime = blob?.type || '';
   return MIME_EXTENSION_MAP[mime] || '.webm';
@@ -79,24 +81,45 @@ function speakWithBrowserVoice(text) {
 }
 
 /**
+ * Begin TTS generation early and share the same promise with later playback.
+ */
+export function prepareAiText(text) {
+  const cleanText = text?.trim();
+  if (!cleanText) return Promise.resolve(null);
+  if (preparedSpeech.has(cleanText)) return preparedSpeech.get(cleanText);
+
+  const preparation = (async () => {
+    const formData = new FormData();
+    formData.append('text', cleanText);
+    const response = await api.post(endpoints.voice.testTts, formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+      responseType: 'blob',
+    });
+    return URL.createObjectURL(response.data);
+  })().catch((error) => {
+    preparedSpeech.delete(cleanText);
+    throw error;
+  });
+
+  preparedSpeech.set(cleanText, preparation);
+  return preparation;
+}
+
+/**
  * Synthesize and play interviewer text that does not already have an audio URL.
  * The browser voice is a fallback when Deepgram or media autoplay is unavailable.
  */
 export async function playAiText(text) {
   if (!text) return;
 
-  const formData = new FormData();
-  formData.append('text', text);
-
   try {
-    const response = await api.post(endpoints.voice.testTts, formData, {
-      headers: { 'Content-Type': 'multipart/form-data' },
-      responseType: 'blob',
-    });
-    const audioUrl = URL.createObjectURL(response.data);
+    const audioUrl = await prepareAiText(text);
     const audio = new Audio(audioUrl);
 
-    const cleanup = () => URL.revokeObjectURL(audioUrl);
+    const cleanup = () => {
+      URL.revokeObjectURL(audioUrl);
+      preparedSpeech.delete(text.trim());
+    };
     audio.addEventListener('ended', cleanup, { once: true });
     audio.addEventListener('error', cleanup, { once: true });
 

@@ -137,6 +137,15 @@ class InterviewScores(BaseModel):
     total_evaluations: int = 0
 
 
+class PendingAnswer(BaseModel):
+    """Question/answer snapshot retained for deferred end-of-interview scoring."""
+
+    question: str
+    answer: str
+    stage: str
+    difficulty: str
+
+
 # ==========================================================
 # Interview Session
 # ==========================================================
@@ -185,6 +194,8 @@ class InterviewSession(BaseModel):
     metrics: InterviewMetrics = Field(default_factory=InterviewMetrics)
 
     question_evaluations: list[QuestionEvaluation] = Field(default_factory=list)
+
+    pending_answers: list[PendingAnswer] = Field(default_factory=list)
 
     average_answer_time: float = 0.0
 

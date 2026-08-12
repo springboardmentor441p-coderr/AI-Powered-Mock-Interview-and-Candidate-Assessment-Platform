@@ -25,6 +25,11 @@ class ReportGenerator:
         """
         Build full InterviewReport from session state and evaluation history.
         """
+        # Scoring is deferred until report generation so live answer submission
+        # does not wait for a separate evaluation LLM request.
+        from app.services.interview_agent import InterviewAgent
+
+        InterviewAgent().evaluate_pending_answers(session)
         timing = TimeManager.calculate_timing(session)
         evaluations = session.question_evaluations
         count = max(1, len(evaluations))

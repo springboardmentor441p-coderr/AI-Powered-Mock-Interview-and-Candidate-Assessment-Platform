@@ -192,6 +192,31 @@ def test_generated_turn_keeps_only_one_question():
     )
 
 
+def test_generated_turn_rejects_truncated_prompt_leakage():
+    from app.services.interview_agent import InterviewAgent
+
+    response = (
+        "You are Sarah Chen, a Senior Technical Hiring Manager. "
+        "You read the complete latest candidate answer before deciding what to ask. "
+        "You then ask exactly ONE question about ONE concrete topic"
+    )
+
+    assert InterviewAgent._clean_generated_question(response) == ""
+
+
+def test_generated_turn_strips_prompt_leakage_before_question():
+    from app.services.interview_agent import InterviewAgent
+
+    response = (
+        "You are Sarah Chen. You start with a brief acknowledgement. "
+        "What did you build during your AI internship?"
+    )
+
+    assert InterviewAgent._clean_generated_question(response) == (
+        "What did you build during your AI internship?"
+    )
+
+
 def test_duplicate_detection_ignores_acknowledgement_wording():
     from app.services.interview_agent import InterviewAgent
 

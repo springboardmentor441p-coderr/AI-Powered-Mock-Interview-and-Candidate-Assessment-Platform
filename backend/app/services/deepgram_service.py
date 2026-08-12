@@ -284,6 +284,7 @@ class DeepgramService:
         interim_results: bool = True,
         smart_format: bool = True,
         punctuate: bool = True,
+        endpointing: int | None = 700,
     ) -> AbstractAsyncContextManager[Any]:
         """
         Create a live STT websocket connection context manager.
@@ -304,6 +305,20 @@ class DeepgramService:
             interim_results=interim_results,
             smart_format=smart_format,
             punctuate=punctuate,
+            endpointing=endpointing,
+        )
+
+    @staticmethod
+    def extract_live_transcript(response: Any) -> tuple[str, bool, bool]:
+        """Extract text and finalization flags from a Deepgram live result."""
+        if getattr(response, "type", None) != "Results":
+            return "", False, False
+        alternatives = getattr(getattr(response, "channel", None), "alternatives", [])
+        transcript = str(getattr(alternatives[0], "transcript", "") or "") if alternatives else ""
+        return (
+            transcript.strip(),
+            bool(getattr(response, "is_final", False)),
+            bool(getattr(response, "from_finalize", False)),
         )
 
     @staticmethod
