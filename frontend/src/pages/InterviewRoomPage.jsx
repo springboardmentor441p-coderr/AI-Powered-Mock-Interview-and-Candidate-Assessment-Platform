@@ -16,11 +16,11 @@ export default function InterviewRoomPage({ sessionData, setActivePage, setFinal
   const [candidateAnswersList, setCandidateAnswersList] = useState([]);
   const chatScrollRef = useRef(null);
 
-  // REAL-TIME CHAT CONVERSATION THREAD (MATCHING USER SCREENSHOT EXACTLY)
+  // REAL-TIME MULTI-TURN CHAT CONVERSATION THREAD (INTERVIEWER ABOVE, YOU BELOW)
   const [chatMessages, setChatMessages] = useState([
     {
       id: 1,
-      sender: 'INTERVIEWER',
+      sender: 'INTERVIEWER (IRA)',
       text: "Hello! My name is AIRA, and I will be conducting your AI mock interview today. To get started, please introduce yourself, your technical background, and your primary engineering projects.",
       type: 'interviewer',
       time: 'Just now'
@@ -29,11 +29,11 @@ export default function InterviewRoomPage({ sessionData, setActivePage, setFinal
   
   // DYNAMIC LIVE TELEMETRY BARS
   const [telemetry, setTelemetry] = useState({
-    eyeContactPct: 99,
-    attentionPct: 99,
-    confidencePct: 92,
-    presencePct: 99,
-    emotion: 'Neutral'
+    eyeContactPct: 91,
+    attentionPct: 96,
+    confidencePct: 85,
+    presencePct: 98,
+    emotion: 'Focused & Confident'
   });
 
   const recognitionRef = useRef(null);
@@ -341,7 +341,7 @@ export default function InterviewRoomPage({ sessionData, setActivePage, setFinal
     // Append Candidate Message to Chat Thread
     const candidateMsg = {
       id: Date.now(),
-      sender: 'YOU',
+      sender: 'YOU (Candidate)',
       text: finalAnswerText,
       type: 'candidate',
       time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
@@ -376,7 +376,7 @@ export default function InterviewRoomPage({ sessionData, setActivePage, setFinal
       setTimeout(() => {
         const interviewerMsg = {
           id: Date.now() + 1,
-          sender: 'INTERVIEWER',
+          sender: 'INTERVIEWER (IRA)',
           text: `${currentQ.interviewer_feedback} ${nextQObj.question_text}`,
           type: 'interviewer',
           time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
@@ -401,7 +401,7 @@ export default function InterviewRoomPage({ sessionData, setActivePage, setFinal
   };
 
   return (
-    <div className="max-w-7xl mx-auto px-4 py-4 space-y-6 pb-20 relative bg-slate-950 min-h-screen text-slate-100 font-sans">
+    <div className="max-w-7xl mx-auto px-4 py-4 space-y-6 pb-20 relative">
       
       {/* REAL-TIME AI PROCTORING WARNING TOAST */}
       {activePopup && (
@@ -411,11 +411,18 @@ export default function InterviewRoomPage({ sessionData, setActivePage, setFinal
         </div>
       )}
 
-      {/* ROOM TOP HEADER (MATCHING USER SCREENSHOT) */}
-      <div className="flex items-center justify-between px-4 py-2 border-b border-slate-800">
-        <div className="flex items-center gap-2">
-          <div className="w-3 h-3 rounded-full bg-amber-500/80"></div>
-          <span className="text-sm font-bold tracking-tight text-amber-200 font-display">AI Interviewer</span>
+      {/* ROOM TOP HEADER */}
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 glass-card p-3 px-6 rounded-2xl border border-slate-800">
+        <div className="flex items-center gap-3">
+          <div className="w-3 h-3 rounded-full bg-red-500 animate-ping"></div>
+          <div>
+            <h1 className="text-sm font-bold text-white uppercase tracking-wider flex items-center gap-2">
+              AI Interview Room <span className="text-[10px] text-cyan-400 font-mono font-normal">• Session Tape Active</span>
+            </h1>
+            <span className="text-[11px] text-indigo-300 font-mono">
+              Domain: <strong className="text-white">{activeDomain}</strong> ({currentQ.question_number})
+            </span>
+          </div>
         </div>
 
         <div className="flex items-center gap-3">
@@ -425,51 +432,59 @@ export default function InterviewRoomPage({ sessionData, setActivePage, setFinal
             </span>
           )}
 
-          <span className="px-3 py-1 rounded-xl bg-red-950/80 border border-red-500/40 text-red-400 font-mono text-xs font-bold flex items-center gap-1.5 shadow-lg">
-            <span className="w-2 h-2 rounded-full bg-red-500 animate-ping"></span> ON AIR • {formatTimer(timerSeconds)}
+          <span className="px-3 py-1 rounded-xl bg-red-500/10 border border-red-500/30 text-red-400 font-mono text-xs font-bold flex items-center gap-1.5">
+            ● ON AIR - {formatTimer(timerSeconds)}
           </span>
         </div>
       </div>
 
-      {/* TOP CENTER: GLOWING AI LISTENING RING & AUDIO WAVEFORM */}
-      <div className="flex flex-col items-center justify-center py-4 space-y-2">
-        <div className={`w-20 h-20 rounded-full border-2 border-cyan-500/50 bg-slate-950 flex flex-col items-center justify-center text-cyan-400 shadow-2xl transition-all ${
-          isSpeaking ? 'animate-pulse ring-8 ring-cyan-500/20 scale-105' : 'ring-4 ring-slate-900'
-        }`}>
-          <div className="text-[11px] font-mono font-bold tracking-widest flex items-center gap-1 text-cyan-300">
-            ((o))
-          </div>
-          <span className="text-[9px] font-mono text-slate-400 uppercase mt-0.5 tracking-wider font-bold">
-            {isSpeaking ? "SPEAKING" : isRecording ? "LISTENING" : "EVALUATING"}
-          </span>
-        </div>
-
-        <div className="flex items-center gap-1 text-[10px] font-mono text-amber-400/90 font-bold tracking-wider">
-          <span className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse"></span> .l...
-        </div>
-      </div>
-
-      {/* MAIN LAYOUT: CENTER LIVE TRANSCRIPT CHAT PANEL + TOP RIGHT CANDIDATE WEBCAM & TELEMETRY */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+      {/* MAIN TWO-COLUMN LAYOUT: LEFT (AIRA + LIVE TRANSCRIPT THREAD), RIGHT (WEBCAM + TELEMETRY BARS) */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
         
-        {/* CENTER MAIN PANEL: LIVE TRANSCRIPT CHAT CONVERSATION (8 COLS - MATCHING SCREENSHOT EXACTLY) */}
-        <div className="lg:col-span-8 space-y-4">
-          <div className="glass-card p-6 rounded-3xl border border-slate-800 bg-slate-950/90 h-[480px] flex flex-col justify-between shadow-2xl">
+        {/* LEFT COLUMN: AIRA AI CHARACTER & LIVE TRANSCRIPT CONVERSATION THREAD (8 COLS) */}
+        <div className="lg:col-span-8 space-y-6">
+          
+          {/* Animated AI Character Center Panel */}
+          <div className="glass-card p-6 rounded-3xl border border-slate-800 bg-slate-950/90 flex flex-col items-center justify-center text-center space-y-3 relative min-h-[260px]">
             
-            {/* Header */}
-            <div className="flex items-center justify-between border-b border-slate-800 pb-3 shrink-0">
-              <span className="text-xs font-mono text-slate-400 uppercase tracking-wider font-bold flex items-center gap-2">
-                <MessageSquare className="w-4 h-4 text-amber-400" /> LIVE TRANSCRIPT
+            {/* Glowing AI Ring */}
+            <div className={`w-24 h-24 rounded-full bg-gradient-to-tr from-indigo-600 via-cyan-400 to-emerald-400 p-1 shadow-2xl transition-all ${
+              isSpeaking ? 'animate-pulse ring-8 ring-cyan-500/30 scale-105' : ''
+            }`}>
+              <div className="w-full h-full bg-slate-950 rounded-full flex items-center justify-center text-cyan-400">
+                <Bot className="w-12 h-12" />
+              </div>
+            </div>
+
+            <div>
+              <h2 className="text-base font-bold text-white tracking-wide">AIRA</h2>
+              <p className="text-xs font-mono text-cyan-400 mt-0.5">
+                {isSpeaking ? "AIRA is speaking..." : isRecording ? "AIRA is listening..." : "Evaluating response..."}
+              </p>
+            </div>
+
+            {/* Current Question Overlay */}
+            <div className="p-3.5 px-6 rounded-2xl bg-slate-900/90 border border-slate-800 max-w-xl text-xs text-slate-200 leading-relaxed font-sans shadow-lg">
+              "{currentQ.question_text}"
+            </div>
+
+          </div>
+
+          {/* LIVE TRANSCRIPT CONVERSATION CHAT THREAD (INTERVIEWER ABOVE, YOU BELOW) */}
+          <div className="glass-card p-5 rounded-3xl border border-slate-800 space-y-3 shadow-xl">
+            <div className="flex items-center justify-between border-b border-slate-800 pb-2">
+              <span className="text-xs font-mono text-cyan-400 uppercase font-bold flex items-center gap-1.5">
+                <MessageSquare className="w-4 h-4 text-amber-400" /> Live Transcript Conversation
               </span>
-              <span className="text-[10px] text-cyan-400 font-mono flex items-center gap-1">
-                Domain: <strong className="text-white">{activeDomain}</strong>
+              <span className="text-[10px] text-emerald-400 font-mono flex items-center gap-1">
+                <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping"></span> Real-time STT Active
               </span>
             </div>
 
-            {/* Scrollable Conversation Chat History (Matching Screenshot Bubbles Exactly) */}
+            {/* Scrollable Conversation Chat History */}
             <div 
               ref={chatScrollRef}
-              className="flex-1 overflow-y-auto pr-3 py-4 space-y-5 font-sans text-xs"
+              className="max-h-56 overflow-y-auto pr-2 py-2 space-y-3 font-sans text-xs"
             >
               {chatMessages.map((msg) => (
                 <div 
@@ -484,10 +499,10 @@ export default function InterviewRoomPage({ sessionData, setActivePage, setFinal
                     {msg.sender}
                   </span>
                   
-                  <div className={`p-4 rounded-2xl max-w-[85%] leading-relaxed shadow-xl text-xs font-sans ${
+                  <div className={`p-3.5 rounded-2xl max-w-[85%] leading-relaxed shadow-xl text-xs ${
                     msg.type === 'candidate'
-                      ? 'bg-amber-950/70 border border-amber-600/40 text-amber-100 rounded-tr-none'
-                      : 'bg-slate-900/90 border border-slate-800 text-slate-200 rounded-tl-none'
+                      ? 'bg-amber-950/80 border border-amber-600/40 text-amber-100 rounded-tr-none'
+                      : 'bg-slate-900 border border-slate-800 text-slate-200 rounded-tl-none'
                   }`}>
                     {msg.text}
                   </div>
@@ -500,22 +515,17 @@ export default function InterviewRoomPage({ sessionData, setActivePage, setFinal
                   <span className="text-[10px] font-mono text-amber-400 uppercase tracking-wider font-bold pr-2">
                     YOU (SPEAKING LIVE...):
                   </span>
-                  <div className="p-4 rounded-2xl bg-amber-950/90 border border-amber-500/50 text-amber-100 max-w-[85%] italic">
+                  <div className="p-3.5 rounded-2xl bg-amber-950/90 border border-amber-500/50 text-amber-100 max-w-[85%] italic">
                     "{candidateAnswer}"
                   </div>
                 </div>
               )}
             </div>
-
-            {/* Footer Prompt */}
-            <div className="pt-3 border-t border-slate-800 text-[11px] font-mono text-slate-400 text-center shrink-0">
-              {isSpeaking ? "AIRA is speaking prompt..." : "Speak into microphone, then click Submit to post response turn."}
-            </div>
-
           </div>
+
         </div>
 
-        {/* RIGHT COLUMN: COMPACT CANDIDATE WEBCAM & TELEMETRY BARS (4 COLS - MATCHING SCREENSHOT EXACTLY) */}
+        {/* RIGHT COLUMN: CANDIDATE WEBCAM & DYNAMIC LIVE VISION TELEMETRY BARS (4 COLS) */}
         <div className="lg:col-span-4 space-y-4">
           
           {/* Candidate Webcam Box */}
@@ -525,51 +535,63 @@ export default function InterviewRoomPage({ sessionData, setActivePage, setFinal
             />
           </div>
 
-          {/* DYNAMIC TELEMETRY PROGRESS BARS PANEL (MATCHING SCREENSHOT STACK EXACTLY) */}
-          <div className="glass-card p-5 rounded-3xl border border-slate-800 space-y-3.5 shadow-xl bg-slate-950/90">
+          {/* DYNAMIC LIVE TELEMETRY BARS */}
+          <div className="glass-card p-5 rounded-3xl border border-slate-800 space-y-3.5 shadow-xl">
             <div className="flex items-center justify-between border-b border-slate-800 pb-2">
-              <span className="text-[11px] font-mono text-slate-400 font-bold uppercase tracking-wider">Face Assessment - Live</span>
+              <span className="text-xs font-mono text-slate-300 font-bold uppercase">Live Vision Telemetry</span>
+              <span className="text-[10px] font-mono text-emerald-400 flex items-center gap-1">
+                <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping"></span> FACE ASSESSMENT - LIVE
+              </span>
             </div>
 
             {/* Metric 1: Eye Contact */}
             <div className="space-y-1">
               <div className="flex justify-between text-[11px] font-mono">
-                <span className="text-slate-400">EYE CONTACT</span>
-                <span className="text-purple-400 font-bold font-mono">{telemetry.eyeContactPct}</span>
+                <span className="text-slate-400">Eye Contact</span>
+                <span className="text-cyan-400 font-bold font-mono">{telemetry.eyeContactPct}%</span>
               </div>
               <div className="w-full bg-slate-900 h-2 rounded-full overflow-hidden">
-                <div className="bg-purple-500 h-full rounded-full transition-all duration-500" style={{ width: `${telemetry.eyeContactPct}%` }} />
+                <div className="bg-cyan-400 h-full rounded-full transition-all duration-500" style={{ width: `${telemetry.eyeContactPct}%` }} />
               </div>
             </div>
 
             {/* Metric 2: Attention */}
             <div className="space-y-1">
               <div className="flex justify-between text-[11px] font-mono">
-                <span className="text-slate-400">ATTENTION</span>
-                <span className="text-purple-400 font-bold font-mono">{telemetry.attentionPct}</span>
+                <span className="text-slate-400">Attention Level</span>
+                <span className="text-indigo-400 font-bold font-mono">{telemetry.attentionPct}%</span>
               </div>
               <div className="w-full bg-slate-900 h-2 rounded-full overflow-hidden">
-                <div className="bg-purple-500 h-full rounded-full transition-all duration-500" style={{ width: `${telemetry.attentionPct}%` }} />
+                <div className="bg-indigo-400 h-full rounded-full transition-all duration-500" style={{ width: `${telemetry.attentionPct}%` }} />
               </div>
             </div>
 
-            {/* Metric 3: Engagement */}
+            {/* Metric 3: Confidence */}
             <div className="space-y-1">
               <div className="flex justify-between text-[11px] font-mono">
-                <span className="text-slate-400">ENGAGEMENT</span>
-                <span className="text-purple-400 font-bold font-mono">{telemetry.confidencePct}</span>
+                <span className="text-slate-400">Confidence Score</span>
+                <span className="text-emerald-400 font-bold font-mono">{telemetry.confidencePct}%</span>
               </div>
               <div className="w-full bg-slate-900 h-2 rounded-full overflow-hidden">
-                <div className="bg-purple-500 h-full rounded-full transition-all duration-500" style={{ width: `${telemetry.confidencePct}%` }} />
+                <div className="bg-emerald-400 h-full rounded-full transition-all duration-500" style={{ width: `${telemetry.confidencePct}%` }} />
+              </div>
+            </div>
+
+            {/* Metric 4: Face Presence */}
+            <div className="space-y-1">
+              <div className="flex justify-between text-[11px] font-mono">
+                <span className="text-slate-400">Face Presence</span>
+                <span className="text-purple-400 font-bold font-mono">{telemetry.presencePct}%</span>
+              </div>
+              <div className="w-full bg-slate-900 h-2 rounded-full overflow-hidden">
+                <div className="bg-purple-400 h-full rounded-full transition-all duration-500" style={{ width: `${telemetry.presencePct}%` }} />
               </div>
             </div>
 
             {/* Emotion Detector */}
             <div className="pt-2 border-t border-slate-800 flex justify-between text-[11px] font-mono text-slate-400">
-              <span className="flex items-center gap-1">ℹ EMOTION</span>
-              <span className="text-amber-300 font-bold font-mono flex items-center gap-1">
-                🙂 {telemetry.emotion}
-              </span>
+              <span>Emotion Detector:</span>
+              <span className="text-emerald-400 font-bold font-mono">{telemetry.emotion}</span>
             </div>
           </div>
 
@@ -577,43 +599,35 @@ export default function InterviewRoomPage({ sessionData, setActivePage, setFinal
 
       </div>
 
-      {/* BOTTOM CONTROL BAR (MATCHING SCREENSHOT BUTTONS EXACTLY) */}
-      <div className="glass-card p-4 rounded-3xl border border-slate-800 flex flex-col sm:flex-row items-center justify-center gap-4 bg-slate-950">
+      {/* BOTTOM CONTROL BAR */}
+      <div className="glass-card p-4 rounded-3xl border border-slate-800 flex flex-col sm:flex-row items-center justify-between gap-4">
         
-        <div className="flex items-center gap-4">
-          {/* Mute Button */}
+        <div className="flex items-center gap-3">
           <button
             onClick={() => setIsRecording(!isRecording)}
-            className={`px-5 py-2.5 rounded-xl text-xs font-bold border transition-all flex items-center gap-2 ${
-              isRecording ? 'bg-slate-900 text-slate-200 border-slate-800 hover:bg-slate-800' : 'bg-red-500/20 text-red-400 border-red-500/40'
+            className={`px-4 py-2 rounded-xl text-xs font-bold border transition-all flex items-center gap-1.5 ${
+              isRecording ? 'bg-slate-900 text-slate-200 border-slate-800' : 'bg-red-500/20 text-red-400 border-red-500/40'
             }`}
           >
-            <Mic className="w-4 h-4 text-cyan-400" /> {isRecording ? "Mute" : "Unmute"}
+            <Mic className="w-4 h-4 text-cyan-400" /> {isRecording ? "Mute Mic" : "Unmute Mic"}
           </button>
           
-          {/* Camera On Button */}
-          <button
-            className="px-5 py-2.5 rounded-xl text-xs font-bold bg-slate-900 text-slate-200 border border-slate-800 flex items-center gap-2"
-          >
-            <Video className="w-4 h-4 text-emerald-400" /> Camera on
-          </button>
+          <span className="text-xs text-slate-400 font-mono">Camera: <span className="text-emerald-400 font-bold">Active</span></span>
+        </div>
 
-          {/* Submit Answer & Progress Turn */}
+        <div className="flex items-center gap-3">
           <button
             onClick={handleNextQuestion}
             disabled={submitting}
-            className="px-5 py-2.5 rounded-xl font-bold text-xs bg-indigo-600 hover:bg-indigo-500 text-white shadow-lg transition-all flex items-center gap-2"
+            className="px-6 py-2.5 rounded-xl font-bold text-xs bg-red-600 hover:bg-red-500 text-white shadow-lg shadow-red-600/25 transition-all flex items-center gap-2"
           >
-            {submitting ? "Analyzing..." : "Submit Answer & Next Turn"}
-          </button>
-
-          {/* End Interview Red Button */}
-          <button
-            onClick={handleNextQuestion}
-            disabled={submitting}
-            className="px-6 py-2.5 rounded-xl font-bold text-xs bg-red-600 hover:bg-red-500 text-white shadow-lg shadow-red-600/30 transition-all flex items-center gap-2"
-          >
-            <PhoneOff className="w-4 h-4" /> End interview
+            {submitting ? "Analyzing..." : (
+              currentIdx < 2 ? (
+                <>Submit Spoken Answer & Next Turn <ArrowRight className="w-4 h-4" /></>
+              ) : (
+                <>Complete Interview & Generate Report <PhoneOff className="w-4 h-4" /></>
+              )
+            )}
           </button>
         </div>
 
