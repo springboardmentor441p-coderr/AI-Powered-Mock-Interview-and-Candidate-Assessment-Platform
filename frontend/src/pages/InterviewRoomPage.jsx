@@ -16,12 +16,12 @@ export default function InterviewRoomPage({ sessionData, setActivePage, setFinal
   const [candidateAnswersList, setCandidateAnswersList] = useState([]);
   const chatScrollRef = useRef(null);
 
-  // REAL-TIME CHAT CONVERSATION THREAD (APRIORA AI & MERCOR MATCH)
+  // REAL-TIME CHAT CONVERSATION THREAD (MATCHING USER SCREENSHOT EXACTLY)
   const [chatMessages, setChatMessages] = useState([
     {
       id: 1,
-      sender: 'IRA (Interviewer)',
-      text: "Hello! My name is AIRA, and I will be conducting your AI mock interview today. To get started, please introduce yourself, your technical background, and your key projects.",
+      sender: 'INTERVIEWER',
+      text: "Hello! My name is AIRA, and I will be conducting your AI mock interview today. To get started, please introduce yourself, your technical background, and your primary engineering projects.",
       type: 'interviewer',
       time: 'Just now'
     }
@@ -29,11 +29,11 @@ export default function InterviewRoomPage({ sessionData, setActivePage, setFinal
   
   // DYNAMIC LIVE TELEMETRY BARS
   const [telemetry, setTelemetry] = useState({
-    eyeContactPct: 91,
-    attentionPct: 96,
-    confidencePct: 85,
-    presencePct: 98,
-    emotion: 'Focused & Confident'
+    eyeContactPct: 99,
+    attentionPct: 99,
+    confidencePct: 92,
+    presencePct: 99,
+    emotion: 'Neutral'
   });
 
   const recognitionRef = useRef(null);
@@ -45,21 +45,21 @@ export default function InterviewRoomPage({ sessionData, setActivePage, setFinal
         id: 1,
         question_number: "Question 1 of 3 (Candidate Introduction)",
         question_text: "Hello! My name is AIRA, and I will be conducting your AI mock interview today. To get started, please introduce yourself, your technical background, and your key projects in Artificial Intelligence, Machine Learning, and Data Science.",
-        interviewer_feedback: "That's a solid introduction! Great project experience.",
+        interviewer_feedback: "That's a solid technical background! Let me ask you about your core AI experience instead.",
         sample_answer: "Hello AIRA! I am a software engineer specializing in AI and Data Science. I have built projects including RAG pipelines, predictive machine learning models, and analytics dashboards."
       },
       {
         id: 2,
         question_number: "Question 2 of 3 (AI & LLM Architecture)",
-        question_text: "Now, let's dive into core AI concepts. Explain how Retrieval-Augmented Generation (RAG) combines Vector Databases like ChromaDB with Large Language Models to eliminate model hallucinations.",
-        interviewer_feedback: "Excellent technical explanation on semantic vector embeddings!",
+        question_text: "Could you describe a specific technical challenge during development of your AI models where you encountered a significant bug or model hallucination? I'd like to hear about the steps you took to resolve it using RAG vector databases like ChromaDB.",
+        interviewer_feedback: "Great approach to diagnosing vector database embeddings!",
         sample_answer: "RAG retrieves relevant document chunks from ChromaDB using semantic vector embeddings and injects context into LLM prompts, providing grounded and accurate answers."
       },
       {
         id: 3,
         question_number: "Question 3 of 3 (Machine Learning Practical)",
-        question_text: "For our technical scenario: How do you handle missing values in datasets, prevent model overfitting using cross-validation, and evaluate performance using metrics like F1-score?",
-        interviewer_feedback: "Great approach to handling imbalanced dataset metrics!",
+        question_text: "When building predictive data models, how do you handle missing values in datasets, prevent model overfitting using cross-validation, and evaluate performance using metrics like F1-score?",
+        interviewer_feedback: "Excellent methodology for evaluating imbalanced datasets!",
         sample_answer: "I impute missing values using dataset medians, prevent overfitting using 5-fold cross-validation with L2 regularization, and evaluate imbalanced datasets using F1-score and ROC-AUC."
       }
     ],
@@ -68,21 +68,21 @@ export default function InterviewRoomPage({ sessionData, setActivePage, setFinal
         id: 1,
         question_number: "Question 1 of 3 (Candidate Introduction)",
         question_text: "Hello! My name is AIRA, and I will be conducting your backend engineering mock interview today. To begin, please introduce yourself and summarize your experience building REST APIs and database applications.",
-        interviewer_feedback: "Nice to meet you! Impressive backend background.",
+        interviewer_feedback: "Nice to meet you! Impressive backend application experience.",
         sample_answer: "Hello AIRA! I am a backend engineer with hands-on experience building RESTful APIs using Python FastAPI, PostgreSQL databases, and JWT authentication."
       },
       {
         id: 2,
         question_number: "Question 2 of 3 (Core Backend)",
-        question_text: "How do you identify slow SQL query execution bottlenecks and optimize database performance using B-tree indexing and ORM connection pooling?",
+        question_text: "Could you describe a time during backend development where you encountered a slow SQL query bottleneck? What steps did you take to identify the root cause and optimize performance using B-tree indexing?",
         interviewer_feedback: "Solid strategy on database index optimization!",
         sample_answer: "I analyze query execution plans using EXPLAIN ANALYZE, create B-tree indexes on search columns, and configure connection pooling in SQLAlchemy."
       },
       {
         id: 3,
         question_number: "Question 3 of 3 (API Security)",
-        question_text: "How do you secure production REST API endpoints using short-lived JWT tokens, password hashing with bcrypt, and CORS origin headers?",
-        interviewer_feedback: "Great security setup for production endpoints!",
+        question_text: "How do you secure production REST API endpoints using short-lived JWT access tokens, password hashing with bcrypt, and strict CORS origin headers?",
+        interviewer_feedback: "Great security setup for production API endpoints!",
         sample_answer: "I issue short-lived JWT access tokens, hash user passwords securely using bcrypt, and enforce strict CORS origin policies on FastAPI middleware."
       }
     ],
@@ -97,14 +97,14 @@ export default function InterviewRoomPage({ sessionData, setActivePage, setFinal
       {
         id: 2,
         question_number: "Question 2 of 3 (Containerization)",
-        question_text: "Describe how multi-stage Docker builds optimize container image sizes and speed up container deployment workflows.",
+        question_text: "Describe how multi-stage Docker builds optimize container image sizes and speed up container deployment workflows in production cloud environments.",
         interviewer_feedback: "Clear breakdown of multi-stage Docker builds!",
         sample_answer: "Multi-stage builds separate build-time compilers from the runtime environment, resulting in minimal and secure Docker container images for cloud deployment."
       },
       {
         id: 3,
         question_number: "Question 3 of 3 (Kubernetes & Monitoring)",
-        question_text: "How do you orchestrate zero-downtime rolling updates in Kubernetes and set up monitoring alert dashboards using Prometheus and Grafana?",
+        question_text: "How do you orchestrate zero-downtime rolling updates in Kubernetes and set up monitoring alert dashboards using Prometheus scrapers and Grafana?",
         interviewer_feedback: "Excellent zero-downtime Kubernetes deployment strategy!",
         sample_answer: "I configure Kubernetes readiness probes for rolling updates and aggregate real-time server metrics into Prometheus scrapers linked to Grafana alert dashboards."
       }
@@ -120,7 +120,7 @@ export default function InterviewRoomPage({ sessionData, setActivePage, setFinal
       {
         id: 2,
         question_number: "Question 2 of 3 (React Performance)",
-        question_text: "How do you optimize React web app performance using useMemo, useCallback, and React.memo to prevent unnecessary re-renders?",
+        question_text: "How do you optimize React web app performance using useMemo, useCallback, and React.memo to prevent unnecessary component re-renders?",
         interviewer_feedback: "Great understanding of React performance hooks!",
         sample_answer: "I memoize heavy computation values with useMemo, preserve function references with useCallback, and wrap child components in React.memo."
       },
@@ -142,13 +142,13 @@ export default function InterviewRoomPage({ sessionData, setActivePage, setFinal
       {
         id: 2,
         question_number: "Question 2 of 3 (Problem Solving)",
-        question_text: "Describe a technical conflict or tight project deadline you encountered. How did you handle it using the STAR method?",
+        question_text: "Describe a technical conflict or tight project deadline you encountered during development. How did you diagnose the issue and resolve it using the STAR method?",
         sample_answer: "When faced with a tight deadline, I prioritized core MVP features, communicated openly with team members, and delivered working software on schedule."
       },
       {
         id: 3,
         question_number: "Question 3 of 3 (Growth)",
-        question_text: "How do you incorporate constructive feedback from code reviews to improve your technical skills?",
+        question_text: "How do you incorporate constructive feedback from code reviews to continuously improve your technical skills?",
         sample_answer: "I view code reviews as valuable learning opportunities, actively integrate feedback into my code, and read official technical documentation to stay updated."
       }
     ]
@@ -341,7 +341,7 @@ export default function InterviewRoomPage({ sessionData, setActivePage, setFinal
     // Append Candidate Message to Chat Thread
     const candidateMsg = {
       id: Date.now(),
-      sender: 'YOU (Candidate)',
+      sender: 'YOU',
       text: finalAnswerText,
       type: 'candidate',
       time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
@@ -376,7 +376,7 @@ export default function InterviewRoomPage({ sessionData, setActivePage, setFinal
       setTimeout(() => {
         const interviewerMsg = {
           id: Date.now() + 1,
-          sender: 'IRA (Interviewer)',
+          sender: 'INTERVIEWER',
           text: `${currentQ.interviewer_feedback} ${nextQObj.question_text}`,
           type: 'interviewer',
           time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
@@ -401,7 +401,7 @@ export default function InterviewRoomPage({ sessionData, setActivePage, setFinal
   };
 
   return (
-    <div className="max-w-7xl mx-auto px-4 py-4 space-y-6 pb-20 relative">
+    <div className="max-w-7xl mx-auto px-4 py-4 space-y-6 pb-20 relative bg-slate-950 min-h-screen text-slate-100 font-sans">
       
       {/* REAL-TIME AI PROCTORING WARNING TOAST */}
       {activePopup && (
@@ -411,18 +411,11 @@ export default function InterviewRoomPage({ sessionData, setActivePage, setFinal
         </div>
       )}
 
-      {/* ROOM TOP HEADER */}
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 glass-card p-3 px-6 rounded-2xl border border-slate-800">
-        <div className="flex items-center gap-3">
-          <div className="w-3 h-3 rounded-full bg-red-500 animate-ping"></div>
-          <div>
-            <h1 className="text-sm font-bold text-white uppercase tracking-wider flex items-center gap-2">
-              AI Interview Room <span className="text-[10px] text-cyan-400 font-mono font-normal">• Live Transcript Tape Active</span>
-            </h1>
-            <span className="text-[11px] text-indigo-300 font-mono">
-              Domain: <strong className="text-white">{activeDomain}</strong> ({currentQ.question_number})
-            </span>
-          </div>
+      {/* ROOM TOP HEADER (MATCHING USER SCREENSHOT) */}
+      <div className="flex items-center justify-between px-4 py-2 border-b border-slate-800">
+        <div className="flex items-center gap-2">
+          <div className="w-3 h-3 rounded-full bg-amber-500/80"></div>
+          <span className="text-sm font-bold tracking-tight text-amber-200 font-display">AI Interviewer</span>
         </div>
 
         <div className="flex items-center gap-3">
@@ -432,132 +425,51 @@ export default function InterviewRoomPage({ sessionData, setActivePage, setFinal
             </span>
           )}
 
-          <span className="px-3 py-1 rounded-xl bg-red-500/10 border border-red-500/30 text-red-400 font-mono text-xs font-bold flex items-center gap-1.5">
-            ● ON AIR - {formatTimer(timerSeconds)}
+          <span className="px-3 py-1 rounded-xl bg-red-950/80 border border-red-500/40 text-red-400 font-mono text-xs font-bold flex items-center gap-1.5 shadow-lg">
+            <span className="w-2 h-2 rounded-full bg-red-500 animate-ping"></span> ON AIR • {formatTimer(timerSeconds)}
           </span>
         </div>
       </div>
 
-      {/* MAIN THREE COLUMN LAYOUT: 2 VIDEO BOXES + APRIORA LIVE TRANSCRIPT CHAT PANEL */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-        
-        {/* LEFT & CENTER COLUMN: VIDEO BOXES & LIVE TELEMETRY (8 COLS) */}
-        <div className="lg:col-span-7 space-y-6">
-          
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            
-            {/* BOX 1: AI INTERVIEWER (IRA) */}
-            <div className="glass-card p-6 rounded-3xl border border-slate-800 bg-slate-950/90 flex flex-col items-center justify-center text-center space-y-4 relative min-h-[260px]">
-              <div className="absolute top-3 left-3 bg-indigo-600/90 px-3 py-1 rounded-lg text-[10px] font-mono font-bold text-white uppercase tracking-wider flex items-center gap-1.5">
-                <Bot className="w-3.5 h-3.5" /> Interviewer (IRA)
-              </div>
-
-              <div className={`w-24 h-24 rounded-full bg-gradient-to-tr from-indigo-600 via-cyan-400 to-emerald-400 p-1 shadow-2xl transition-all mt-4 ${
-                isSpeaking ? 'animate-pulse ring-8 ring-cyan-500/30 scale-105' : ''
-              }`}>
-                <div className="w-full h-full bg-slate-950 rounded-full flex items-center justify-center text-cyan-400">
-                  <Bot className="w-12 h-12" />
-                </div>
-              </div>
-
-              <div>
-                <h2 className="text-sm font-bold text-white">Interviewer (IRA)</h2>
-                <p className="text-xs font-mono text-cyan-400 mt-0.5">
-                  {isSpeaking ? "IRA is speaking..." : isRecording ? "Listening to your response..." : "Evaluating answer..."}
-                </p>
-              </div>
-            </div>
-
-            {/* BOX 2: CANDIDATE WEBCAM VIDEO */}
-            <div className="relative">
-              <WebcamMonitor 
-                onMetricsUpdate={(m) => setTelemetry(prev => ({ ...prev, ...m }))}
-              />
-            </div>
-
+      {/* TOP CENTER: GLOWING AI LISTENING RING & AUDIO WAVEFORM */}
+      <div className="flex flex-col items-center justify-center py-4 space-y-2">
+        <div className={`w-20 h-20 rounded-full border-2 border-cyan-500/50 bg-slate-950 flex flex-col items-center justify-center text-cyan-400 shadow-2xl transition-all ${
+          isSpeaking ? 'animate-pulse ring-8 ring-cyan-500/20 scale-105' : 'ring-4 ring-slate-900'
+        }`}>
+          <div className="text-[11px] font-mono font-bold tracking-widest flex items-center gap-1 text-cyan-300">
+            ((o))
           </div>
-
-          {/* DYNAMIC LIVE VISION TELEMETRY BARS PANEL */}
-          <div className="glass-card p-5 rounded-3xl border border-slate-800 space-y-3.5 shadow-xl">
-            <div className="flex items-center justify-between border-b border-slate-800 pb-2">
-              <span className="text-xs font-mono text-slate-300 font-bold uppercase">Live Vision Telemetry</span>
-              <span className="text-[10px] font-mono text-emerald-400 flex items-center gap-1">
-                <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping"></span> REAL-TIME TELEMETRY
-              </span>
-            </div>
-
-            <div className="grid grid-cols-2 gap-4">
-              {/* Metric 1: Eye Contact */}
-              <div className="space-y-1">
-                <div className="flex justify-between text-[11px] font-mono">
-                  <span className="text-slate-400">Eye Contact</span>
-                  <span className="text-cyan-400 font-bold">{telemetry.eyeContactPct}%</span>
-                </div>
-                <div className="w-full bg-slate-900 h-2 rounded-full overflow-hidden">
-                  <div className="bg-cyan-400 h-full rounded-full transition-all duration-500" style={{ width: `${telemetry.eyeContactPct}%` }} />
-                </div>
-              </div>
-
-              {/* Metric 2: Attention */}
-              <div className="space-y-1">
-                <div className="flex justify-between text-[11px] font-mono">
-                  <span className="text-slate-400">Attention Level</span>
-                  <span className="text-indigo-400 font-bold">{telemetry.attentionPct}%</span>
-                </div>
-                <div className="w-full bg-slate-900 h-2 rounded-full overflow-hidden">
-                  <div className="bg-indigo-400 h-full rounded-full transition-all duration-500" style={{ width: `${telemetry.attentionPct}%` }} />
-                </div>
-              </div>
-
-              {/* Metric 3: Confidence */}
-              <div className="space-y-1">
-                <div className="flex justify-between text-[11px] font-mono">
-                  <span className="text-slate-400">Confidence Score</span>
-                  <span className="text-emerald-400 font-bold">{telemetry.confidencePct}%</span>
-                </div>
-                <div className="w-full bg-slate-900 h-2 rounded-full overflow-hidden">
-                  <div className="bg-emerald-400 h-full rounded-full transition-all duration-500" style={{ width: `${telemetry.confidencePct}%` }} />
-                </div>
-              </div>
-
-              {/* Metric 4: Face Presence */}
-              <div className="space-y-1">
-                <div className="flex justify-between text-[11px] font-mono">
-                  <span className="text-slate-400">Face Presence</span>
-                  <span className="text-purple-400 font-bold">{telemetry.presencePct}%</span>
-                </div>
-                <div className="w-full bg-slate-900 h-2 rounded-full overflow-hidden">
-                  <div className="bg-purple-400 h-full rounded-full transition-all duration-500" style={{ width: `${telemetry.presencePct}%` }} />
-                </div>
-              </div>
-            </div>
-
-            <div className="pt-2 border-t border-slate-800 flex justify-between text-[11px] font-mono text-slate-400">
-              <span>Emotion Detector:</span>
-              <span className="text-emerald-400 font-bold font-mono">{telemetry.emotion}</span>
-            </div>
-          </div>
-
+          <span className="text-[9px] font-mono text-slate-400 uppercase mt-0.5 tracking-wider font-bold">
+            {isSpeaking ? "SPEAKING" : isRecording ? "LISTENING" : "EVALUATING"}
+          </span>
         </div>
 
-        {/* RIGHT COLUMN: APRIORA AI / MERCOR LIVE TRANSCRIPT CONVERSATION THREAD (5 COLS) */}
-        <div className="lg:col-span-5 space-y-4">
-          <div className="glass-card p-5 rounded-3xl border border-slate-800 h-[520px] flex flex-col justify-between shadow-2xl">
+        <div className="flex items-center gap-1 text-[10px] font-mono text-amber-400/90 font-bold tracking-wider">
+          <span className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse"></span> .l...
+        </div>
+      </div>
+
+      {/* MAIN LAYOUT: CENTER LIVE TRANSCRIPT CHAT PANEL + TOP RIGHT CANDIDATE WEBCAM & TELEMETRY */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+        
+        {/* CENTER MAIN PANEL: LIVE TRANSCRIPT CHAT CONVERSATION (8 COLS - MATCHING SCREENSHOT EXACTLY) */}
+        <div className="lg:col-span-8 space-y-4">
+          <div className="glass-card p-6 rounded-3xl border border-slate-800 bg-slate-950/90 h-[480px] flex flex-col justify-between shadow-2xl">
             
             {/* Header */}
             <div className="flex items-center justify-between border-b border-slate-800 pb-3 shrink-0">
-              <span className="text-xs font-mono text-cyan-400 uppercase font-bold flex items-center gap-2">
-                <MessageSquare className="w-4 h-4" /> Live Transcript Conversation
+              <span className="text-xs font-mono text-slate-400 uppercase tracking-wider font-bold flex items-center gap-2">
+                <MessageSquare className="w-4 h-4 text-amber-400" /> LIVE TRANSCRIPT
               </span>
-              <span className="text-[10px] text-emerald-400 font-mono flex items-center gap-1">
-                <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping"></span> Live Audio STT Stream
+              <span className="text-[10px] text-cyan-400 font-mono flex items-center gap-1">
+                Domain: <strong className="text-white">{activeDomain}</strong>
               </span>
             </div>
 
-            {/* Scrollable Conversation Chat History (Apriora AI Match) */}
+            {/* Scrollable Conversation Chat History (Matching Screenshot Bubbles Exactly) */}
             <div 
               ref={chatScrollRef}
-              className="flex-1 overflow-y-auto pr-2 py-4 space-y-4 font-sans text-xs"
+              className="flex-1 overflow-y-auto pr-3 py-4 space-y-5 font-sans text-xs"
             >
               {chatMessages.map((msg) => (
                 <div 
@@ -566,14 +478,16 @@ export default function InterviewRoomPage({ sessionData, setActivePage, setFinal
                     msg.type === 'candidate' ? 'items-end' : 'items-start'
                   }`}
                 >
-                  <span className="text-[10px] font-mono text-slate-400 uppercase tracking-wider font-bold">
+                  <span className={`text-[10px] font-mono uppercase tracking-wider font-bold ${
+                    msg.type === 'candidate' ? 'text-amber-400/90 pr-2' : 'text-slate-400 pl-2'
+                  }`}>
                     {msg.sender}
                   </span>
                   
-                  <div className={`p-3.5 rounded-2xl max-w-[85%] leading-relaxed shadow-md ${
+                  <div className={`p-4 rounded-2xl max-w-[85%] leading-relaxed shadow-xl text-xs font-sans ${
                     msg.type === 'candidate'
-                      ? 'bg-indigo-600 text-white rounded-tr-none'
-                      : 'bg-slate-900 border border-slate-800 text-slate-200 rounded-tl-none'
+                      ? 'bg-amber-950/70 border border-amber-600/40 text-amber-100 rounded-tr-none'
+                      : 'bg-slate-900/90 border border-slate-800 text-slate-200 rounded-tl-none'
                   }`}>
                     {msg.text}
                   </div>
@@ -583,10 +497,10 @@ export default function InterviewRoomPage({ sessionData, setActivePage, setFinal
               {/* Real-time Candidate Spoken Transcript Preview */}
               {candidateAnswer && (
                 <div className="flex flex-col items-end space-y-1 animate-pulse">
-                  <span className="text-[10px] font-mono text-indigo-400 uppercase tracking-wider font-bold">
+                  <span className="text-[10px] font-mono text-amber-400 uppercase tracking-wider font-bold pr-2">
                     YOU (SPEAKING LIVE...):
                   </span>
-                  <div className="p-3.5 rounded-2xl bg-indigo-950/80 border border-indigo-500/40 text-indigo-200 max-w-[85%] italic">
+                  <div className="p-4 rounded-2xl bg-amber-950/90 border border-amber-500/50 text-amber-100 max-w-[85%] italic">
                     "{candidateAnswer}"
                   </div>
                 </div>
@@ -595,43 +509,111 @@ export default function InterviewRoomPage({ sessionData, setActivePage, setFinal
 
             {/* Footer Prompt */}
             <div className="pt-3 border-t border-slate-800 text-[11px] font-mono text-slate-400 text-center shrink-0">
-              {isSpeaking ? "AIRA is speaking..." : "Speak into microphone, then click submit to post turn."}
+              {isSpeaking ? "AIRA is speaking prompt..." : "Speak into microphone, then click Submit to post response turn."}
             </div>
 
           </div>
         </div>
 
-      </div>
-
-      {/* BOTTOM CONTROL BAR */}
-      <div className="glass-card p-4 rounded-3xl border border-slate-800 flex flex-col sm:flex-row items-center justify-between gap-4">
-        
-        <div className="flex items-center gap-3">
-          <button
-            onClick={() => setIsRecording(!isRecording)}
-            className={`px-4 py-2 rounded-xl text-xs font-bold border transition-all flex items-center gap-1.5 ${
-              isRecording ? 'bg-slate-900 text-slate-200 border-slate-800' : 'bg-red-500/20 text-red-400 border-red-500/40'
-            }`}
-          >
-            <Mic className="w-4 h-4 text-cyan-400" /> {isRecording ? "Mute Mic" : "Unmute Mic"}
-          </button>
+        {/* RIGHT COLUMN: COMPACT CANDIDATE WEBCAM & TELEMETRY BARS (4 COLS - MATCHING SCREENSHOT EXACTLY) */}
+        <div className="lg:col-span-4 space-y-4">
           
-          <span className="text-xs text-slate-400 font-mono">Camera: <span className="text-emerald-400 font-bold">Active</span></span>
+          {/* Candidate Webcam Box */}
+          <div className="relative">
+            <WebcamMonitor 
+              onMetricsUpdate={(m) => setTelemetry(prev => ({ ...prev, ...m }))}
+            />
+          </div>
+
+          {/* DYNAMIC TELEMETRY PROGRESS BARS PANEL (MATCHING SCREENSHOT STACK EXACTLY) */}
+          <div className="glass-card p-5 rounded-3xl border border-slate-800 space-y-3.5 shadow-xl bg-slate-950/90">
+            <div className="flex items-center justify-between border-b border-slate-800 pb-2">
+              <span className="text-[11px] font-mono text-slate-400 font-bold uppercase tracking-wider">Face Assessment - Live</span>
+            </div>
+
+            {/* Metric 1: Eye Contact */}
+            <div className="space-y-1">
+              <div className="flex justify-between text-[11px] font-mono">
+                <span className="text-slate-400">EYE CONTACT</span>
+                <span className="text-purple-400 font-bold font-mono">{telemetry.eyeContactPct}</span>
+              </div>
+              <div className="w-full bg-slate-900 h-2 rounded-full overflow-hidden">
+                <div className="bg-purple-500 h-full rounded-full transition-all duration-500" style={{ width: `${telemetry.eyeContactPct}%` }} />
+              </div>
+            </div>
+
+            {/* Metric 2: Attention */}
+            <div className="space-y-1">
+              <div className="flex justify-between text-[11px] font-mono">
+                <span className="text-slate-400">ATTENTION</span>
+                <span className="text-purple-400 font-bold font-mono">{telemetry.attentionPct}</span>
+              </div>
+              <div className="w-full bg-slate-900 h-2 rounded-full overflow-hidden">
+                <div className="bg-purple-500 h-full rounded-full transition-all duration-500" style={{ width: `${telemetry.attentionPct}%` }} />
+              </div>
+            </div>
+
+            {/* Metric 3: Engagement */}
+            <div className="space-y-1">
+              <div className="flex justify-between text-[11px] font-mono">
+                <span className="text-slate-400">ENGAGEMENT</span>
+                <span className="text-purple-400 font-bold font-mono">{telemetry.confidencePct}</span>
+              </div>
+              <div className="w-full bg-slate-900 h-2 rounded-full overflow-hidden">
+                <div className="bg-purple-500 h-full rounded-full transition-all duration-500" style={{ width: `${telemetry.confidencePct}%` }} />
+              </div>
+            </div>
+
+            {/* Emotion Detector */}
+            <div className="pt-2 border-t border-slate-800 flex justify-between text-[11px] font-mono text-slate-400">
+              <span className="flex items-center gap-1">ℹ EMOTION</span>
+              <span className="text-amber-300 font-bold font-mono flex items-center gap-1">
+                🙂 {telemetry.emotion}
+              </span>
+            </div>
+          </div>
+
         </div>
 
-        <div className="flex items-center gap-3">
+      </div>
+
+      {/* BOTTOM CONTROL BAR (MATCHING SCREENSHOT BUTTONS EXACTLY) */}
+      <div className="glass-card p-4 rounded-3xl border border-slate-800 flex flex-col sm:flex-row items-center justify-center gap-4 bg-slate-950">
+        
+        <div className="flex items-center gap-4">
+          {/* Mute Button */}
+          <button
+            onClick={() => setIsRecording(!isRecording)}
+            className={`px-5 py-2.5 rounded-xl text-xs font-bold border transition-all flex items-center gap-2 ${
+              isRecording ? 'bg-slate-900 text-slate-200 border-slate-800 hover:bg-slate-800' : 'bg-red-500/20 text-red-400 border-red-500/40'
+            }`}
+          >
+            <Mic className="w-4 h-4 text-cyan-400" /> {isRecording ? "Mute" : "Unmute"}
+          </button>
+          
+          {/* Camera On Button */}
+          <button
+            className="px-5 py-2.5 rounded-xl text-xs font-bold bg-slate-900 text-slate-200 border border-slate-800 flex items-center gap-2"
+          >
+            <Video className="w-4 h-4 text-emerald-400" /> Camera on
+          </button>
+
+          {/* Submit Answer & Progress Turn */}
           <button
             onClick={handleNextQuestion}
             disabled={submitting}
-            className="px-6 py-2.5 rounded-xl font-bold text-xs bg-red-600 hover:bg-red-500 text-white shadow-lg shadow-red-600/25 transition-all flex items-center gap-2"
+            className="px-5 py-2.5 rounded-xl font-bold text-xs bg-indigo-600 hover:bg-indigo-500 text-white shadow-lg transition-all flex items-center gap-2"
           >
-            {submitting ? "Analyzing Response..." : (
-              currentIdx < 2 ? (
-                <>Submit Spoken Answer & Next Turn <ArrowRight className="w-4 h-4" /></>
-              ) : (
-                <>Complete Interview & Generate Report <PhoneOff className="w-4 h-4" /></>
-              )
-            )}
+            {submitting ? "Analyzing..." : "Submit Answer & Next Turn"}
+          </button>
+
+          {/* End Interview Red Button */}
+          <button
+            onClick={handleNextQuestion}
+            disabled={submitting}
+            className="px-6 py-2.5 rounded-xl font-bold text-xs bg-red-600 hover:bg-red-500 text-white shadow-lg shadow-red-600/30 transition-all flex items-center gap-2"
+          >
+            <PhoneOff className="w-4 h-4" /> End interview
           </button>
         </div>
 
