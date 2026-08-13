@@ -37,8 +37,8 @@ export default function InterviewRoomPage({ sessionData, setActivePage, setFinal
         {
           id: 1,
           question_number: "Question 1 of 5 (Candidate Introduction)",
-          question_text: "Hello! My name is AIRA, your AI Interviewer. To get started, please introduce yourself and summarize your experience writing Python code.",
-          sample_answer: "Hello AIRA! I am Janitha Kavuturu. I am a Python developer with experience writing clean Python scripts, working with data structures like lists and dictionaries, and building web applications."
+          question_text: "Hello! My name is Real-Time AI Agent. Welcome to your Python developer interview! To get started, please introduce yourself and tell me what technologies or projects you like working on.",
+          sample_answer: "Hello! I am Janitha Kavuturu. I love working with Python, building web applications, machine learning models, and clean backend APIs."
         },
         {
           id: 2,
@@ -49,7 +49,7 @@ export default function InterviewRoomPage({ sessionData, setActivePage, setFinal
         {
           id: 3,
           question_number: "Question 3 of 5 (Python Dictionaries)",
-          question_text: "How do Python Dictionaries work, and how do you retrieve values safely using get()?",
+          question_text: "How do Python Dictionaries work under the hood, and how do you retrieve values safely using get()?",
           sample_answer: "Dictionaries store key-value pairs indexed by hashable keys. The get() method returns a default value if a key doesn't exist without raising KeyError."
         },
         {
@@ -69,8 +69,8 @@ export default function InterviewRoomPage({ sessionData, setActivePage, setFinal
         {
           id: 1,
           question_number: "Question 1 of 5 (Candidate Introduction)",
-          question_text: "Hello! My name is AIRA, your AI Interviewer. Welcome to your Medium-level Python interview! Please introduce yourself, your experience with OOP, and your core projects.",
-          sample_answer: "Hello AIRA! I am Janitha Kavuturu. I build Python applications using object-oriented principles, modular packages, and FastAPI backend frameworks."
+          question_text: "Hello! My name is Real-Time AI Agent. Welcome to your Medium-level Python interview! Please introduce yourself, your favorite tech stacks, and your core projects.",
+          sample_answer: "Hello! I am Janitha Kavuturu. I build Python applications using object-oriented principles, modular packages, and FastAPI backend frameworks."
         },
         {
           id: 2,
@@ -101,8 +101,8 @@ export default function InterviewRoomPage({ sessionData, setActivePage, setFinal
         {
           id: 1,
           question_number: "Question 1 of 5 (Candidate Introduction)",
-          question_text: "Hello! My name is AIRA, your AI Interviewer. Welcome to your Senior Python interview! Introduce yourself and detail your experience with concurrency and Python internals.",
-          sample_answer: "Hello AIRA! I am a senior Python engineer experienced in asyncio concurrency, GIL bottlenecks, metaprogramming, and high-throughput microservices."
+          question_text: "Hello! My name is Real-Time AI Agent. Welcome to your Senior Python interview! Introduce yourself and detail your technical experience.",
+          sample_answer: "Hello! I am a senior Python engineer experienced in asyncio concurrency, GIL bottlenecks, metaprogramming, and high-throughput microservices."
         },
         {
           id: 2,
@@ -135,8 +135,8 @@ export default function InterviewRoomPage({ sessionData, setActivePage, setFinal
         {
           id: 1,
           question_number: "Question 1 of 5 (Candidate Introduction)",
-          question_text: "Hello! My name is AIRA, your AI Interviewer. Welcome to your DSA interview! Introduce yourself and share your knowledge of basic arrays and linked lists.",
-          sample_answer: "Hello AIRA! I am Janitha Kavuturu. I have knowledge of basic data structures like Arrays, Linked Lists, Stacks, Queues, and searching algorithms."
+          question_text: "Hello! My name is Real-Time AI Agent. Welcome to your DSA interview! Introduce yourself and share what data structures you enjoy working with.",
+          sample_answer: "Hello! I am Janitha Kavuturu. I have knowledge of basic data structures like Arrays, Linked Lists, Stacks, Queues, and searching algorithms."
         },
         {
           id: 2,
@@ -162,70 +162,6 @@ export default function InterviewRoomPage({ sessionData, setActivePage, setFinal
           question_text: "What is the main idea behind Bubble Sort vs Selection Sort?",
           sample_answer: "Bubble sort repeatedly swaps adjacent out-of-order pairs, while Selection sort repeatedly finds minimum elements and places them in sorted positions."
         }
-      ],
-      "Medium": [
-        {
-          id: 1,
-          question_number: "Question 1 of 5 (Candidate Introduction)",
-          question_text: "Hello! My name is AIRA, your AI Interviewer. Welcome to your Medium DSA interview! Introduce yourself and your experience with Trees, Graphs, and Hash Tables.",
-          sample_answer: "Hello AIRA! I am Janitha Kavuturu. I solve algorithmic problems involving Binary Search Trees, BFS/DFS graph traversals, and dynamic programming."
-        },
-        {
-          id: 2,
-          question_number: "Question 2 of 5 (Hash Collisions)",
-          question_text: "How do Hash Tables resolve collisions using Separate Chaining vs Open Addressing (Linear Probing)?",
-          sample_answer: "Separate Chaining stores colliding elements in bucket linked lists. Open Addressing probes consecutive array slots until an empty index is found."
-        },
-        {
-          id: 3,
-          question_number: "Question 3 of 5 (BST Search & Inorder Traversal)",
-          question_text: "What are the properties of a Binary Search Tree (BST) and why does Inorder traversal yield sorted order?",
-          sample_answer: "In a BST, left children are smaller than node value and right children are larger. Inorder traversal (Left-Node-Right) visits values in ascending order."
-        },
-        {
-          id: 4,
-          question_number: "Question 4 of 5 (BFS vs DFS Graphs)",
-          question_text: "Compare Breadth-First Search (BFS) using Queues with Depth-First Search (DFS) using Stacks/Recursion.",
-          sample_answer: "BFS explores neighbor layers level-by-level using a Queue for shortest path. DFS explores deep graph branches using Stack/Recursion."
-        },
-        {
-          id: 5,
-          question_number: "Question 5 of 5 (Two Pointers & Sliding Window)",
-          question_text: "How does the Two Pointers or Sliding Window technique reduce time complexity from O(N^2) to O(N)?",
-          sample_answer: "Sliding Window maintains subarray states across moving left/right boundaries, avoiding redundant nested loops to achieve linear time O(N)."
-        }
-      ],
-      "Hard": [
-        {
-          id: 1,
-          question_number: "Question 1 of 5 (Candidate Introduction)",
-          question_text: "Hello! My name is AIRA, your AI Interviewer. Welcome to your Advanced DSA interview! Introduce your background in Dynamic Programming, Heaps, and Graph Algorithms.",
-          sample_answer: "Hello AIRA! I am an algorithm developer skilled in Dynamic Programming memoization, Min-Heaps, Dijkstra's algorithm, and Red-Black self-balancing trees."
-        },
-        {
-          id: 2,
-          question_number: "Question 2 of 5 (Dijkstra's Shortest Path)",
-          question_text: "Explain Dijkstra's algorithm using a Min-Heap priority queue for weighted graphs without negative edges.",
-          sample_answer: "Dijkstra uses a Min-Heap to greedily extract unvisited nodes with smallest distance, relaxing outgoing neighbor edges in O((V + E) log V) time."
-        },
-        {
-          id: 3,
-          question_number: "Question 3 of 5 (Dynamic Programming Memoization)",
-          question_text: "How does Dynamic Programming transform exponential recursion O(2^N) into polynomial O(N) using Top-Down Memoization?",
-          sample_answer: "DP identifies overlapping subproblems and optimal substructure, caching subproblem results in a lookup table to eliminate redundant recursive trees."
-        },
-        {
-          id: 4,
-          question_number: "Question 4 of 5 (AVL vs Red-Black Trees)",
-          question_text: "What is the difference between AVL Trees (strict balance) and Red-Black Trees (color balance) during rotations?",
-          sample_answer: "AVL trees enforce height differences <= 1 requiring frequent rotations, while Red-Black trees enforce color rules allowing faster insertions with fewer rotations."
-        },
-        {
-          id: 5,
-          question_number: "Question 5 of 5 (Trie & Prefix Trees)",
-          question_text: "How does a Trie data structure achieve O(L) time complexity for word prefix autocomplete lookups?",
-          sample_answer: "Tries store characters in parent-child node chains indexed by string length L, enabling fast prefix match lookups independent of total dictionary size N."
-        }
       ]
     },
     "AI / ML & Data Science": {
@@ -233,8 +169,8 @@ export default function InterviewRoomPage({ sessionData, setActivePage, setFinal
         {
           id: 1,
           question_number: "Question 1 of 5 (Candidate Introduction)",
-          question_text: "Hello! My name is AIRA, your AI Interviewer. Welcome to your AI & Data Science interview! Introduce yourself and your experience with Python data packages.",
-          sample_answer: "Hello AIRA! I am Janitha Kavuturu. I am an AI enthusiast experienced with Pandas dataframes, NumPy matrix calculations, and basic machine learning."
+          question_text: "Hello! My name is Real-Time AI Agent. Welcome to your AI & Data Science interview! Introduce yourself and your background in Artificial Intelligence.",
+          sample_answer: "Hello! I am Janitha Kavuturu. I am passionate about AI and Machine Learning, working with Pandas, NumPy, and predictive models."
         },
         {
           id: 2,
@@ -260,70 +196,6 @@ export default function InterviewRoomPage({ sessionData, setActivePage, setFinal
           question_text: "What are Precision and Recall metrics derived from a Confusion Matrix?",
           sample_answer: "Precision measures true positive accuracy among predicted positives, while Recall measures true positives retrieved out of total actual positive cases."
         }
-      ],
-      "Medium": [
-        {
-          id: 1,
-          question_number: "Question 1 of 5 (Candidate Introduction)",
-          question_text: "Hello! My name is AIRA, your AI Interviewer. Welcome to your Medium AI/ML interview! Introduce yourself, your background in model training, and RAG vector databases.",
-          sample_answer: "Hello AIRA! I am a Data Scientist experienced in training Scikit-Learn models, tuning XGBoost hyper-parameters, and building RAG pipelines with ChromaDB."
-        },
-        {
-          id: 2,
-          question_number: "Question 2 of 5 (RAG Architecture)",
-          question_text: "Explain how Retrieval-Augmented Generation (RAG) uses vector databases to ground LLM responses and prevent hallucinations.",
-          sample_answer: "RAG converts documents into vector embeddings in ChromaDB, retrieves context via cosine similarity search, and injects context into prompts to ground LLM answers."
-        },
-        {
-          id: 3,
-          question_number: "Question 3 of 5 (Random Forest vs XGBoost)",
-          question_text: "Compare Bagging in Random Forest with Gradient Boosting in XGBoost.",
-          sample_answer: "Random Forest builds decision trees in parallel via bootstrap aggregation. XGBoost builds trees sequentially to minimize residual errors of previous trees."
-        },
-        {
-          id: 4,
-          question_number: "Question 4 of 5 (Feature Scaling)",
-          question_text: "Why is Feature Scaling (StandardScaler vs MinMaxScaler) necessary for distance-based models like KNN and SVM?",
-          sample_answer: "Distance-based models like KNN and SVM calculate Euclidean distances; unscaled large magnitude features dominate and distort gradient optimization."
-        },
-        {
-          id: 5,
-          question_number: "Question 5 of 5 (Cross-Validation)",
-          question_text: "How does K-Fold Cross-Validation prevent data leakage during train-test splitting?",
-          sample_answer: "K-Fold splits data into K equal folds, training on K-1 folds and testing on the remaining fold iteratively to ensure robust out-of-sample evaluation."
-        }
-      ],
-      "Hard": [
-        {
-          id: 1,
-          question_number: "Question 1 of 5 (Candidate Introduction)",
-          question_text: "Hello! My name is AIRA, your AI Interviewer. Welcome to your Senior AI/ML interview! Introduce your expertise in Transformer Self-Attention, LLM Fine-Tuning, and MLOps.",
-          sample_answer: "Hello AIRA! I am a Senior AI Architect specializing in Transformer architectures, LoRA fine-tuning, Quantization, and scalable MLOps deployments."
-        },
-        {
-          id: 2,
-          question_number: "Question 2 of 5 (Transformer Self-Attention)",
-          question_text: "Explain scaled dot-product Self-Attention Q, K, V matrices and why Softmax scaling division by sqrt(d_k) is required.",
-          sample_answer: "Self-attention computes Query-Key dot products scaled by 1/sqrt(d_k) to prevent extremely large magnitude gradients from pushing Softmax into vanishing gradient regions."
-        },
-        {
-          id: 3,
-          question_number: "Question 3 of 5 (LoRA & PEFT Fine-Tuning)",
-          question_text: "How does Low-Rank Adaptation (LoRA) reduce trainable parameters during LLM fine-tuning?",
-          sample_answer: "LoRA freezes pre-trained weight matrices and injects trainable rank-decomposition matrices A and B (r << d), drastically reducing memory and compute cost."
-        },
-        {
-          id: 4,
-          question_number: "Question 4 of 5 (Model Quantization)",
-          question_text: "What is the difference between Post-Training Quantization (PTQ) vs Quantization-Aware Training (QAT) for FP16 to INT8 conversion?",
-          sample_answer: "PTQ quantizes weights after training causing slight accuracy degradation. QAT simulates quantization noise during backpropagation for near-zero loss."
-        },
-        {
-          id: 5,
-          question_number: "Question 5 of 5 (Vector DB Indexing)",
-          question_text: "Compare HNSW (Hierarchical Navigable Small World) with IVF-PQ (Inverted File Product Quantization) for million-scale vector search.",
-          sample_answer: "HNSW builds multi-layer proximity graphs for high recall and fast search, while IVF-PQ clusters vector space and quantizes sub-vectors for low memory footprint."
-        }
       ]
     }
   };
@@ -333,11 +205,11 @@ export default function InterviewRoomPage({ sessionData, setActivePage, setFinal
   const questions = difficultyBank.slice(0, 5);
   const currentQ = questions[currentIdx] || questions[0];
 
-  // REAL-TIME CONTINUOUS CONVERSATION THREAD CHAT HISTORY (MATCHING USER SCREENSHOT)
+  // REAL-TIME CONTINUOUS CONVERSATION THREAD CHAT HISTORY
   const [chatThread, setChatThread] = useState([
     {
       id: 1,
-      sender: 'INTERVIEWER',
+      sender: 'INTERVIEWER (REAL-TIME AI AGENT)',
       text: currentQ.question_text,
       type: 'interviewer'
     }
@@ -414,7 +286,7 @@ export default function InterviewRoomPage({ sessionData, setActivePage, setFinal
     setActivePage('interview-report');
   };
 
-  // Web Speech Synthesis (AIRA Natural Voiceover)
+  // Web Speech Synthesis (AIRA / AI Agent Natural Voiceover)
   const speakQuestion = (textToSpeak) => {
     try {
       if ('speechSynthesis' in window) {
@@ -514,7 +386,36 @@ export default function InterviewRoomPage({ sessionData, setActivePage, setFinal
     return `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
   };
 
-  // REAL-TIME AI AGENT SUBMIT TURN HANDLER (BUILD CONVERSATION THREAD MATCHING SCREENSHOT)
+  // ADAPTIVE FOLLOW-UP GENERATOR BASED ON CANDIDATE'S SPOKEN TOPICS & SMART SKIP
+  const generateAdaptiveFollowupPrompt = (spokenText, nextQObj) => {
+    if (!spokenText || spokenText.trim().length === 0) {
+      // User Skipped the question
+      return `Okay, I will continue with the next question! ${nextQObj.question_text}`;
+    }
+
+    const lower = spokenText.toLowerCase();
+
+    if (lower.includes("ai") || lower.includes("machine learning") || lower.includes("ml") || lower.includes("data science")) {
+      return `Great to hear about your passion for AI and Machine Learning! Building on what you just shared: ${nextQObj.question_text}`;
+    }
+    
+    if (lower.includes("python") || lower.includes("script") || lower.includes("code")) {
+      return `Nice! Since you mentioned your strong experience writing Python code, let's explore this next concept: ${nextQObj.question_text}`;
+    }
+
+    if (lower.includes("web") || lower.includes("api") || lower.includes("backend") || lower.includes("fastapi")) {
+      return `Awesome! Given your background building backend web applications and APIs, here is our next question: ${nextQObj.question_text}`;
+    }
+
+    if (lower.includes("list") || lower.includes("tuple") || lower.includes("dictionary") || lower.includes("array")) {
+      return `That's a very clear explanation of data structures! Following up on what you just mentioned: ${nextQObj.question_text}`;
+    }
+
+    // Default conversational bridge
+    return `That's a solid explanation! Building on your answer: ${nextQObj.question_text}`;
+  };
+
+  // REAL-TIME AI AGENT SUBMIT TURN HANDLER
   const handleNextQuestion = async () => {
     stopSpeaking();
     stopMicRecording();
@@ -522,7 +423,7 @@ export default function InterviewRoomPage({ sessionData, setActivePage, setFinal
 
     const spokenText = candidateAnswer.trim();
     const isAnswerProvided = spokenText.length > 0;
-    const finalAnswerText = isAnswerProvided ? spokenText : "[No spoken answer provided]";
+    const finalAnswerText = isAnswerProvided ? spokenText : "[Candidate skipped question without speaking]";
 
     // Append Candidate Answer Bubble (YOU) to Chat Thread
     const candidateBubble = {
@@ -558,23 +459,13 @@ export default function InterviewRoomPage({ sessionData, setActivePage, setFinal
     
     if (currentIdx < 4) {
       const nextQObj = questions[currentIdx + 1];
-      let prefixPraise = "";
-
-      if (!isAnswerProvided) {
-        prefixPraise = "I notice you didn't speak an answer for that question. Please make sure to speak your answer aloud into your microphone! Moving on to our next question: ";
-      } else if (spokenText.split(' ').length < 5) {
-        prefixPraise = "Thanks for that brief response! Let's build further on that. Next question: ";
-      } else {
-        prefixPraise = "That's a solid explanation! Great realization to have. Now for our next question: ";
-      }
-
-      const nextInterviewerText = `${prefixPraise}${nextQObj.question_text}`;
+      const nextInterviewerText = generateAdaptiveFollowupPrompt(spokenText, nextQObj);
 
       // Append Next Interviewer Question Bubble (INTERVIEWER) to Chat Thread
       setTimeout(() => {
         const interviewerBubble = {
           id: Date.now() + 1,
-          sender: 'INTERVIEWER',
+          sender: 'INTERVIEWER (REAL-TIME AI AGENT)',
           text: nextInterviewerText,
           type: 'interviewer'
         };
@@ -625,7 +516,7 @@ export default function InterviewRoomPage({ sessionData, setActivePage, setFinal
           `Webcam and microphone hardware connected successfully`
         ],
         weaknesses: answeredCount < 5 ? [
-          `Candidate left ${5 - answeredCount} questions unanswered (skipped without speaking)`,
+          `Candidate skipped ${5 - answeredCount} questions without speaking`,
           `Ensure you speak full structured answers into your microphone for every turn`
         ] : [
           `Elaborate further on real-world memory and execution trade-offs`,
@@ -660,7 +551,7 @@ export default function InterviewRoomPage({ sessionData, setActivePage, setFinal
           <div className="w-3 h-3 rounded-full bg-red-500 animate-ping"></div>
           <div>
             <h1 className="text-sm font-bold text-white uppercase tracking-wider flex items-center gap-2">
-              Real-Time AI Interview Room <span className="text-[10px] text-cyan-400 font-mono font-normal">• Live Conversation Stream</span>
+              Real-Time AI Agent Interview Room <span className="text-[10px] text-cyan-400 font-mono font-normal">• Live Adaptive Thread</span>
             </h1>
             <span className="text-[11px] text-indigo-300 font-mono">
               Domain: <strong className="text-white">{activeDomain}</strong> ({activeDifficulty} Level — {currentQ.question_number})
@@ -681,13 +572,13 @@ export default function InterviewRoomPage({ sessionData, setActivePage, setFinal
         </div>
       </div>
 
-      {/* MAIN TWO-COLUMN LAYOUT: LEFT (AIRA + SCROLLABLE CHAT THREAD), RIGHT (WEBCAM + TELEMETRY BARS) */}
+      {/* MAIN TWO-COLUMN LAYOUT: LEFT (REAL-TIME AI AGENT + CHAT THREAD), RIGHT (WEBCAM + TELEMETRY BARS) */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
         
-        {/* LEFT COLUMN: AIRA AI CHARACTER & REAL-TIME CHAT THREAD (8 COLS) */}
+        {/* LEFT COLUMN: REAL-TIME AI AGENT AVATAR & SCROLLABLE CHAT THREAD (8 COLS) */}
         <div className="lg:col-span-8 space-y-6">
           
-          {/* Animated AI Character Center Panel */}
+          {/* Real-Time AI Agent Avatar Panel */}
           <div className="glass-card p-5 rounded-3xl border border-slate-800 bg-slate-950/90 flex flex-col items-center justify-center text-center space-y-2 relative min-h-[180px]">
             <div className={`w-20 h-20 rounded-full bg-gradient-to-tr from-indigo-600 via-cyan-400 to-emerald-400 p-1 shadow-2xl transition-all ${
               isSpeaking ? 'animate-pulse ring-8 ring-cyan-500/30 scale-105' : ''
@@ -698,9 +589,9 @@ export default function InterviewRoomPage({ sessionData, setActivePage, setFinal
             </div>
 
             <div>
-              <h2 className="text-base font-bold text-white tracking-wide">AIRA</h2>
+              <h2 className="text-base font-bold text-white tracking-wide">Real-Time AI Agent</h2>
               <p className="text-xs font-mono text-cyan-400 mt-0.5">
-                {isSpeaking ? "AIRA is speaking question..." : isRecording ? "AIRA is listening to your answer..." : "Evaluating response..."}
+                {isSpeaking ? "AI Agent is speaking question..." : isRecording ? "AI Agent is listening to your answer..." : "Evaluating response..."}
               </p>
             </div>
           </div>
@@ -709,10 +600,10 @@ export default function InterviewRoomPage({ sessionData, setActivePage, setFinal
           <div className="glass-card p-5 rounded-3xl border border-slate-800 space-y-3 shadow-xl h-[380px] flex flex-col justify-between">
             <div className="flex items-center justify-between border-b border-slate-800 pb-2 shrink-0">
               <span className="text-xs font-mono text-cyan-400 uppercase font-bold flex items-center gap-1.5">
-                <MessageSquare className="w-4 h-4 text-amber-400" /> Real-Time Live Transcript Conversation
+                <MessageSquare className="w-4 h-4 text-amber-400" /> Real-Time Live AI Agent Conversation Stream
               </span>
               <span className="text-[10px] text-emerald-400 font-mono flex items-center gap-1">
-                <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping"></span> Real-time STT Active
+                <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping"></span> Real-Time AI Agent Active
               </span>
             </div>
 
@@ -854,9 +745,9 @@ export default function InterviewRoomPage({ sessionData, setActivePage, setFinal
           <button
             onClick={handleNextQuestion}
             disabled={submitting}
-            className="px-6 py-2.5 rounded-xl font-bold text-xs bg-red-600 hover:bg-red-500 text-white shadow-lg shadow-red-600/25 transition-all flex items-center gap-2"
+            className="px-6 py-2.5 rounded-xl font-bold text-xs bg-indigo-600 hover:bg-indigo-500 text-white shadow-lg transition-all flex items-center gap-2"
           >
-            {submitting ? "Analyzing..." : (
+            {submitting ? "AI Agent Processing..." : (
               currentIdx < 4 ? (
                 <>Submit Spoken Answer & Next Question <ArrowRight className="w-4 h-4" /></>
               ) : (
