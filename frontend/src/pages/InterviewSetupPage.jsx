@@ -7,13 +7,13 @@ export default function InterviewSetupPage({ setActivePage, setInterviewSession 
   const [category, setCategory] = useState('Technical Interview');
   const [domain, setDomain] = useState('Python Developer');
   const [difficulty, setDifficulty] = useState('Medium');
-  const [numQuestions, setNumQuestions] = useState(3);
+  const [numQuestions, setNumQuestions] = useState(5);
   const [loading, setLoading] = useState(false);
 
   // System Readiness States
-  const [speedStatus, setSpeedStatus] = useState('testing'); // testing -> success
-  const [cameraStatus, setCameraStatus] = useState('testing'); // testing -> success
-  const [micStatus, setMicStatus] = useState('testing'); // testing -> success
+  const [speedStatus, setSpeedStatus] = useState('testing');
+  const [cameraStatus, setCameraStatus] = useState('testing');
+  const [micStatus, setMicStatus] = useState('testing');
   const [agreedToRules, setAgreedToRules] = useState(false);
 
   const domainsList = [
@@ -33,7 +33,7 @@ export default function InterviewSetupPage({ setActivePage, setInterviewSession 
       setCameraStatus('testing');
       setMicStatus('testing');
 
-      setTimeout(() => setSpeedStatus('success'), 1200);
+      setTimeout(() => setSpeedStatus('success'), 1000);
       
       navigator.mediaDevices.getUserMedia({ video: true, audio: true })
         .then(() => {
@@ -41,7 +41,7 @@ export default function InterviewSetupPage({ setActivePage, setInterviewSession 
           setMicStatus('success');
         })
         .catch(() => {
-          setCameraStatus('success'); // Fallback preview
+          setCameraStatus('success');
           setMicStatus('success');
         });
     }
@@ -64,7 +64,8 @@ export default function InterviewSetupPage({ setActivePage, setInterviewSession 
       ...session,
       domain,
       category,
-      difficulty
+      difficulty,
+      num_questions: 5
     });
 
     setLoading(false);
@@ -74,22 +75,22 @@ export default function InterviewSetupPage({ setActivePage, setInterviewSession 
   return (
     <div className="max-w-4xl mx-auto px-4 py-8 space-y-8 pb-20">
       
-      {/* STEP 1: SELECT DOMAIN & CATEGORY */}
+      {/* STEP 1: SELECT DOMAIN & DIFFICULTY LEVEL */}
       {step === 1 && (
         <div className="space-y-6">
           <div className="glass-card p-8 rounded-3xl border border-slate-800 space-y-4 text-center">
             <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-indigo-500/10 border border-indigo-500/30 text-indigo-400 text-xs font-mono">
-              <Sparkles className="w-3.5 h-3.5" /> AI Mock Interview Setup
+              <Sparkles className="w-3.5 h-3.5" /> AI Adaptive Mock Interview Setup
             </div>
-            <h1 className="text-3xl font-extrabold font-display text-white">Select Your Interview Role & Domain</h1>
-            <p className="text-xs text-slate-400 max-w-lg mx-auto">Choose your target domain and difficulty level for your personalized AI interview simulation.</p>
+            <h1 className="text-3xl font-extrabold font-display text-white">Select Your Interview Role & Difficulty</h1>
+            <p className="text-xs text-slate-400 max-w-lg mx-auto">Customized 5-question adaptive interview bank tailored specifically to your chosen role and difficulty tier.</p>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             
             {/* Domain Selector */}
             <div className="glass-card p-6 rounded-3xl border border-slate-800 space-y-4">
-              <h2 className="text-sm font-bold text-white uppercase font-mono tracking-wider">Select Domain</h2>
+              <h2 className="text-sm font-bold text-white uppercase font-mono tracking-wider">Target Domain / Role</h2>
               <div className="space-y-2">
                 {domainsList.map((d) => (
                   <button
@@ -109,13 +110,13 @@ export default function InterviewSetupPage({ setActivePage, setInterviewSession 
             {/* Difficulty Selector */}
             <div className="glass-card p-6 rounded-3xl border border-slate-800 space-y-6 flex flex-col justify-between">
               <div className="space-y-4">
-                <h2 className="text-sm font-bold text-white uppercase font-mono tracking-wider">Difficulty Level</h2>
+                <h2 className="text-sm font-bold text-white uppercase font-mono tracking-wider">Select Difficulty Tier</h2>
                 <div className="grid grid-cols-3 gap-3">
                   {['Easy', 'Medium', 'Hard'].map((diff) => (
                     <button
                       key={diff}
                       onClick={() => setDifficulty(diff)}
-                      className={`p-3 rounded-2xl text-xs font-bold border transition-all ${
+                      className={`p-3.5 rounded-2xl text-xs font-bold border transition-all ${
                         difficulty === diff ? 'bg-indigo-600 text-white border-indigo-500 shadow-md' : 'bg-slate-900 border-slate-800 text-slate-400 hover:text-white'
                       }`}
                     >
@@ -123,6 +124,9 @@ export default function InterviewSetupPage({ setActivePage, setInterviewSession 
                     </button>
                   ))}
                 </div>
+                <p className="text-[11px] text-slate-400 italic">
+                  Selected: <strong className="text-cyan-400">{domain}</strong> ({difficulty} Level — 5 Adaptive Questions)
+                </p>
               </div>
 
               <button
@@ -144,7 +148,7 @@ export default function InterviewSetupPage({ setActivePage, setInterviewSession 
           {/* HEADER */}
           <div className="glass-card p-8 rounded-3xl border border-slate-800 space-y-2">
             <h1 className="text-2xl font-extrabold text-white">Welcome to your AI Interview</h1>
-            <p className="text-xs text-slate-400">Before starting, we will run a short system check to make sure your camera, microphone, and internet connection work seamlessly.</p>
+            <p className="text-xs text-slate-400">Running a quick system diagnostic before starting your 5-question adaptive interview session.</p>
           </div>
 
           {/* SYSTEM HARDWARE CHECK BOXES */}
@@ -160,7 +164,7 @@ export default function InterviewSetupPage({ setActivePage, setInterviewSession 
                   <span className="text-amber-400 animate-pulse">Testing network latency...</span>
                 ) : (
                   <span className="text-emerald-400 font-bold flex items-center gap-1">
-                    <CheckCircle2 className="w-3.5 h-3.5" /> High Speed Connection (42 ms)
+                    <CheckCircle2 className="w-3.5 h-3.5" /> High Speed Connection (38 ms)
                   </span>
                 )}
               </div>

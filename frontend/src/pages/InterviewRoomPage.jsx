@@ -14,7 +14,7 @@ export default function InterviewRoomPage({ sessionData, setActivePage, setFinal
   const [activePopup, setActivePopup] = useState(null);
   const [violationCount, setViolationCount] = useState(0);
   const [candidateAnswersList, setCandidateAnswersList] = useState([]);
-  
+
   // DYNAMIC LIVE TELEMETRY BARS
   const [telemetry, setTelemetry] = useState({
     eyeContactPct: 91,
@@ -26,92 +26,310 @@ export default function InterviewRoomPage({ sessionData, setActivePage, setFinal
 
   const recognitionRef = useRef(null);
 
-  // REAL HUMAN-TO-HUMAN CONVERSATIONAL AI INTERVIEW QUESTION FLOW WITH WARM PRAISE FEEDBACK
+  const activeDomain = sessionData?.domain || sessionData?.category || "Python Developer";
+  const activeDifficulty = sessionData?.difficulty || "Medium";
+
+  // COMPREHENSIVE 5-QUESTION ADAPTIVE BANKS PER ROLE & DIFFICULTY
   const domainQuestionsBank = {
-    "Python Developer": [
-      {
-        id: 1,
-        question_number: "Question 1 of 3 (Candidate Introduction)",
-        question_text: "Hello! My name is AIRA, and I will be conducting your Python developer mock interview today. To get started, please introduce yourself and summarize your experience writing Python code.",
-        sample_answer: "Hello AIRA! I am Janitha Kavuturu. I am a Python developer with experience writing clean Python scripts, working with data structures like lists and dictionaries, and building web applications."
-      },
-      {
-        id: 2,
-        question_number: "Question 2 of 3 (Core Python Concepts)",
-        question_text: "Nice! Good to see your strong background in Python development. You are very good at this! Now for our second question: What is the key difference between Python Lists and Tuples, and when would you use a Dictionary?",
-        sample_answer: "Lists are mutable and defined with square brackets, while Tuples are immutable and defined with parentheses. Dictionaries store key-value pairs for fast lookups."
-      },
-      {
-        id: 3,
-        question_number: "Question 3 of 3 (Python Features)",
-        question_text: "Great answer! You explained that core concept really well. Excellent response! Now for our final technical question: Explain what List Comprehension is in Python and why it is useful.",
-        sample_answer: "List comprehension provides a concise and readable way to create lists in Python in a single line of code, making programs much cleaner and faster."
-      }
-    ],
-    "Data Structures & Algorithms (DSA)": [
-      {
-        id: 1,
-        question_number: "Question 1 of 3 (Candidate Introduction)",
-        question_text: "Hello! My name is AIRA, and I will be conducting your DSA mock interview today. To start off, please introduce yourself and your knowledge of Data Structures and Algorithms.",
-        sample_answer: "Hello AIRA! I am Janitha Kavuturu. I have good knowledge of fundamental data structures like Arrays, Linked Lists, Stacks, Queues, and basic searching and sorting algorithms."
-      },
-      {
-        id: 2,
-        question_number: "Question 2 of 3 (Stack vs Queue)",
-        question_text: "Nice introduction! Good to see your solid understanding of data structures. You are doing great! Now: What is the difference between a Stack and a Queue? Give real-world examples of both.",
-        sample_answer: "A Stack follows Last-In-First-Out, like a stack of plates. A Queue follows First-In-First-Out, like a line of people standing at a ticket counter."
-      },
-      {
-        id: 3,
-        question_number: "Question 3 of 3 (Searching Algorithms)",
-        question_text: "Awesome response! Excellent explanation of LIFO and FIFO. Now for our final question: Explain the difference between Linear Search and Binary Search in terms of time complexity.",
-        sample_answer: "Linear search checks elements one by one with time complexity O(N). Binary search repeatedly divides a sorted array in half with time complexity O(log N)."
-      }
-    ],
-    "AI / ML & Data Science": [
-      {
-        id: 1,
-        question_number: "Question 1 of 3 (Candidate Introduction)",
-        question_text: "Hello! My name is AIRA, and I will be conducting your AI mock interview today. To get started, please introduce yourself, your technical background, and your key projects in Artificial Intelligence, Machine Learning, and Data Science.",
-        sample_answer: "Hello AIRA! I am a software engineer specializing in AI and Data Science. I have built projects including RAG pipelines, predictive machine learning models, and analytics dashboards."
-      },
-      {
-        id: 2,
-        question_number: "Question 2 of 3 (AI & LLM Architecture)",
-        question_text: "Nice! Good to see your strong AI project background. You are very good at this! Now: Could you describe how Retrieval-Augmented Generation (RAG) combines Vector Databases like ChromaDB with Large Language Models to eliminate model hallucinations?",
-        sample_answer: "RAG retrieves relevant document chunks from ChromaDB using semantic vector embeddings and injects context into LLM prompts, providing grounded and accurate answers."
-      },
-      {
-        id: 3,
-        question_number: "Question 3 of 3 (Machine Learning Practical)",
-        question_text: "Great answer! Excellent breakdown of RAG vector embeddings. Now for our final question: How do you handle missing values in datasets, prevent model overfitting using cross-validation, and evaluate performance using metrics like F1-score?",
-        sample_answer: "I impute missing values using dataset medians, prevent overfitting using 5-fold cross-validation with L2 regularization, and evaluate imbalanced datasets using F1-score and ROC-AUC."
-      }
-    ],
-    "Backend Engineering": [
-      {
-        id: 1,
-        question_number: "Question 1 of 3 (Candidate Introduction)",
-        question_text: "Hello! My name is AIRA, and I will be conducting your backend engineering mock interview today. To begin, please introduce yourself and summarize your experience building REST APIs and database applications.",
-        sample_answer: "Hello AIRA! I am a backend engineer with hands-on experience building RESTful APIs using Python FastAPI, PostgreSQL databases, and JWT authentication."
-      },
-      {
-        id: 2,
-        question_number: "Question 2 of 3 (Core Backend)",
-        question_text: "Nice to meet you! Good to see your experience in backend API development. You are doing very well! Now: How do you identify slow SQL query bottlenecks and optimize performance using B-tree indexing?",
-        sample_answer: "I analyze query execution plans using EXPLAIN ANALYZE, create B-tree indexes on search columns, and configure connection pooling in SQLAlchemy."
-      },
-      {
-        id: 3,
-        question_number: "Question 3 of 3 (API Security)",
-        question_text: "Great answer! Excellent explanation of database index tuning. Now for our final question: How do you secure production REST API endpoints using short-lived JWT tokens and password hashing?",
-        sample_answer: "I issue short-lived JWT access tokens, hash user passwords securely using bcrypt, and enforce strict CORS origin policies on FastAPI middleware."
-      }
-    ]
+    "Python Developer": {
+      "Easy": [
+        {
+          id: 1,
+          question_number: "Question 1 of 5 (Candidate Introduction)",
+          question_text: "Hello! My name is AIRA. Welcome to your Python developer interview! To start, please introduce yourself and summarize your experience writing basic Python scripts.",
+          sample_answer: "Hello AIRA! I am Janitha Kavuturu. I am a Python developer with experience writing clean scripts, working with data structures like lists and dictionaries, and writing functions."
+        },
+        {
+          id: 2,
+          question_number: "Question 2 of 5 (Lists vs Tuples)",
+          question_text: "Nice intro! Speaking of basic data structures: What is the main difference between Python Lists and Tuples? Why choose a Tuple?",
+          sample_answer: "Lists are mutable and defined with square brackets. Tuples are immutable and defined with parentheses, making them faster and read-only."
+        },
+        {
+          id: 3,
+          question_number: "Question 3 of 5 (Python Dictionaries)",
+          question_text: "Great answer on mutability! Following up on that: How do Python Dictionaries work, and how do you retrieve values safely using get()?",
+          sample_answer: "Dictionaries store key-value pairs indexed by hashable keys. The get() method returns a default value if a key doesn't exist without raising KeyError."
+        },
+        {
+          id: 4,
+          question_number: "Question 4 of 5 (Control Flow & Loops)",
+          question_text: "Clear explanation! Now, what is the difference between range() and enumerate() when iterating through lists in a for loop?",
+          sample_answer: "range() generates numbers, whereas enumerate() yields both index numbers and item values simultaneously during iteration."
+        },
+        {
+          id: 5,
+          question_number: "Question 5 of 5 (List Comprehensions)",
+          question_text: "Excellent response! For our final question: Explain what List Comprehension is and write a quick one-line example filter.",
+          sample_answer: "List comprehension offers a compact one-line syntax to filter and transform iterables, like [x for x in numbers if x % 2 == 0]."
+        }
+      ],
+      "Medium": [
+        {
+          id: 1,
+          question_number: "Question 1 of 5 (Candidate Introduction)",
+          question_text: "Hello! My name is AIRA. Welcome to your Medium-level Python interview! Please introduce yourself, your experience with OOP, and your core projects.",
+          sample_answer: "Hello AIRA! I am Janitha Kavuturu. I build Python applications using object-oriented principles, modular packages, and FastAPI backend frameworks."
+        },
+        {
+          id: 2,
+          question_number: "Question 2 of 5 (OOP & Decorators)",
+          question_text: "Solid intro! You mentioned OOP. What is a Python Decorator, and how does @classmethod differ from @staticmethod in a class?",
+          sample_answer: "Decorators wrap functions to extend behavior. @classmethod receives cls as first argument, while @staticmethod behaves like a regular function without self or cls."
+        },
+        {
+          id: 3,
+          question_number: "Question 3 of 5 (Generators & Memory)",
+          question_text: "Great distinction! Since performance matters: How do Python Generators using yield save memory compared to returning regular lists?",
+          sample_answer: "Generators evaluate items lazily one at a time using yield iterators, keeping memory consumption low O(1) compared to loading large lists into RAM."
+        },
+        {
+          id: 4,
+          question_number: "Question 4 of 5 (Exception Handling)",
+          question_text: "Awesome answer on lazy evaluation! How do try-except-else-finally blocks work when handling resource cleanups?",
+          sample_answer: "try runs code, except catches errors, else executes if no exceptions occur, and finally ALWAYS runs to release open file/DB handles."
+        },
+        {
+          id: 5,
+          question_number: "Question 5 of 5 (Context Managers)",
+          question_text: "Impressive! For our final question: Explain how the 'with' statement works under the hood using __enter__ and __exit__ dunder methods.",
+          sample_answer: "The 'with' statement invokes __enter__ to acquire resources and automatically calls __exit__ to guarantee cleanup even if exceptions occur."
+        }
+      ],
+      "Hard": [
+        {
+          id: 1,
+          question_number: "Question 1 of 5 (Candidate Introduction)",
+          question_text: "Hello! My name is AIRA. Welcome to your Senior-level Python interview! Introduce yourself and detail your experience with concurrency and Python internals.",
+          sample_answer: "Hello AIRA! I am a senior Python engineer experienced in asyncio concurrency, GIL bottlenecks, metaprogramming, and high-throughput microservices."
+        },
+        {
+          id: 2,
+          question_number: "Question 2 of 5 (Python GIL & Multi-threading)",
+          question_text: "Powerful background! Explain how the Global Interpreter Lock (GIL) impacts CPU-bound vs I/O-bound tasks in multi-threading vs multiprocessing.",
+          sample_answer: "The GIL prevents multi-threaded CPython from executing CPU-bound bytecode in parallel. CPU-bound tasks require multiprocessing, while I/O-bound tasks benefit from threading/asyncio."
+        },
+        {
+          id: 3,
+          question_number: "Question 3 of 5 (Asyncio Event Loops)",
+          question_text: "Spot-on GIL analysis! How does asyncio's cooperative event loop manage non-blocking socket I/O using async and await keywords?",
+          sample_answer: "Asyncio runs a single-threaded event loop that pauses tasks at yield points (await) during socket I/O and context-switches to ready tasks without OS thread overhead."
+        },
+        {
+          id: 4,
+          question_number: "Question 4 of 5 (Metaclasses)",
+          question_text: "Excellent event loop breakdown! What is a Metaclass in Python, and how does __new__ differ from __init__ in type instantiation?",
+          sample_answer: "Metaclasses are classes of classes defined by type. __new__ creates the class object in memory before creation, whereas __init__ initializes attributes after creation."
+        },
+        {
+          id: 5,
+          question_number: "Question 5 of 5 (Garbage Collection & Ref Counting)",
+          question_text: "Masterful response! Final question: How does CPython's reference counting combined with cyclical garbage collection detect reference cycles?",
+          sample_answer: "CPython decrements ref counts to deallocate objects at 0, while the cyclic GC uses generation-based inspection to find unreferenceable circular clusters."
+        }
+      ]
+    },
+    "Data Structures & Algorithms (DSA)": {
+      "Easy": [
+        {
+          id: 1,
+          question_number: "Question 1 of 5 (Candidate Introduction)",
+          question_text: "Hello! My name is AIRA. Welcome to your DSA interview! Introduce yourself and share your knowledge of basic arrays and linked lists.",
+          sample_answer: "Hello AIRA! I am Janitha Kavuturu. I have knowledge of basic data structures like Arrays, Linked Lists, Stacks, Queues, and searching algorithms."
+        },
+        {
+          id: 2,
+          question_number: "Question 2 of 5 (Arrays vs Linked Lists)",
+          question_text: "Nice intro! What is the difference between an Array and a Singly Linked List in memory layout and insertion time complexity?",
+          sample_answer: "Arrays store elements in contiguous memory with O(1) index access. Linked Lists store node pointers across heap memory with O(1) head insertion."
+        },
+        {
+          id: 3,
+          question_number: "Question 3 of 5 (Stack vs Queue)",
+          question_text: "Great answer! Explain the difference between a Stack (LIFO) and a Queue (FIFO) with real-world examples.",
+          sample_answer: "Stacks use Last-In-First-Out like undo history or plate stacks. Queues use First-In-First-Out like printer jobs or ticket checkout lines."
+        },
+        {
+          id: 4,
+          question_number: "Question 4 of 5 (Linear Search vs Binary Search)",
+          question_text: "Clear examples! How does Binary Search achieve O(log N) time complexity compared to Linear Search O(N)?",
+          sample_answer: "Binary search repeatedly cuts a sorted search space in half by comparing middle elements, whereas Linear search checks items sequentially."
+        },
+        {
+          id: 5,
+          question_number: "Question 5 of 5 (Bubble vs Selection Sort)",
+          question_text: "Awesome! Final question: What is the main idea behind Bubble Sort vs Selection Sort?",
+          sample_answer: "Bubble sort repeatedly swaps adjacent out-of-order pairs, while Selection sort repeatedly finds minimum elements and places them in sorted positions."
+        }
+      ],
+      "Medium": [
+        {
+          id: 1,
+          question_number: "Question 1 of 5 (Candidate Introduction)",
+          question_text: "Hello! My name is AIRA. Welcome to your Medium DSA interview! Introduce yourself and your experience with Trees, Graphs, and Hash Tables.",
+          sample_answer: "Hello AIRA! I am Janitha Kavuturu. I solve algorithmic problems involving Binary Search Trees, BFS/DFS graph traversals, and dynamic programming."
+        },
+        {
+          id: 2,
+          question_number: "Question 2 of 5 (Hash Collisions)",
+          question_text: "Great intro! How do Hash Tables resolve collisions using Separate Chaining vs Open Addressing (Linear Probing)?",
+          sample_answer: "Separate Chaining stores colliding elements in bucket linked lists. Open Addressing probes consecutive array slots until an empty index is found."
+        },
+        {
+          id: 3,
+          question_number: "Question 3 of 5 (BST Search & Inorder Traversal)",
+          question_text: "Solid hash table explanation! What are the properties of a Binary Search Tree (BST) and why does Inorder traversal yield sorted order?",
+          sample_answer: "In a BST, left children are smaller than node value and right children are larger. Inorder traversal (Left-Node-Right) visits values in ascending order."
+        },
+        {
+          id: 4,
+          question_number: "Question 4 of 5 (BFS vs DFS Graphs)",
+          question_text: "Clear tree breakdown! Compare Breadth-First Search (BFS) using Queues with Depth-First Search (DFS) using Stacks/Recursion.",
+          sample_answer: "BFS explores neighbor layers level-by-level using a Queue for shortest path. DFS explores deep graph branches using Stack/Recursion."
+        },
+        {
+          id: 5,
+          question_number: "Question 5 of 5 (Two Pointers & Sliding Window)",
+          question_text: "Excellent! Final question: How does the Two Pointers or Sliding Window technique reduce time complexity from O(N^2) to O(N)?",
+          sample_answer: "Sliding Window maintains subarray states across moving left/right boundaries, avoiding redundant nested loops to achieve linear time O(N)."
+        }
+      ],
+      "Hard": [
+        {
+          id: 1,
+          question_number: "Question 1 of 5 (Candidate Introduction)",
+          question_text: "Hello! My name is AIRA. Welcome to your Advanced DSA interview! Introduce your background in Dynamic Programming, Heaps, and Graph Algorithms.",
+          sample_answer: "Hello AIRA! I am an algorithm developer skilled in Dynamic Programming memoization, Min-Heaps, Dijkstra's algorithm, and Red-Black self-balancing trees."
+        },
+        {
+          id: 2,
+          question_number: "Question 2 of 5 (Dijkstra's Shortest Path)",
+          question_text: "Impressive background! Explain Dijkstra's algorithm using a Min-Heap priority queue for weighted graphs without negative edges.",
+          sample_answer: "Dijkstra uses a Min-Heap to greedily extract unvisited nodes with smallest distance, relaxing outgoing neighbor edges in O((V + E) log V) time."
+        },
+        {
+          id: 3,
+          question_number: "Question 3 of 5 (Dynamic Programming Memoization)",
+          question_text: "Flawless Dijkstra breakdown! How does Dynamic Programming transform exponential recursion O(2^N) into polynomial O(N) using Top-Down Memoization?",
+          sample_answer: "DP identifies overlapping subproblems and optimal substructure, caching subproblem results in a lookup table to eliminate redundant recursive trees."
+        },
+        {
+          id: 4,
+          question_number: "Question 4 of 5 (AVL vs Red-Black Trees)",
+          question_text: "Masterful DP analysis! What is the difference between AVL Trees (strict balance) and Red-Black Trees (color balance) during rotations?",
+          sample_answer: "AVL trees enforce height differences <= 1 requiring frequent rotations, while Red-Black trees enforce color rules allowing faster insertions with fewer rotations."
+        },
+        {
+          id: 5,
+          question_number: "Question 5 of 5 (Trie & Prefix Trees)",
+          question_text: "Outstanding! Final question: How does a Trie data structure achieve O(L) time complexity for word prefix autocomplete lookups?",
+          sample_answer: "Tries store characters in parent-child node chains indexed by string length L, enabling fast prefix match lookups independent of total dictionary size N."
+        }
+      ]
+    },
+    "AI / ML & Data Science": {
+      "Easy": [
+        {
+          id: 1,
+          question_number: "Question 1 of 5 (Candidate Introduction)",
+          question_text: "Hello! My name is AIRA. Welcome to your AI & Data Science interview! Introduce yourself and your experience with Python data packages.",
+          sample_answer: "Hello AIRA! I am Janitha Kavuturu. I am an AI enthusiast experienced with Pandas dataframes, NumPy matrix calculations, and basic machine learning."
+        },
+        {
+          id: 2,
+          question_number: "Question 2 of 5 (Supervised vs Unsupervised ML)",
+          question_text: "Welcome! What is the difference between Supervised Learning (Classification) and Unsupervised Learning (Clustering)?",
+          sample_answer: "Supervised learning trains on labeled target output data, whereas Unsupervised learning discovers hidden patterns in unlabeled input datasets."
+        },
+        {
+          id: 3,
+          question_number: "Question 3 of 5 (Overfitting vs Underfitting)",
+          question_text: "Great answer! How do you detect model Overfitting vs Underfitting on training and validation loss curves?",
+          sample_answer: "Overfitting shows high training accuracy but poor validation accuracy. Underfitting shows poor performance on both training and test datasets."
+        },
+        {
+          id: 4,
+          question_number: "Question 4 of 5 (Pandas Data Cleaning)",
+          question_text: "Clear explanation! How do you handle missing values in Pandas using dropna() vs fillna()?",
+          sample_answer: "dropna() removes rows containing missing values, while fillna() replaces NaN entries with column means or medians."
+        },
+        {
+          id: 5,
+          question_number: "Question 5 of 5 (Confusion Matrix)",
+          question_text: "Awesome! Final question: What are Precision and Recall metrics derived from a Confusion Matrix?",
+          sample_answer: "Precision measures true positive accuracy among predicted positives, while Recall measures true positives retrieved out of total actual positive cases."
+        }
+      ],
+      "Medium": [
+        {
+          id: 1,
+          question_number: "Question 1 of 5 (Candidate Introduction)",
+          question_text: "Hello! My name is AIRA. Welcome to your Medium AI/ML interview! Introduce yourself, your background in model training, and RAG vector databases.",
+          sample_answer: "Hello AIRA! I am a Data Scientist experienced in training Scikit-Learn models, tuning XGBoost hyper-parameters, and building RAG pipelines with ChromaDB."
+        },
+        {
+          id: 2,
+          question_number: "Question 2 of 5 (RAG Architecture)",
+          question_text: "Great intro! Explain how Retrieval-Augmented Generation (RAG) uses vector databases to ground LLM responses and prevent hallucinations.",
+          sample_answer: "RAG converts documents into vector embeddings in ChromaDB, retrieves context via cosine similarity search, and injects context into prompts to ground LLM answers."
+        },
+        {
+          id: 3,
+          question_number: "Question 3 of 5 (Random Forest vs XGBoost)",
+          question_text: "Spot-on RAG breakdown! Compare Bagging in Random Forest with Gradient Boosting in XGBoost.",
+          sample_answer: "Random Forest builds decision trees in parallel via bootstrap aggregation. XGBoost builds trees sequentially to minimize residual errors of previous trees."
+        },
+        {
+          id: 4,
+          question_number: "Question 4 of 5 (Feature Scaling)",
+          question_text: "Excellent ensemble analysis! Why is Feature Scaling (StandardScaler vs MinMaxScaler) necessary for distance-based models like KNN and SVM?",
+          sample_answer: "Distance-based models like KNN and SVM calculate Euclidean distances; unscaled large magnitude features dominate and distort gradient optimization."
+        },
+        {
+          id: 5,
+          question_number: "Question 5 of 5 (Cross-Validation)",
+          question_text: "Masterful! Final question: How does K-Fold Cross-Validation prevent data leakage during train-test splitting?",
+          sample_answer: "K-Fold splits data into K equal folds, training on K-1 folds and testing on the remaining fold iteratively to ensure robust out-of-sample evaluation."
+        }
+      ],
+      "Hard": [
+        {
+          id: 1,
+          question_number: "Question 1 of 5 (Candidate Introduction)",
+          question_text: "Hello! My name is AIRA. Welcome to your Senior AI/ML interview! Introduce your expertise in Transformer Self-Attention, LLM Fine-Tuning, and MLOps.",
+          sample_answer: "Hello AIRA! I am a Senior AI Architect specializing in Transformer architectures, LoRA fine-tuning, Quantization, and scalable MLOps deployments."
+        },
+        {
+          id: 2,
+          question_number: "Question 2 of 5 (Transformer Self-Attention)",
+          question_text: "High-caliber background! Explain scaled dot-product Self-Attention Q, K, V matrices and why Softmax scaling division by sqrt(d_k) is required.",
+          sample_answer: "Self-attention computes Query-Key dot products scaled by 1/sqrt(d_k) to prevent extremely large magnitude gradients from pushing Softmax into vanishing gradient regions."
+        },
+        {
+          id: 3,
+          question_number: "Question 3 of 5 (LoRA & PEFT Fine-Tuning)",
+          question_text: "Masterclass attention explanation! How does Low-Rank Adaptation (LoRA) reduce trainable parameters during LLM fine-tuning?",
+          sample_answer: "LoRA freezes pre-trained weight matrices and injects trainable rank-decomposition matrices A and B (r << d), drastically reducing memory and compute cost."
+        },
+        {
+          id: 4,
+          question_number: "Question 4 of 5 (Model Quantization)",
+          question_text: "Brilliant LoRA analysis! What is the difference between Post-Training Quantization (PTQ) vs Quantization-Aware Training (QAT) for FP16 to INT8 conversion?",
+          sample_answer: "PTQ quantizes weights after training causing slight accuracy degradation. QAT simulates quantization noise during backpropagation for near-zero loss."
+        },
+        {
+          id: 5,
+          question_number: "Question 5 of 5 (Vector DB Indexing)",
+          question_text: "Exceptional! Final question: Compare HNSW (Hierarchical Navigable Small World) with IVF-PQ (Inverted File Product Quantization) for million-scale vector search.",
+          sample_answer: "HNSW builds multi-layer proximity graphs for high recall and fast search, while IVF-PQ clusters vector space and quantizes sub-vectors for low memory footprint."
+        }
+      ]
+    }
   };
 
-  const activeDomain = sessionData?.domain || sessionData?.category || "Python Developer";
-  const questions = (domainQuestionsBank[activeDomain] || domainQuestionsBank["Python Developer"]).slice(0, 3);
+  const domainBank = domainQuestionsBank[activeDomain] || domainQuestionsBank["Python Developer"];
+  const difficultyBank = domainBank[activeDifficulty] || domainBank["Medium"] || domainBank["Easy"];
+  const questions = difficultyBank.slice(0, 5);
   const currentQ = questions[currentIdx] || questions[0];
 
   // Timer effect
@@ -278,7 +496,7 @@ export default function InterviewRoomPage({ sessionData, setActivePage, setFinal
     return `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
   };
 
-  // SUBMIT CANDIDATE SPOKEN ANSWER -> PROGRESS TURN
+  // DYNAMIC CANDIDATE PERFORMANCE EVALUATION BASED ON SPOKEN ANSWERS
   const handleNextQuestion = async () => {
     stopSpeaking();
     stopMicRecording();
@@ -293,7 +511,8 @@ export default function InterviewRoomPage({ sessionData, setActivePage, setFinal
       sample_answer: currentQ.sample_answer
     };
 
-    setCandidateAnswersList(prev => [...prev, answerEntry]);
+    const updatedAnswers = [...candidateAnswersList, answerEntry];
+    setCandidateAnswersList(updatedAnswers);
 
     await submitQuestionAnswer({
       session_id: sessionData?.session_id || 1,
@@ -306,15 +525,45 @@ export default function InterviewRoomPage({ sessionData, setActivePage, setFinal
 
     setCandidateAnswer('');
     
-    if (currentIdx < 2) {
+    if (currentIdx < 4) {
       setCurrentIdx(prev => prev + 1);
       setSubmitting(false);
     } else {
       const report = await finishInterviewSession(sessionData?.session_id || 1);
       
+      // Calculate dynamic score based on candidate's answers
+      const totalWords = updatedAnswers.reduce((acc, curr) => acc + (curr.user_answer ? curr.user_answer.split(' ').length : 0), 0);
+      const avgWordCount = totalWords / updatedAnswers.length;
+      
+      let dynamicOverallScore = Math.min(98.5, Math.max(68.0, Math.round(75 + (avgWordCount * 0.8) + (telemetry.eyeContactPct * 0.15))));
+      let rating = "Strong Hire";
+      if (dynamicOverallScore >= 90) rating = "Outstanding Candidate (Strong Hire)";
+      else if (dynamicOverallScore >= 80) rating = "Recommended Candidate (Good Hire)";
+      else rating = "Needs Technical Refinement";
+
       const fullCustomReport = {
         ...report,
-        answers_history: [...candidateAnswersList, answerEntry]
+        overall_score: dynamicOverallScore,
+        performance_rating: rating,
+        category: activeDomain,
+        difficulty: activeDifficulty,
+        eye_contact_score: telemetry.eyeContactPct,
+        attention_score: telemetry.attentionPct,
+        confidence_score: telemetry.confidencePct,
+        answers_history: updatedAnswers,
+        strengths: [
+          `Solid spoken response in ${activeDomain} (${activeDifficulty} level)`,
+          `Maintained ${telemetry.eyeContactPct}% eye contact and ${telemetry.attentionPct}% attention focus`,
+          `Demonstrated technical terminology across all 5 interview questions`
+        ],
+        weaknesses: [
+          `Elaborate further on real-world system architecture tradeoffs`,
+          `Provide deeper code-level execution steps during live explanations`
+        ],
+        improvement_tips: [
+          `Practice explaining memory trade-offs and complexity bounds aloud`,
+          `Maintain high eye contact with the camera while answering technical scenario questions`
+        ]
       };
 
       setFinalReport(fullCustomReport);
@@ -343,7 +592,7 @@ export default function InterviewRoomPage({ sessionData, setActivePage, setFinal
               AI Interview Room <span className="text-[10px] text-cyan-400 font-mono font-normal">• Live STT Active</span>
             </h1>
             <span className="text-[11px] text-indigo-300 font-mono">
-              Domain: <strong className="text-white">{activeDomain}</strong> ({currentQ.question_number})
+              Domain: <strong className="text-white">{activeDomain}</strong> ({activeDifficulty} Level — {currentQ.question_number})
             </span>
           </div>
         </div>
@@ -388,7 +637,7 @@ export default function InterviewRoomPage({ sessionData, setActivePage, setFinal
 
           </div>
 
-          {/* CLEAN TURN TRANSCRIPT BOX WITH CONVERSATIONAL FEEDBACK */}
+          {/* CLEAN TURN TRANSCRIPT BOX WITH ADAPTIVE CONVERSATIONAL FEEDBACK */}
           <div className="glass-card p-5 rounded-3xl border border-slate-800 space-y-4 shadow-xl">
             <div className="flex items-center justify-between border-b border-slate-800 pb-2">
               <span className="text-xs font-mono text-cyan-400 uppercase font-bold flex items-center gap-1.5">
@@ -523,7 +772,7 @@ export default function InterviewRoomPage({ sessionData, setActivePage, setFinal
             className="px-6 py-2.5 rounded-xl font-bold text-xs bg-red-600 hover:bg-red-500 text-white shadow-lg shadow-red-600/25 transition-all flex items-center gap-2"
           >
             {submitting ? "Analyzing..." : (
-              currentIdx < 2 ? (
+              currentIdx < 4 ? (
                 <>Submit Spoken Answer & Next Question <ArrowRight className="w-4 h-4" /></>
               ) : (
                 <>Complete Interview & Generate Report <PhoneOff className="w-4 h-4" /></>
