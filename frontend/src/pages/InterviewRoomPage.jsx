@@ -14,6 +14,7 @@ export default function InterviewRoomPage({ sessionData, setActivePage, setFinal
   const [activePopup, setActivePopup] = useState(null);
   const [violationCount, setViolationCount] = useState(0);
   const [candidateAnswersList, setCandidateAnswersList] = useState([]);
+  const chatScrollRef = useRef(null);
 
   // DYNAMIC LIVE TELEMETRY BARS
   const [telemetry, setTelemetry] = useState({
@@ -36,14 +37,14 @@ export default function InterviewRoomPage({ sessionData, setActivePage, setFinal
         {
           id: 1,
           question_number: "Question 1 of 5 (Candidate Introduction)",
-          question_text: "Hello! My name is AIRA. Welcome to your Python developer interview! To start, please introduce yourself and summarize your experience writing basic Python scripts.",
-          sample_answer: "Hello AIRA! I am Janitha Kavuturu. I am a Python developer with experience writing clean scripts, working with data structures like lists and dictionaries, and writing functions."
+          question_text: "Hello! My name is AIRA, your AI Interviewer. To get started, please introduce yourself and summarize your experience writing Python code.",
+          sample_answer: "Hello AIRA! I am Janitha Kavuturu. I am a Python developer with experience writing clean Python scripts, working with data structures like lists and dictionaries, and building web applications."
         },
         {
           id: 2,
           question_number: "Question 2 of 5 (Lists vs Tuples)",
-          question_text: "Speaking of basic data structures: What is the main difference between Python Lists and Tuples? Why choose a Tuple?",
-          sample_answer: "Lists are mutable and defined with square brackets. Tuples are immutable and defined with parentheses, making them faster and read-only."
+          question_text: "What is the key difference between Python Lists and Tuples, and when would you use a Dictionary?",
+          sample_answer: "Lists are mutable and defined with square brackets, while Tuples are immutable and defined with parentheses. Dictionaries store key-value pairs for fast lookups."
         },
         {
           id: 3,
@@ -60,7 +61,7 @@ export default function InterviewRoomPage({ sessionData, setActivePage, setFinal
         {
           id: 5,
           question_number: "Question 5 of 5 (List Comprehensions)",
-          question_text: "Explain what List Comprehension is and write a quick one-line example filter.",
+          question_text: "Explain what List Comprehension is in Python and why it is useful.",
           sample_answer: "List comprehension offers a compact one-line syntax to filter and transform iterables, like [x for x in numbers if x % 2 == 0]."
         }
       ],
@@ -68,7 +69,7 @@ export default function InterviewRoomPage({ sessionData, setActivePage, setFinal
         {
           id: 1,
           question_number: "Question 1 of 5 (Candidate Introduction)",
-          question_text: "Hello! My name is AIRA. Welcome to your Medium-level Python interview! Please introduce yourself, your experience with OOP, and your core projects.",
+          question_text: "Hello! My name is AIRA, your AI Interviewer. Welcome to your Medium-level Python interview! Please introduce yourself, your experience with OOP, and your core projects.",
           sample_answer: "Hello AIRA! I am Janitha Kavuturu. I build Python applications using object-oriented principles, modular packages, and FastAPI backend frameworks."
         },
         {
@@ -100,7 +101,7 @@ export default function InterviewRoomPage({ sessionData, setActivePage, setFinal
         {
           id: 1,
           question_number: "Question 1 of 5 (Candidate Introduction)",
-          question_text: "Hello! My name is AIRA. Welcome to your Senior-level Python interview! Introduce yourself and detail your experience with concurrency and Python internals.",
+          question_text: "Hello! My name is AIRA, your AI Interviewer. Welcome to your Senior Python interview! Introduce yourself and detail your experience with concurrency and Python internals.",
           sample_answer: "Hello AIRA! I am a senior Python engineer experienced in asyncio concurrency, GIL bottlenecks, metaprogramming, and high-throughput microservices."
         },
         {
@@ -134,7 +135,7 @@ export default function InterviewRoomPage({ sessionData, setActivePage, setFinal
         {
           id: 1,
           question_number: "Question 1 of 5 (Candidate Introduction)",
-          question_text: "Hello! My name is AIRA. Welcome to your DSA interview! Introduce yourself and share your knowledge of basic arrays and linked lists.",
+          question_text: "Hello! My name is AIRA, your AI Interviewer. Welcome to your DSA interview! Introduce yourself and share your knowledge of basic arrays and linked lists.",
           sample_answer: "Hello AIRA! I am Janitha Kavuturu. I have knowledge of basic data structures like Arrays, Linked Lists, Stacks, Queues, and searching algorithms."
         },
         {
@@ -166,7 +167,7 @@ export default function InterviewRoomPage({ sessionData, setActivePage, setFinal
         {
           id: 1,
           question_number: "Question 1 of 5 (Candidate Introduction)",
-          question_text: "Hello! My name is AIRA. Welcome to your Medium DSA interview! Introduce yourself and your experience with Trees, Graphs, and Hash Tables.",
+          question_text: "Hello! My name is AIRA, your AI Interviewer. Welcome to your Medium DSA interview! Introduce yourself and your experience with Trees, Graphs, and Hash Tables.",
           sample_answer: "Hello AIRA! I am Janitha Kavuturu. I solve algorithmic problems involving Binary Search Trees, BFS/DFS graph traversals, and dynamic programming."
         },
         {
@@ -198,7 +199,7 @@ export default function InterviewRoomPage({ sessionData, setActivePage, setFinal
         {
           id: 1,
           question_number: "Question 1 of 5 (Candidate Introduction)",
-          question_text: "Hello! My name is AIRA. Welcome to your Advanced DSA interview! Introduce your background in Dynamic Programming, Heaps, and Graph Algorithms.",
+          question_text: "Hello! My name is AIRA, your AI Interviewer. Welcome to your Advanced DSA interview! Introduce your background in Dynamic Programming, Heaps, and Graph Algorithms.",
           sample_answer: "Hello AIRA! I am an algorithm developer skilled in Dynamic Programming memoization, Min-Heaps, Dijkstra's algorithm, and Red-Black self-balancing trees."
         },
         {
@@ -232,7 +233,7 @@ export default function InterviewRoomPage({ sessionData, setActivePage, setFinal
         {
           id: 1,
           question_number: "Question 1 of 5 (Candidate Introduction)",
-          question_text: "Hello! My name is AIRA. Welcome to your AI & Data Science interview! Introduce yourself and your experience with Python data packages.",
+          question_text: "Hello! My name is AIRA, your AI Interviewer. Welcome to your AI & Data Science interview! Introduce yourself and your experience with Python data packages.",
           sample_answer: "Hello AIRA! I am Janitha Kavuturu. I am an AI enthusiast experienced with Pandas dataframes, NumPy matrix calculations, and basic machine learning."
         },
         {
@@ -264,7 +265,7 @@ export default function InterviewRoomPage({ sessionData, setActivePage, setFinal
         {
           id: 1,
           question_number: "Question 1 of 5 (Candidate Introduction)",
-          question_text: "Hello! My name is AIRA. Welcome to your Medium AI/ML interview! Introduce yourself, your background in model training, and RAG vector databases.",
+          question_text: "Hello! My name is AIRA, your AI Interviewer. Welcome to your Medium AI/ML interview! Introduce yourself, your background in model training, and RAG vector databases.",
           sample_answer: "Hello AIRA! I am a Data Scientist experienced in training Scikit-Learn models, tuning XGBoost hyper-parameters, and building RAG pipelines with ChromaDB."
         },
         {
@@ -296,7 +297,7 @@ export default function InterviewRoomPage({ sessionData, setActivePage, setFinal
         {
           id: 1,
           question_number: "Question 1 of 5 (Candidate Introduction)",
-          question_text: "Hello! My name is AIRA. Welcome to your Senior AI/ML interview! Introduce your expertise in Transformer Self-Attention, LLM Fine-Tuning, and MLOps.",
+          question_text: "Hello! My name is AIRA, your AI Interviewer. Welcome to your Senior AI/ML interview! Introduce your expertise in Transformer Self-Attention, LLM Fine-Tuning, and MLOps.",
           sample_answer: "Hello AIRA! I am a Senior AI Architect specializing in Transformer architectures, LoRA fine-tuning, Quantization, and scalable MLOps deployments."
         },
         {
@@ -332,8 +333,15 @@ export default function InterviewRoomPage({ sessionData, setActivePage, setFinal
   const questions = difficultyBank.slice(0, 5);
   const currentQ = questions[currentIdx] || questions[0];
 
-  // Current AIRA Prompt text (includes dynamic adaptive feedback depending on whether candidate spoke or skipped)
-  const [activePromptText, setActivePromptText] = useState(currentQ.question_text);
+  // REAL-TIME CONTINUOUS CONVERSATION THREAD CHAT HISTORY (MATCHING SCREENSHOT)
+  const [chatThread, setChatThread] = useState([
+    {
+      id: 1,
+      sender: 'INTERVIEWER',
+      text: currentQ.question_text,
+      type: 'interviewer'
+    }
+  ]);
 
   // Timer effect
   useEffect(() => {
@@ -341,10 +349,12 @@ export default function InterviewRoomPage({ sessionData, setActivePage, setFinal
     return () => clearInterval(timer);
   }, []);
 
-  // Update active prompt when question changes
+  // Auto-scroll chat thread to bottom
   useEffect(() => {
-    setActivePromptText(currentQ.question_text);
-  }, [currentIdx]);
+    if (chatScrollRef.current) {
+      chatScrollRef.current.scrollTop = chatScrollRef.current.scrollHeight;
+    }
+  }, [chatThread, candidateAnswer]);
 
   // REAL PROCTORING VIOLATION HANDLER (ONLY TRIGGERS WHEN CANDIDATE ACTUALLY SWITCHES BROWSER TABS)
   const triggerProctoringViolation = (reasonText) => {
@@ -411,7 +421,7 @@ export default function InterviewRoomPage({ sessionData, setActivePage, setFinal
         window.speechSynthesis.cancel();
         window.speechSynthesis.resume();
 
-        const utterance = new SpeechSynthesisUtterance(textToSpeak || activePromptText);
+        const utterance = new SpeechSynthesisUtterance(textToSpeak || currentQ.question_text);
         utterance.rate = 0.95;
         utterance.pitch = 1.05;
         utterance.lang = 'en-US';
@@ -437,10 +447,10 @@ export default function InterviewRoomPage({ sessionData, setActivePage, setFinal
 
   useEffect(() => {
     const timeout = setTimeout(() => {
-      speakQuestion(activePromptText);
+      speakQuestion(currentQ.question_text);
     }, 400);
     return () => clearTimeout(timeout);
-  }, [currentIdx, activePromptText]);
+  }, [currentIdx]);
 
   const stopSpeaking = () => {
     if ('speechSynthesis' in window) {
@@ -504,7 +514,7 @@ export default function InterviewRoomPage({ sessionData, setActivePage, setFinal
     return `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
   };
 
-  // SMART EVALUATION: CHECKS IF CANDIDATE ACTUALLY SPOKE OR SKIPPED BEFORE PRAISING!
+  // REAL-TIME AI AGENT SUBMIT TURN HANDLER (BUILD CONVERSATION THREAD MATCHING SCREENSHOT)
   const handleNextQuestion = async () => {
     stopSpeaking();
     stopMicRecording();
@@ -512,7 +522,17 @@ export default function InterviewRoomPage({ sessionData, setActivePage, setFinal
 
     const spokenText = candidateAnswer.trim();
     const isAnswerProvided = spokenText.length > 0;
-    const finalAnswerText = isAnswerProvided ? spokenText : "[No spoken answer provided by candidate]";
+    const finalAnswerText = isAnswerProvided ? spokenText : "[No spoken answer provided]";
+
+    // Append Candidate Answer Bubble (YOU) to Chat Thread
+    const candidateBubble = {
+      id: Date.now(),
+      sender: 'YOU',
+      text: finalAnswerText,
+      type: 'candidate'
+    };
+
+    setChatThread(prev => [...prev, candidateBubble]);
 
     const answerEntry = {
       q_num: currentIdx + 1,
@@ -540,33 +560,40 @@ export default function InterviewRoomPage({ sessionData, setActivePage, setFinal
       const nextQObj = questions[currentIdx + 1];
       let prefixPraise = "";
 
-      // ACCURATE CONVERSATIONAL ADAPTABILITY:
       if (!isAnswerProvided) {
-        // If candidate provided NO answer:
-        prefixPraise = "I notice you didn't speak an answer for that question. Please make sure to speak your answer aloud into your microphone! Let's move on to our next question: ";
+        prefixPraise = "I notice you didn't speak an answer for that question. Please make sure to speak your answer aloud into your microphone! Moving on to our next question: ";
       } else if (spokenText.split(' ').length < 5) {
-        // If candidate provided a very brief/short answer:
         prefixPraise = "Thanks for that brief response! Let's build further on that. Next question: ";
       } else {
-        // Only praise IF candidate provided a detailed answer (>= 5 words)!
-        prefixPraise = "Nice! Good explanation of that concept! You are doing well. Now for our next question: ";
+        prefixPraise = "That's a solid explanation! Great realization to have. Now for our next question: ";
       }
 
-      setActivePromptText(`${prefixPraise}${nextQObj.question_text}`);
+      const nextInterviewerText = `${prefixPraise}${nextQObj.question_text}`;
+
+      // Append Next Interviewer Question Bubble (INTERVIEWER) to Chat Thread
+      setTimeout(() => {
+        const interviewerBubble = {
+          id: Date.now() + 1,
+          sender: 'INTERVIEWER',
+          text: nextInterviewerText,
+          type: 'interviewer'
+        };
+        setChatThread(prev => [...prev, interviewerBubble]);
+        speakQuestion(nextInterviewerText);
+      }, 400);
+
       setCurrentIdx(prev => prev + 1);
       setSubmitting(false);
     } else {
       const report = await finishInterviewSession(sessionData?.session_id || 1);
       
-      // Calculate ACCURATE dynamic score based on ACTUAL spoken answers!
       const answeredCount = updatedAnswers.filter(a => a.is_answered).length;
       const totalWords = updatedAnswers.reduce((acc, curr) => acc + (curr.is_answered ? curr.user_answer.split(' ').length : 0), 0);
       
       let dynamicOverallScore = 50.0;
       if (answeredCount === 0) {
-        dynamicOverallScore = 45.0; // Completely unanswered
+        dynamicOverallScore = 45.0;
       } else {
-        // Base score calculated from answered ratio + average word count + eye contact telemetry
         const completionPct = (answeredCount / 5) * 50;
         const depthPct = Math.min(30, (totalWords / 5) * 1.5);
         const visionPct = (telemetry.eyeContactPct / 100) * 20;
@@ -592,7 +619,7 @@ export default function InterviewRoomPage({ sessionData, setActivePage, setFinal
         strengths: answeredCount > 0 ? [
           `Answered ${answeredCount} out of 5 questions in ${activeDomain} (${activeDifficulty} level)`,
           `Maintained ${telemetry.eyeContactPct}% eye contact and ${telemetry.attentionPct}% attention focus`,
-          `Demonstrated microphone communication during technical turns`
+          `Demonstrated microphone communication across real-time AI agent turns`
         ] : [
           `Attempted 5-question proctored interview session`,
           `Webcam and microphone hardware connected successfully`
@@ -617,7 +644,7 @@ export default function InterviewRoomPage({ sessionData, setActivePage, setFinal
   };
 
   return (
-    <div className="max-w-7xl mx-auto px-4 py-4 space-y-6 pb-20 relative">
+    <div className="max-w-7xl mx-auto px-4 py-4 space-y-6 pb-20 relative bg-slate-950 min-h-screen text-slate-100 font-sans">
       
       {/* REAL-TIME AI PROCTORING WARNING TOAST */}
       {activePopup && (
@@ -633,7 +660,7 @@ export default function InterviewRoomPage({ sessionData, setActivePage, setFinal
           <div className="w-3 h-3 rounded-full bg-red-500 animate-ping"></div>
           <div>
             <h1 className="text-sm font-bold text-white uppercase tracking-wider flex items-center gap-2">
-              AI Interview Room <span className="text-[10px] text-cyan-400 font-mono font-normal">• Live STT Active</span>
+              Real-Time AI Interview Agent <span className="text-[10px] text-cyan-400 font-mono font-normal">• Live Conversation Stream</span>
             </h1>
             <span className="text-[11px] text-indigo-300 font-mono">
               Domain: <strong className="text-white">{activeDomain}</strong> ({activeDifficulty} Level — {currentQ.question_number})
@@ -654,69 +681,70 @@ export default function InterviewRoomPage({ sessionData, setActivePage, setFinal
         </div>
       </div>
 
-      {/* MAIN TWO-COLUMN LAYOUT: LEFT (AIRA + CLEAN TURN TRANSCRIPT), RIGHT (WEBCAM + TELEMETRY BARS) */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+      {/* MAIN LAYOUT: CENTER REAL-TIME CONVERSATION CHAT THREAD (MATCHING USER SCREENSHOT EXACTLY) + RIGHT WEBCAM */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
         
-        {/* LEFT COLUMN: AIRA AI CHARACTER & CLEAN TURN TRANSCRIPT BOX (8 COLS) */}
-        <div className="lg:col-span-8 space-y-6">
-          
-          {/* Animated AI Character Center Panel */}
-          <div className="glass-card p-6 rounded-3xl border border-slate-800 bg-slate-950/90 flex flex-col items-center justify-center text-center space-y-3 relative min-h-[220px]">
+        {/* CENTER MAIN PANEL: REAL-TIME AI AGENT CONVERSATION THREAD (8 COLS - MATCHING SCREENSHOT) */}
+        <div className="lg:col-span-8 space-y-4">
+          <div className="glass-card p-6 rounded-3xl border border-slate-800 bg-slate-950/95 h-[520px] flex flex-col justify-between shadow-2xl">
             
-            {/* Glowing AI Ring */}
-            <div className={`w-24 h-24 rounded-full bg-gradient-to-tr from-indigo-600 via-cyan-400 to-emerald-400 p-1 shadow-2xl transition-all ${
-              isSpeaking ? 'animate-pulse ring-8 ring-cyan-500/30 scale-105' : ''
-            }`}>
-              <div className="w-full h-full bg-slate-950 rounded-full flex items-center justify-center text-cyan-400">
-                <Bot className="w-12 h-12" />
-              </div>
-            </div>
-
-            <div>
-              <h2 className="text-base font-bold text-white tracking-wide">AIRA</h2>
-              <p className="text-xs font-mono text-cyan-400 mt-0.5">
-                {isSpeaking ? "AIRA is speaking question..." : isRecording ? "AIRA is listening to your answer..." : "Evaluating response..."}
-              </p>
-            </div>
-
-          </div>
-
-          {/* CLEAN TURN TRANSCRIPT BOX WITH ACCURATE ADAPTIVE FEEDBACK */}
-          <div className="glass-card p-5 rounded-3xl border border-slate-800 space-y-4 shadow-xl">
-            <div className="flex items-center justify-between border-b border-slate-800 pb-2">
-              <span className="text-xs font-mono text-cyan-400 uppercase font-bold flex items-center gap-1.5">
-                <MessageSquare className="w-4 h-4 text-amber-400" /> Live Transcript Stream
+            {/* Thread Header */}
+            <div className="flex items-center justify-between border-b border-slate-800 pb-3 shrink-0">
+              <span className="text-xs font-mono text-cyan-400 uppercase font-bold flex items-center gap-2">
+                <MessageSquare className="w-4 h-4 text-amber-400" /> Real-Time AI Agent Conversation Thread
               </span>
               <span className="text-[10px] text-emerald-400 font-mono flex items-center gap-1">
-                <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping"></span> Real-time STT Active
+                <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping"></span> AIRA AI Agent Active
               </span>
             </div>
 
-            <div className="space-y-3 font-sans text-xs">
-              
-              {/* TOP BOX: IRA QUESTION WITH DYNAMIC ADAPTIVE PROMPT */}
-              <div className="p-3.5 rounded-2xl bg-slate-900/90 border border-slate-800 space-y-1">
-                <span className="text-[10px] font-mono text-cyan-400 uppercase tracking-wider font-bold">
-                  IRA (INTERVIEWER QUESTION & CONVERSATIONAL RESPONSE):
-                </span>
-                <p className="text-slate-200 text-xs font-semibold leading-relaxed">
-                  "{activePromptText}"
-                </p>
-              </div>
+            {/* Scrollable Conversation Chat History (Matching Screenshot Bubbles & Flow Exactly) */}
+            <div 
+              ref={chatScrollRef}
+              className="flex-1 overflow-y-auto pr-3 py-4 space-y-5 font-sans text-xs"
+            >
+              {chatThread.map((msg) => (
+                <div 
+                  key={msg.id} 
+                  className={`flex flex-col space-y-1.5 ${
+                    msg.type === 'candidate' ? 'items-end' : 'items-start'
+                  }`}
+                >
+                  <span className={`text-[10px] font-mono uppercase tracking-wider font-bold ${
+                    msg.type === 'candidate' ? 'text-amber-400/90 pr-2' : 'text-slate-400 pl-2'
+                  }`}>
+                    {msg.sender}
+                  </span>
+                  
+                  <div className={`p-4 rounded-2xl max-w-[88%] leading-relaxed shadow-xl text-xs font-sans ${
+                    msg.type === 'candidate'
+                      ? 'bg-amber-950/80 border border-amber-600/40 text-amber-100 rounded-tr-none'
+                      : 'bg-slate-900/90 border border-slate-800 text-slate-200 rounded-tl-none'
+                  }`}>
+                    {msg.text}
+                  </div>
+                </div>
+              ))}
 
-              {/* BOTTOM BOX: CANDIDATE SPOKEN ANSWER */}
-              <div className="p-3.5 rounded-2xl bg-indigo-950/40 border border-indigo-500/30 space-y-1 max-h-24 overflow-y-auto">
-                <span className="text-[10px] font-mono text-amber-400 uppercase tracking-wider font-bold">
-                  YOU (CANDIDATE SPOKEN ANSWER):
-                </span>
-                <p className="text-slate-200 italic text-[11px] leading-snug">
-                  {candidateAnswer || "Speak your answer aloud into your microphone (transcribes here in real-time as you talk)..."}
-                </p>
-              </div>
-
+              {/* Real-time Candidate Spoken Transcript Preview */}
+              {candidateAnswer && (
+                <div className="flex flex-col items-end space-y-1.5 animate-pulse">
+                  <span className="text-[10px] font-mono text-amber-400 uppercase tracking-wider font-bold pr-2">
+                    YOU (SPEAKING LIVE...):
+                  </span>
+                  <div className="p-4 rounded-2xl bg-amber-950/90 border border-amber-500/50 text-amber-100 max-w-[88%] italic">
+                    "{candidateAnswer}"
+                  </div>
+                </div>
+              )}
             </div>
-          </div>
 
+            {/* Thread Footer Prompt */}
+            <div className="pt-3 border-t border-slate-800 text-[11px] font-mono text-slate-400 text-center shrink-0">
+              {isSpeaking ? "AIRA AI Agent is speaking prompt..." : "Speak into your microphone, then click Submit Answer to send turn."}
+            </div>
+
+          </div>
         </div>
 
         {/* RIGHT COLUMN: CANDIDATE WEBCAM & DYNAMIC LIVE VISION TELEMETRY BARS (4 COLS) */}
@@ -729,63 +757,51 @@ export default function InterviewRoomPage({ sessionData, setActivePage, setFinal
             />
           </div>
 
-          {/* DYNAMIC LIVE TELEMETRY BARS */}
-          <div className="glass-card p-5 rounded-3xl border border-slate-800 space-y-3.5 shadow-xl">
+          {/* DYNAMIC TELEMETRY BARS */}
+          <div className="glass-card p-5 rounded-3xl border border-slate-800 space-y-3.5 shadow-xl bg-slate-950/90">
             <div className="flex items-center justify-between border-b border-slate-800 pb-2">
-              <span className="text-xs font-mono text-slate-300 font-bold uppercase">Live Vision Telemetry</span>
-              <span className="text-[10px] font-mono text-emerald-400 flex items-center gap-1">
-                <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping"></span> FACE ASSESSMENT - LIVE
-              </span>
+              <span className="text-[11px] font-mono text-slate-400 font-bold uppercase tracking-wider">Face Assessment - Live</span>
             </div>
 
             {/* Metric 1: Eye Contact */}
             <div className="space-y-1">
               <div className="flex justify-between text-[11px] font-mono">
-                <span className="text-slate-400">Eye Contact</span>
-                <span className="text-cyan-400 font-bold font-mono">{telemetry.eyeContactPct}%</span>
+                <span className="text-slate-400">EYE CONTACT</span>
+                <span className="text-purple-400 font-bold font-mono">{telemetry.eyeContactPct}</span>
               </div>
               <div className="w-full bg-slate-900 h-2 rounded-full overflow-hidden">
-                <div className="bg-cyan-400 h-full rounded-full transition-all duration-500" style={{ width: `${telemetry.eyeContactPct}%` }} />
+                <div className="bg-purple-500 h-full rounded-full transition-all duration-500" style={{ width: `${telemetry.eyeContactPct}%` }} />
               </div>
             </div>
 
             {/* Metric 2: Attention */}
             <div className="space-y-1">
               <div className="flex justify-between text-[11px] font-mono">
-                <span className="text-slate-400">Attention Level</span>
-                <span className="text-indigo-400 font-bold font-mono">{telemetry.attentionPct}%</span>
+                <span className="text-slate-400">ATTENTION</span>
+                <span className="text-purple-400 font-bold font-mono">{telemetry.attentionPct}</span>
               </div>
               <div className="w-full bg-slate-900 h-2 rounded-full overflow-hidden">
-                <div className="bg-indigo-400 h-full rounded-full transition-all duration-500" style={{ width: `${telemetry.attentionPct}%` }} />
+                <div className="bg-purple-500 h-full rounded-full transition-all duration-500" style={{ width: `${telemetry.attentionPct}%` }} />
               </div>
             </div>
 
-            {/* Metric 3: Confidence */}
+            {/* Metric 3: Engagement */}
             <div className="space-y-1">
               <div className="flex justify-between text-[11px] font-mono">
-                <span className="text-slate-400">Confidence Score</span>
-                <span className="text-emerald-400 font-bold font-mono">{telemetry.confidencePct}%</span>
+                <span className="text-slate-400">ENGAGEMENT</span>
+                <span className="text-purple-400 font-bold font-mono">{telemetry.confidencePct}</span>
               </div>
               <div className="w-full bg-slate-900 h-2 rounded-full overflow-hidden">
-                <div className="bg-emerald-400 h-full rounded-full transition-all duration-500" style={{ width: `${telemetry.confidencePct}%` }} />
-              </div>
-            </div>
-
-            {/* Metric 4: Face Presence */}
-            <div className="space-y-1">
-              <div className="flex justify-between text-[11px] font-mono">
-                <span className="text-slate-400">Face Presence</span>
-                <span className="text-purple-400 font-bold font-mono">{telemetry.presencePct}%</span>
-              </div>
-              <div className="w-full bg-slate-900 h-2 rounded-full overflow-hidden">
-                <div className="bg-purple-400 h-full rounded-full transition-all duration-500" style={{ width: `${telemetry.presencePct}%` }} />
+                <div className="bg-purple-500 h-full rounded-full transition-all duration-500" style={{ width: `${telemetry.confidencePct}%` }} />
               </div>
             </div>
 
             {/* Emotion Detector */}
             <div className="pt-2 border-t border-slate-800 flex justify-between text-[11px] font-mono text-slate-400">
-              <span>Emotion Detector:</span>
-              <span className="text-emerald-400 font-bold font-mono">{telemetry.emotion}</span>
+              <span className="flex items-center gap-1">ℹ EMOTION</span>
+              <span className="text-amber-300 font-bold font-mono flex items-center gap-1">
+                🙂 {telemetry.emotion}
+              </span>
             </div>
           </div>
 
@@ -813,11 +829,11 @@ export default function InterviewRoomPage({ sessionData, setActivePage, setFinal
           <button
             onClick={handleNextQuestion}
             disabled={submitting}
-            className="px-6 py-2.5 rounded-xl font-bold text-xs bg-red-600 hover:bg-red-500 text-white shadow-lg shadow-red-600/25 transition-all flex items-center gap-2"
+            className="px-6 py-2.5 rounded-xl font-bold text-xs bg-indigo-600 hover:bg-indigo-500 text-white shadow-lg transition-all flex items-center gap-2"
           >
-            {submitting ? "Analyzing..." : (
+            {submitting ? "Analyzing Response..." : (
               currentIdx < 4 ? (
-                <>Submit Spoken Answer & Next Question <ArrowRight className="w-4 h-4" /></>
+                <>Submit Spoken Answer & Continue Conversation <ArrowRight className="w-4 h-4" /></>
               ) : (
                 <>Complete Interview & Generate Report <PhoneOff className="w-4 h-4" /></>
               )
