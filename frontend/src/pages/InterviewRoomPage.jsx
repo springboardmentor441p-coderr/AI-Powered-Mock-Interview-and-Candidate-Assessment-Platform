@@ -42,25 +42,25 @@ export default function InterviewRoomPage({ sessionData, setActivePage, setFinal
         {
           id: 2,
           question_number: "Question 2 of 5 (Lists vs Tuples)",
-          question_text: "Nice intro! Speaking of basic data structures: What is the main difference between Python Lists and Tuples? Why choose a Tuple?",
+          question_text: "Speaking of basic data structures: What is the main difference between Python Lists and Tuples? Why choose a Tuple?",
           sample_answer: "Lists are mutable and defined with square brackets. Tuples are immutable and defined with parentheses, making them faster and read-only."
         },
         {
           id: 3,
           question_number: "Question 3 of 5 (Python Dictionaries)",
-          question_text: "Great answer on mutability! Following up on that: How do Python Dictionaries work, and how do you retrieve values safely using get()?",
+          question_text: "How do Python Dictionaries work, and how do you retrieve values safely using get()?",
           sample_answer: "Dictionaries store key-value pairs indexed by hashable keys. The get() method returns a default value if a key doesn't exist without raising KeyError."
         },
         {
           id: 4,
           question_number: "Question 4 of 5 (Control Flow & Loops)",
-          question_text: "Clear explanation! Now, what is the difference between range() and enumerate() when iterating through lists in a for loop?",
+          question_text: "What is the difference between range() and enumerate() when iterating through lists in a for loop?",
           sample_answer: "range() generates numbers, whereas enumerate() yields both index numbers and item values simultaneously during iteration."
         },
         {
           id: 5,
           question_number: "Question 5 of 5 (List Comprehensions)",
-          question_text: "Excellent response! For our final question: Explain what List Comprehension is and write a quick one-line example filter.",
+          question_text: "Explain what List Comprehension is and write a quick one-line example filter.",
           sample_answer: "List comprehension offers a compact one-line syntax to filter and transform iterables, like [x for x in numbers if x % 2 == 0]."
         }
       ],
@@ -74,25 +74,25 @@ export default function InterviewRoomPage({ sessionData, setActivePage, setFinal
         {
           id: 2,
           question_number: "Question 2 of 5 (OOP & Decorators)",
-          question_text: "Solid intro! You mentioned OOP. What is a Python Decorator, and how does @classmethod differ from @staticmethod in a class?",
+          question_text: "What is a Python Decorator, and how does @classmethod differ from @staticmethod in a class?",
           sample_answer: "Decorators wrap functions to extend behavior. @classmethod receives cls as first argument, while @staticmethod behaves like a regular function without self or cls."
         },
         {
           id: 3,
           question_number: "Question 3 of 5 (Generators & Memory)",
-          question_text: "Great distinction! Since performance matters: How do Python Generators using yield save memory compared to returning regular lists?",
+          question_text: "How do Python Generators using yield save memory compared to returning regular lists?",
           sample_answer: "Generators evaluate items lazily one at a time using yield iterators, keeping memory consumption low O(1) compared to loading large lists into RAM."
         },
         {
           id: 4,
           question_number: "Question 4 of 5 (Exception Handling)",
-          question_text: "Awesome answer on lazy evaluation! How do try-except-else-finally blocks work when handling resource cleanups?",
+          question_text: "How do try-except-else-finally blocks work when handling resource cleanups?",
           sample_answer: "try runs code, except catches errors, else executes if no exceptions occur, and finally ALWAYS runs to release open file/DB handles."
         },
         {
           id: 5,
           question_number: "Question 5 of 5 (Context Managers)",
-          question_text: "Impressive! For our final question: Explain how the 'with' statement works under the hood using __enter__ and __exit__ dunder methods.",
+          question_text: "Explain how the 'with' statement works under the hood using __enter__ and __exit__ dunder methods.",
           sample_answer: "The 'with' statement invokes __enter__ to acquire resources and automatically calls __exit__ to guarantee cleanup even if exceptions occur."
         }
       ],
@@ -106,25 +106,25 @@ export default function InterviewRoomPage({ sessionData, setActivePage, setFinal
         {
           id: 2,
           question_number: "Question 2 of 5 (Python GIL & Multi-threading)",
-          question_text: "Powerful background! Explain how the Global Interpreter Lock (GIL) impacts CPU-bound vs I/O-bound tasks in multi-threading vs multiprocessing.",
+          question_text: "Explain how the Global Interpreter Lock (GIL) impacts CPU-bound vs I/O-bound tasks in multi-threading vs multiprocessing.",
           sample_answer: "The GIL prevents multi-threaded CPython from executing CPU-bound bytecode in parallel. CPU-bound tasks require multiprocessing, while I/O-bound tasks benefit from threading/asyncio."
         },
         {
           id: 3,
           question_number: "Question 3 of 5 (Asyncio Event Loops)",
-          question_text: "Spot-on GIL analysis! How does asyncio's cooperative event loop manage non-blocking socket I/O using async and await keywords?",
+          question_text: "How does asyncio's cooperative event loop manage non-blocking socket I/O using async and await keywords?",
           sample_answer: "Asyncio runs a single-threaded event loop that pauses tasks at yield points (await) during socket I/O and context-switches to ready tasks without OS thread overhead."
         },
         {
           id: 4,
           question_number: "Question 4 of 5 (Metaclasses)",
-          question_text: "Excellent event loop breakdown! What is a Metaclass in Python, and how does __new__ differ from __init__ in type instantiation?",
+          question_text: "What is a Metaclass in Python, and how does __new__ differ from __init__ in type instantiation?",
           sample_answer: "Metaclasses are classes of classes defined by type. __new__ creates the class object in memory before creation, whereas __init__ initializes attributes after creation."
         },
         {
           id: 5,
           question_number: "Question 5 of 5 (Garbage Collection & Ref Counting)",
-          question_text: "Masterful response! Final question: How does CPython's reference counting combined with cyclical garbage collection detect reference cycles?",
+          question_text: "How does CPython's reference counting combined with cyclical garbage collection detect reference cycles?",
           sample_answer: "CPython decrements ref counts to deallocate objects at 0, while the cyclic GC uses generation-based inspection to find unreferenceable circular clusters."
         }
       ]
@@ -140,25 +140,25 @@ export default function InterviewRoomPage({ sessionData, setActivePage, setFinal
         {
           id: 2,
           question_number: "Question 2 of 5 (Arrays vs Linked Lists)",
-          question_text: "Nice intro! What is the difference between an Array and a Singly Linked List in memory layout and insertion time complexity?",
+          question_text: "What is the difference between an Array and a Singly Linked List in memory layout and insertion time complexity?",
           sample_answer: "Arrays store elements in contiguous memory with O(1) index access. Linked Lists store node pointers across heap memory with O(1) head insertion."
         },
         {
           id: 3,
           question_number: "Question 3 of 5 (Stack vs Queue)",
-          question_text: "Great answer! Explain the difference between a Stack (LIFO) and a Queue (FIFO) with real-world examples.",
+          question_text: "Explain the difference between a Stack (LIFO) and a Queue (FIFO) with real-world examples.",
           sample_answer: "Stacks use Last-In-First-Out like undo history or plate stacks. Queues use First-In-First-Out like printer jobs or ticket checkout lines."
         },
         {
           id: 4,
           question_number: "Question 4 of 5 (Linear Search vs Binary Search)",
-          question_text: "Clear examples! How does Binary Search achieve O(log N) time complexity compared to Linear Search O(N)?",
+          question_text: "How does Binary Search achieve O(log N) time complexity compared to Linear Search O(N)?",
           sample_answer: "Binary search repeatedly cuts a sorted search space in half by comparing middle elements, whereas Linear search checks items sequentially."
         },
         {
           id: 5,
           question_number: "Question 5 of 5 (Bubble vs Selection Sort)",
-          question_text: "Awesome! Final question: What is the main idea behind Bubble Sort vs Selection Sort?",
+          question_text: "What is the main idea behind Bubble Sort vs Selection Sort?",
           sample_answer: "Bubble sort repeatedly swaps adjacent out-of-order pairs, while Selection sort repeatedly finds minimum elements and places them in sorted positions."
         }
       ],
@@ -172,25 +172,25 @@ export default function InterviewRoomPage({ sessionData, setActivePage, setFinal
         {
           id: 2,
           question_number: "Question 2 of 5 (Hash Collisions)",
-          question_text: "Great intro! How do Hash Tables resolve collisions using Separate Chaining vs Open Addressing (Linear Probing)?",
+          question_text: "How do Hash Tables resolve collisions using Separate Chaining vs Open Addressing (Linear Probing)?",
           sample_answer: "Separate Chaining stores colliding elements in bucket linked lists. Open Addressing probes consecutive array slots until an empty index is found."
         },
         {
           id: 3,
           question_number: "Question 3 of 5 (BST Search & Inorder Traversal)",
-          question_text: "Solid hash table explanation! What are the properties of a Binary Search Tree (BST) and why does Inorder traversal yield sorted order?",
+          question_text: "What are the properties of a Binary Search Tree (BST) and why does Inorder traversal yield sorted order?",
           sample_answer: "In a BST, left children are smaller than node value and right children are larger. Inorder traversal (Left-Node-Right) visits values in ascending order."
         },
         {
           id: 4,
           question_number: "Question 4 of 5 (BFS vs DFS Graphs)",
-          question_text: "Clear tree breakdown! Compare Breadth-First Search (BFS) using Queues with Depth-First Search (DFS) using Stacks/Recursion.",
+          question_text: "Compare Breadth-First Search (BFS) using Queues with Depth-First Search (DFS) using Stacks/Recursion.",
           sample_answer: "BFS explores neighbor layers level-by-level using a Queue for shortest path. DFS explores deep graph branches using Stack/Recursion."
         },
         {
           id: 5,
           question_number: "Question 5 of 5 (Two Pointers & Sliding Window)",
-          question_text: "Excellent! Final question: How does the Two Pointers or Sliding Window technique reduce time complexity from O(N^2) to O(N)?",
+          question_text: "How does the Two Pointers or Sliding Window technique reduce time complexity from O(N^2) to O(N)?",
           sample_answer: "Sliding Window maintains subarray states across moving left/right boundaries, avoiding redundant nested loops to achieve linear time O(N)."
         }
       ],
@@ -204,25 +204,25 @@ export default function InterviewRoomPage({ sessionData, setActivePage, setFinal
         {
           id: 2,
           question_number: "Question 2 of 5 (Dijkstra's Shortest Path)",
-          question_text: "Impressive background! Explain Dijkstra's algorithm using a Min-Heap priority queue for weighted graphs without negative edges.",
+          question_text: "Explain Dijkstra's algorithm using a Min-Heap priority queue for weighted graphs without negative edges.",
           sample_answer: "Dijkstra uses a Min-Heap to greedily extract unvisited nodes with smallest distance, relaxing outgoing neighbor edges in O((V + E) log V) time."
         },
         {
           id: 3,
           question_number: "Question 3 of 5 (Dynamic Programming Memoization)",
-          question_text: "Flawless Dijkstra breakdown! How does Dynamic Programming transform exponential recursion O(2^N) into polynomial O(N) using Top-Down Memoization?",
+          question_text: "How does Dynamic Programming transform exponential recursion O(2^N) into polynomial O(N) using Top-Down Memoization?",
           sample_answer: "DP identifies overlapping subproblems and optimal substructure, caching subproblem results in a lookup table to eliminate redundant recursive trees."
         },
         {
           id: 4,
           question_number: "Question 4 of 5 (AVL vs Red-Black Trees)",
-          question_text: "Masterful DP analysis! What is the difference between AVL Trees (strict balance) and Red-Black Trees (color balance) during rotations?",
+          question_text: "What is the difference between AVL Trees (strict balance) and Red-Black Trees (color balance) during rotations?",
           sample_answer: "AVL trees enforce height differences <= 1 requiring frequent rotations, while Red-Black trees enforce color rules allowing faster insertions with fewer rotations."
         },
         {
           id: 5,
           question_number: "Question 5 of 5 (Trie & Prefix Trees)",
-          question_text: "Outstanding! Final question: How does a Trie data structure achieve O(L) time complexity for word prefix autocomplete lookups?",
+          question_text: "How does a Trie data structure achieve O(L) time complexity for word prefix autocomplete lookups?",
           sample_answer: "Tries store characters in parent-child node chains indexed by string length L, enabling fast prefix match lookups independent of total dictionary size N."
         }
       ]
@@ -238,25 +238,25 @@ export default function InterviewRoomPage({ sessionData, setActivePage, setFinal
         {
           id: 2,
           question_number: "Question 2 of 5 (Supervised vs Unsupervised ML)",
-          question_text: "Welcome! What is the difference between Supervised Learning (Classification) and Unsupervised Learning (Clustering)?",
+          question_text: "What is the difference between Supervised Learning (Classification) and Unsupervised Learning (Clustering)?",
           sample_answer: "Supervised learning trains on labeled target output data, whereas Unsupervised learning discovers hidden patterns in unlabeled input datasets."
         },
         {
           id: 3,
           question_number: "Question 3 of 5 (Overfitting vs Underfitting)",
-          question_text: "Great answer! How do you detect model Overfitting vs Underfitting on training and validation loss curves?",
+          question_text: "How do you detect model Overfitting vs Underfitting on training and validation loss curves?",
           sample_answer: "Overfitting shows high training accuracy but poor validation accuracy. Underfitting shows poor performance on both training and test datasets."
         },
         {
           id: 4,
           question_number: "Question 4 of 5 (Pandas Data Cleaning)",
-          question_text: "Clear explanation! How do you handle missing values in Pandas using dropna() vs fillna()?",
+          question_text: "How do you handle missing values in Pandas using dropna() vs fillna()?",
           sample_answer: "dropna() removes rows containing missing values, while fillna() replaces NaN entries with column means or medians."
         },
         {
           id: 5,
           question_number: "Question 5 of 5 (Confusion Matrix)",
-          question_text: "Awesome! Final question: What are Precision and Recall metrics derived from a Confusion Matrix?",
+          question_text: "What are Precision and Recall metrics derived from a Confusion Matrix?",
           sample_answer: "Precision measures true positive accuracy among predicted positives, while Recall measures true positives retrieved out of total actual positive cases."
         }
       ],
@@ -270,25 +270,25 @@ export default function InterviewRoomPage({ sessionData, setActivePage, setFinal
         {
           id: 2,
           question_number: "Question 2 of 5 (RAG Architecture)",
-          question_text: "Great intro! Explain how Retrieval-Augmented Generation (RAG) uses vector databases to ground LLM responses and prevent hallucinations.",
+          question_text: "Explain how Retrieval-Augmented Generation (RAG) uses vector databases to ground LLM responses and prevent hallucinations.",
           sample_answer: "RAG converts documents into vector embeddings in ChromaDB, retrieves context via cosine similarity search, and injects context into prompts to ground LLM answers."
         },
         {
           id: 3,
           question_number: "Question 3 of 5 (Random Forest vs XGBoost)",
-          question_text: "Spot-on RAG breakdown! Compare Bagging in Random Forest with Gradient Boosting in XGBoost.",
+          question_text: "Compare Bagging in Random Forest with Gradient Boosting in XGBoost.",
           sample_answer: "Random Forest builds decision trees in parallel via bootstrap aggregation. XGBoost builds trees sequentially to minimize residual errors of previous trees."
         },
         {
           id: 4,
           question_number: "Question 4 of 5 (Feature Scaling)",
-          question_text: "Excellent ensemble analysis! Why is Feature Scaling (StandardScaler vs MinMaxScaler) necessary for distance-based models like KNN and SVM?",
+          question_text: "Why is Feature Scaling (StandardScaler vs MinMaxScaler) necessary for distance-based models like KNN and SVM?",
           sample_answer: "Distance-based models like KNN and SVM calculate Euclidean distances; unscaled large magnitude features dominate and distort gradient optimization."
         },
         {
           id: 5,
           question_number: "Question 5 of 5 (Cross-Validation)",
-          question_text: "Masterful! Final question: How does K-Fold Cross-Validation prevent data leakage during train-test splitting?",
+          question_text: "How does K-Fold Cross-Validation prevent data leakage during train-test splitting?",
           sample_answer: "K-Fold splits data into K equal folds, training on K-1 folds and testing on the remaining fold iteratively to ensure robust out-of-sample evaluation."
         }
       ],
@@ -302,25 +302,25 @@ export default function InterviewRoomPage({ sessionData, setActivePage, setFinal
         {
           id: 2,
           question_number: "Question 2 of 5 (Transformer Self-Attention)",
-          question_text: "High-caliber background! Explain scaled dot-product Self-Attention Q, K, V matrices and why Softmax scaling division by sqrt(d_k) is required.",
+          question_text: "Explain scaled dot-product Self-Attention Q, K, V matrices and why Softmax scaling division by sqrt(d_k) is required.",
           sample_answer: "Self-attention computes Query-Key dot products scaled by 1/sqrt(d_k) to prevent extremely large magnitude gradients from pushing Softmax into vanishing gradient regions."
         },
         {
           id: 3,
           question_number: "Question 3 of 5 (LoRA & PEFT Fine-Tuning)",
-          question_text: "Masterclass attention explanation! How does Low-Rank Adaptation (LoRA) reduce trainable parameters during LLM fine-tuning?",
+          question_text: "How does Low-Rank Adaptation (LoRA) reduce trainable parameters during LLM fine-tuning?",
           sample_answer: "LoRA freezes pre-trained weight matrices and injects trainable rank-decomposition matrices A and B (r << d), drastically reducing memory and compute cost."
         },
         {
           id: 4,
           question_number: "Question 4 of 5 (Model Quantization)",
-          question_text: "Brilliant LoRA analysis! What is the difference between Post-Training Quantization (PTQ) vs Quantization-Aware Training (QAT) for FP16 to INT8 conversion?",
+          question_text: "What is the difference between Post-Training Quantization (PTQ) vs Quantization-Aware Training (QAT) for FP16 to INT8 conversion?",
           sample_answer: "PTQ quantizes weights after training causing slight accuracy degradation. QAT simulates quantization noise during backpropagation for near-zero loss."
         },
         {
           id: 5,
           question_number: "Question 5 of 5 (Vector DB Indexing)",
-          question_text: "Exceptional! Final question: Compare HNSW (Hierarchical Navigable Small World) with IVF-PQ (Inverted File Product Quantization) for million-scale vector search.",
+          question_text: "Compare HNSW (Hierarchical Navigable Small World) with IVF-PQ (Inverted File Product Quantization) for million-scale vector search.",
           sample_answer: "HNSW builds multi-layer proximity graphs for high recall and fast search, while IVF-PQ clusters vector space and quantizes sub-vectors for low memory footprint."
         }
       ]
@@ -332,11 +332,19 @@ export default function InterviewRoomPage({ sessionData, setActivePage, setFinal
   const questions = difficultyBank.slice(0, 5);
   const currentQ = questions[currentIdx] || questions[0];
 
+  // Current AIRA Prompt text (includes dynamic adaptive feedback depending on whether candidate spoke or skipped)
+  const [activePromptText, setActivePromptText] = useState(currentQ.question_text);
+
   // Timer effect
   useEffect(() => {
     const timer = setInterval(() => setTimerSeconds(prev => prev + 1), 1000);
     return () => clearInterval(timer);
   }, []);
+
+  // Update active prompt when question changes
+  useEffect(() => {
+    setActivePromptText(currentQ.question_text);
+  }, [currentIdx]);
 
   // REAL PROCTORING VIOLATION HANDLER (ONLY TRIGGERS WHEN CANDIDATE ACTUALLY SWITCHES BROWSER TABS)
   const triggerProctoringViolation = (reasonText) => {
@@ -397,13 +405,13 @@ export default function InterviewRoomPage({ sessionData, setActivePage, setFinal
   };
 
   // Web Speech Synthesis (AIRA Natural Voiceover)
-  const speakQuestion = () => {
+  const speakQuestion = (textToSpeak) => {
     try {
       if ('speechSynthesis' in window) {
         window.speechSynthesis.cancel();
         window.speechSynthesis.resume();
 
-        const utterance = new SpeechSynthesisUtterance(currentQ.question_text);
+        const utterance = new SpeechSynthesisUtterance(textToSpeak || activePromptText);
         utterance.rate = 0.95;
         utterance.pitch = 1.05;
         utterance.lang = 'en-US';
@@ -429,10 +437,10 @@ export default function InterviewRoomPage({ sessionData, setActivePage, setFinal
 
   useEffect(() => {
     const timeout = setTimeout(() => {
-      speakQuestion();
+      speakQuestion(activePromptText);
     }, 400);
     return () => clearTimeout(timeout);
-  }, [currentIdx]);
+  }, [currentIdx, activePromptText]);
 
   const stopSpeaking = () => {
     if ('speechSynthesis' in window) {
@@ -496,19 +504,22 @@ export default function InterviewRoomPage({ sessionData, setActivePage, setFinal
     return `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
   };
 
-  // DYNAMIC CANDIDATE PERFORMANCE EVALUATION BASED ON SPOKEN ANSWERS
+  // SMART EVALUATION: CHECKS IF CANDIDATE ACTUALLY SPOKE OR SKIPPED BEFORE PRAISING!
   const handleNextQuestion = async () => {
     stopSpeaking();
     stopMicRecording();
     setSubmitting(true);
 
-    const finalAnswerText = candidateAnswer || currentQ.sample_answer;
+    const spokenText = candidateAnswer.trim();
+    const isAnswerProvided = spokenText.length > 0;
+    const finalAnswerText = isAnswerProvided ? spokenText : "[No spoken answer provided by candidate]";
 
     const answerEntry = {
       q_num: currentIdx + 1,
       q_text: currentQ.question_text,
       user_answer: finalAnswerText,
-      sample_answer: currentQ.sample_answer
+      sample_answer: currentQ.sample_answer,
+      is_answered: isAnswerProvided
     };
 
     const updatedAnswers = [...candidateAnswersList, answerEntry];
@@ -526,20 +537,47 @@ export default function InterviewRoomPage({ sessionData, setActivePage, setFinal
     setCandidateAnswer('');
     
     if (currentIdx < 4) {
+      const nextQObj = questions[currentIdx + 1];
+      let prefixPraise = "";
+
+      // ACCURATE CONVERSATIONAL ADAPTABILITY:
+      if (!isAnswerProvided) {
+        // If candidate provided NO answer:
+        prefixPraise = "I notice you didn't speak an answer for that question. Please make sure to speak your answer aloud into your microphone! Let's move on to our next question: ";
+      } else if (spokenText.split(' ').length < 5) {
+        // If candidate provided a very brief/short answer:
+        prefixPraise = "Thanks for that brief response! Let's build further on that. Next question: ";
+      } else {
+        // Only praise IF candidate provided a detailed answer (>= 5 words)!
+        prefixPraise = "Nice! Good explanation of that concept! You are doing well. Now for our next question: ";
+      }
+
+      setActivePromptText(`${prefixPraise}${nextQObj.question_text}`);
       setCurrentIdx(prev => prev + 1);
       setSubmitting(false);
     } else {
       const report = await finishInterviewSession(sessionData?.session_id || 1);
       
-      // Calculate dynamic score based on candidate's answers
-      const totalWords = updatedAnswers.reduce((acc, curr) => acc + (curr.user_answer ? curr.user_answer.split(' ').length : 0), 0);
-      const avgWordCount = totalWords / updatedAnswers.length;
+      // Calculate ACCURATE dynamic score based on ACTUAL spoken answers!
+      const answeredCount = updatedAnswers.filter(a => a.is_answered).length;
+      const totalWords = updatedAnswers.reduce((acc, curr) => acc + (curr.is_answered ? curr.user_answer.split(' ').length : 0), 0);
       
-      let dynamicOverallScore = Math.min(98.5, Math.max(68.0, Math.round(75 + (avgWordCount * 0.8) + (telemetry.eyeContactPct * 0.15))));
-      let rating = "Strong Hire";
+      let dynamicOverallScore = 50.0;
+      if (answeredCount === 0) {
+        dynamicOverallScore = 45.0; // Completely unanswered
+      } else {
+        // Base score calculated from answered ratio + average word count + eye contact telemetry
+        const completionPct = (answeredCount / 5) * 50;
+        const depthPct = Math.min(30, (totalWords / 5) * 1.5);
+        const visionPct = (telemetry.eyeContactPct / 100) * 20;
+        dynamicOverallScore = Math.min(98.5, Math.max(45.0, Math.round(completionPct + depthPct + visionPct)));
+      }
+
+      let rating = "Needs Technical Refinement";
       if (dynamicOverallScore >= 90) rating = "Outstanding Candidate (Strong Hire)";
       else if (dynamicOverallScore >= 80) rating = "Recommended Candidate (Good Hire)";
-      else rating = "Needs Technical Refinement";
+      else if (dynamicOverallScore >= 65) rating = "Passable - Needs Practice";
+      else rating = "Unsatisfactory - Unanswered Questions Detected";
 
       const fullCustomReport = {
         ...report,
@@ -551,17 +589,23 @@ export default function InterviewRoomPage({ sessionData, setActivePage, setFinal
         attention_score: telemetry.attentionPct,
         confidence_score: telemetry.confidencePct,
         answers_history: updatedAnswers,
-        strengths: [
-          `Solid spoken response in ${activeDomain} (${activeDifficulty} level)`,
+        strengths: answeredCount > 0 ? [
+          `Answered ${answeredCount} out of 5 questions in ${activeDomain} (${activeDifficulty} level)`,
           `Maintained ${telemetry.eyeContactPct}% eye contact and ${telemetry.attentionPct}% attention focus`,
-          `Demonstrated technical terminology across all 5 interview questions`
+          `Demonstrated microphone communication during technical turns`
+        ] : [
+          `Attempted 5-question proctored interview session`,
+          `Webcam and microphone hardware connected successfully`
         ],
-        weaknesses: [
-          `Elaborate further on real-world system architecture tradeoffs`,
+        weaknesses: answeredCount < 5 ? [
+          `Candidate left ${5 - answeredCount} questions unanswered (skipped without speaking)`,
+          `Ensure you speak full structured answers into your microphone for every turn`
+        ] : [
+          `Elaborate further on real-world memory and execution trade-offs`,
           `Provide deeper code-level execution steps during live explanations`
         ],
         improvement_tips: [
-          `Practice explaining memory trade-offs and complexity bounds aloud`,
+          `Make sure to speak clear answers for all 5 interview questions`,
           `Maintain high eye contact with the camera while answering technical scenario questions`
         ]
       };
@@ -637,7 +681,7 @@ export default function InterviewRoomPage({ sessionData, setActivePage, setFinal
 
           </div>
 
-          {/* CLEAN TURN TRANSCRIPT BOX WITH ADAPTIVE CONVERSATIONAL FEEDBACK */}
+          {/* CLEAN TURN TRANSCRIPT BOX WITH ACCURATE ADAPTIVE FEEDBACK */}
           <div className="glass-card p-5 rounded-3xl border border-slate-800 space-y-4 shadow-xl">
             <div className="flex items-center justify-between border-b border-slate-800 pb-2">
               <span className="text-xs font-mono text-cyan-400 uppercase font-bold flex items-center gap-1.5">
@@ -650,13 +694,13 @@ export default function InterviewRoomPage({ sessionData, setActivePage, setFinal
 
             <div className="space-y-3 font-sans text-xs">
               
-              {/* TOP BOX: IRA QUESTION WITH CONVERSATIONAL FEEDBACK */}
+              {/* TOP BOX: IRA QUESTION WITH DYNAMIC ADAPTIVE PROMPT */}
               <div className="p-3.5 rounded-2xl bg-slate-900/90 border border-slate-800 space-y-1">
                 <span className="text-[10px] font-mono text-cyan-400 uppercase tracking-wider font-bold">
                   IRA (INTERVIEWER QUESTION & CONVERSATIONAL RESPONSE):
                 </span>
                 <p className="text-slate-200 text-xs font-semibold leading-relaxed">
-                  "{currentQ.question_text}"
+                  "{activePromptText}"
                 </p>
               </div>
 
