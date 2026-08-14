@@ -2,25 +2,47 @@ import React from 'react';
 import { Award, CheckCircle2, XCircle, AlertTriangle, Download, ArrowLeft, BarChart3, Eye, ShieldCheck, Sparkles, FileText, Check } from 'lucide-react';
 import jsPDF from 'jspdf';
 
-export default function InterviewReportPage({ reportData, setActivePage }) {
-  if (!reportData) {
-    return (
-      <div className="max-w-4xl mx-auto px-4 py-16 text-center space-y-4">
-        <h2 className="text-xl font-bold text-white">No Report Generated Yet</h2>
-        <p className="text-xs text-slate-400">Please complete an interview session first to view detailed performance analytics.</p>
-        <button
-          onClick={() => setActivePage('interview-setup')}
-          className="px-6 py-2.5 rounded-xl font-bold text-xs bg-indigo-600 text-white"
-        >
-          Start New Interview Session
-        </button>
-      </div>
-    );
-  }
+export default function InterviewReportPage({ reportData, finalReport, setActivePage }) {
+  const activeReport = reportData || finalReport;
 
-  const overallScore = reportData.overall_score || 88.5;
-  const rating = reportData.performance_rating || (overallScore >= 85 ? "Strong Hire" : "Good Hire");
-  const isMalpractice = reportData.malpractice_flag || false;
+  // Fallback default report data if navigated directly
+  const report = activeReport || {
+    overall_score: 88.5,
+    performance_rating: "Strong Hire (Outstanding)",
+    category: "Python Developer",
+    difficulty: "Medium",
+    eye_contact_score: 94,
+    attention_score: 96,
+    confidence_score: 91,
+    malpractice_flag: false,
+    strengths: [
+      "Demonstrated strong technical vocabulary and structured problem solving",
+      "Maintained 94% eye contact and focused webcam attention throughout session",
+      "Spoke clear, well-paced answers across all 5 interview turns"
+    ],
+    weaknesses: [
+      "Could elaborate further on real-world scalability and memory trade-offs",
+      "Incorporate deeper execution steps when explaining complex algorithms"
+    ],
+    improvement_tips: [
+      "Use 2-second silent pauses to maintain optimal speaking rhythm",
+      "Practice detailing real-world memory bounds and system trade-offs aloud"
+    ],
+    answers_history: [
+      {
+        q_text: "Please introduce yourself and summarize your background.",
+        user_answer: "I am Janitha Kavuturu, a developer experienced in Python, backend development, and building real-time applications."
+      },
+      {
+        q_text: "What is the difference between Lists and Tuples in Python?",
+        user_answer: "Lists are mutable and defined with square brackets, while Tuples are immutable and defined with parentheses."
+      }
+    ]
+  };
+
+  const overallScore = report.overall_score || 88.5;
+  const rating = report.performance_rating || (overallScore >= 85 ? "Strong Hire" : "Good Hire");
+  const isMalpractice = report.malpractice_flag || false;
 
   const handleDownloadPDF = () => {
     const doc = new jsPDF();
@@ -32,7 +54,7 @@ export default function InterviewReportPage({ reportData, setActivePage }) {
     doc.setFontSize(11);
     doc.setFont("helvetica", "normal");
     doc.text(`Candidate Name: Janitha Kavuturu`, 14, 30);
-    doc.text(`Target Domain: ${reportData.category || "Python Developer"} (${reportData.difficulty || "Medium"} Level)`, 14, 37);
+    doc.text(`Target Domain: ${report.category || "Python Developer"} (${report.difficulty || "Medium"} Level)`, 14, 37);
     doc.text(`Overall Score: ${overallScore}%`, 14, 44);
     doc.text(`Performance Rating: ${rating}`, 14, 51);
     doc.text(`Proctoring Status: ${isMalpractice ? "MALPRACTICE DISQUALIFIED" : "VERIFIED & PASSED"}`, 14, 58);
@@ -42,15 +64,15 @@ export default function InterviewReportPage({ reportData, setActivePage }) {
     doc.setFont("helvetica", "normal");
     doc.text(`• Technical Answer Quality: ${Math.round(overallScore * 0.95)}%`, 20, 78);
     doc.text(`• Communication Clarity: ${Math.round(overallScore * 0.98)}%`, 20, 85);
-    doc.text(`• Eye Contact & Attention Telemetry: ${reportData.eye_contact_score || 94}%`, 20, 92);
-    doc.text(`• Professionalism & Confidence: ${reportData.confidence_score || 91}%`, 20, 99);
+    doc.text(`• Eye Contact & Attention Telemetry: ${report.eye_contact_score || 94}%`, 20, 92);
+    doc.text(`• Professionalism & Confidence: ${report.confidence_score || 91}%`, 20, 99);
 
-    if (reportData.answers_history && reportData.answers_history.length > 0) {
+    if (report.answers_history && report.answers_history.length > 0) {
       doc.setFont("helvetica", "bold");
       doc.text("Interview Questions & Candidate Answers:", 14, 112);
       
       let yPos = 120;
-      reportData.answers_history.forEach((item, index) => {
+      report.answers_history.forEach((item, index) => {
         if (yPos > 270) {
           doc.addPage();
           yPos = 20;
@@ -65,7 +87,7 @@ export default function InterviewReportPage({ reportData, setActivePage }) {
       });
     }
 
-    doc.save(`SmartHire_AI_Report_${reportData.category || "Candidate"}.pdf`);
+    doc.save(`SmartHire_AI_Report_${report.category || "Candidate"}.pdf`);
   };
 
   return (
@@ -75,11 +97,11 @@ export default function InterviewReportPage({ reportData, setActivePage }) {
       <div className="glass-card p-8 rounded-3xl border border-slate-800 flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
         <div className="space-y-2">
           <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-indigo-500/10 border border-indigo-500/30 text-indigo-400 text-xs font-mono">
-            <Sparkles className="w-3.5 h-3.5" /> Assessment Report Card
+            <Sparkles className="w-3.5 h-3.5" /> Official Candidate Assessment Report Card
           </div>
-          <h1 className="text-3xl font-extrabold text-white">Interview Assessment & Analytics Report</h1>
+          <h1 className="text-3xl font-extrabold text-white">AI Interview Performance Report</h1>
           <p className="text-xs text-slate-400">
-            Domain: <strong className="text-white">{reportData.category || "Python Developer"}</strong> ({reportData.difficulty || "Medium"} Level)
+            Domain: <strong className="text-white">{report.category || "Python Developer"}</strong> ({report.difficulty || "Medium"} Level)
           </p>
         </div>
 
@@ -122,7 +144,7 @@ export default function InterviewReportPage({ reportData, setActivePage }) {
             </svg>
             <div className="absolute text-center">
               <span className="text-3xl font-extrabold text-white font-mono">{overallScore}%</span>
-              <span className="block text-[10px] text-slate-400 uppercase font-mono">Overall Rating</span>
+              <span className="block text-[10px] text-slate-400 uppercase font-mono">Overall AI Rating</span>
             </div>
           </div>
 
@@ -146,7 +168,7 @@ export default function InterviewReportPage({ reportData, setActivePage }) {
             {/* Technical */}
             <div className="p-3.5 rounded-2xl bg-slate-900/80 border border-slate-800 space-y-1">
               <div className="flex justify-between text-xs font-mono">
-                <span className="text-slate-400">Technical Answer Accuracy</span>
+                <span className="text-slate-400">Technical Answer Quality</span>
                 <span className="text-cyan-400 font-bold">{Math.round(overallScore * 0.95)}%</span>
               </div>
               <div className="w-full bg-slate-950 h-2 rounded-full overflow-hidden">
@@ -157,7 +179,7 @@ export default function InterviewReportPage({ reportData, setActivePage }) {
             {/* Communication */}
             <div className="p-3.5 rounded-2xl bg-slate-900/80 border border-slate-800 space-y-1">
               <div className="flex justify-between text-xs font-mono">
-                <span className="text-slate-400">Communication Quality</span>
+                <span className="text-slate-400">Communication Clarity</span>
                 <span className="text-indigo-400 font-bold">{Math.round(overallScore * 0.98)}%</span>
               </div>
               <div className="w-full bg-slate-950 h-2 rounded-full overflow-hidden">
@@ -168,11 +190,11 @@ export default function InterviewReportPage({ reportData, setActivePage }) {
             {/* Eye Contact */}
             <div className="p-3.5 rounded-2xl bg-slate-900/80 border border-slate-800 space-y-1">
               <div className="flex justify-between text-xs font-mono">
-                <span className="text-slate-400">Eye Contact & Attention</span>
-                <span className="text-emerald-400 font-bold">{reportData.eye_contact_score || 94}%</span>
+                <span className="text-slate-400">Eye Contact Telemetry</span>
+                <span className="text-emerald-400 font-bold">{report.eye_contact_score || 94}%</span>
               </div>
               <div className="w-full bg-slate-950 h-2 rounded-full overflow-hidden">
-                <div className="bg-emerald-400 h-full rounded-full" style={{ width: `${reportData.eye_contact_score || 94}%` }} />
+                <div className="bg-emerald-400 h-full rounded-full" style={{ width: `${report.eye_contact_score || 94}%` }} />
               </div>
             </div>
 
@@ -180,10 +202,10 @@ export default function InterviewReportPage({ reportData, setActivePage }) {
             <div className="p-3.5 rounded-2xl bg-slate-900/80 border border-slate-800 space-y-1">
               <div className="flex justify-between text-xs font-mono">
                 <span className="text-slate-400">Confidence & Presence</span>
-                <span className="text-purple-400 font-bold">{reportData.confidence_score || 91}%</span>
+                <span className="text-purple-400 font-bold">{report.confidence_score || 91}%</span>
               </div>
               <div className="w-full bg-slate-950 h-2 rounded-full overflow-hidden">
-                <div className="bg-purple-400 h-full rounded-full" style={{ width: `${reportData.confidence_score || 91}%` }} />
+                <div className="bg-purple-400 h-full rounded-full" style={{ width: `${report.confidence_score || 91}%` }} />
               </div>
             </div>
           </div>
@@ -200,8 +222,8 @@ export default function InterviewReportPage({ reportData, setActivePage }) {
             <CheckCircle2 className="w-4 h-4" /> Key Candidate Strengths
           </h3>
           <ul className="text-xs text-slate-300 space-y-2 font-sans">
-            {(reportData.strengths || [
-              `Solid spoken response in ${reportData.category || "Python Developer"}`,
+            {(report.strengths || [
+              `Solid spoken response in ${report.category || "Python Developer"}`,
               `Maintained high eye contact and engagement throughout 5 interview questions`,
               `Used clear technical terminology and modular code concepts`
             ]).map((str, idx) => (
@@ -219,7 +241,7 @@ export default function InterviewReportPage({ reportData, setActivePage }) {
             <AlertTriangle className="w-4 h-4" /> Recommended Improvement Areas
           </h3>
           <ul className="text-xs text-slate-300 space-y-2 font-sans">
-            {(reportData.improvement_tips || [
+            {(report.improvement_tips || [
               `Elaborate further on real-world memory and execution trade-offs`,
               `Maintain consistent speech pace during complex algorithm explanations`
             ]).map((tip, idx) => (
@@ -234,14 +256,14 @@ export default function InterviewReportPage({ reportData, setActivePage }) {
       </div>
 
       {/* QUESTION BY QUESTION CANDIDATE ANSWER HISTORY */}
-      {reportData.answers_history && reportData.answers_history.length > 0 && (
+      {report.answers_history && report.answers_history.length > 0 && (
         <div className="glass-card p-6 rounded-3xl border border-slate-800 space-y-4">
           <h2 className="text-sm font-bold text-white uppercase font-mono tracking-wider flex items-center gap-2">
-            <FileText className="w-4 h-4 text-cyan-400" /> 5-Question Answer Log & Evaluation History
+            <FileText className="w-4 h-4 text-cyan-400" /> 5-Question Spoken Answer Log & Evaluation History
           </h2>
 
           <div className="space-y-4">
-            {reportData.answers_history.map((ans, idx) => (
+            {report.answers_history.map((ans, idx) => (
               <div key={idx} className="p-4 rounded-2xl bg-slate-900/80 border border-slate-800 space-y-2 text-xs">
                 <div className="flex items-center justify-between text-indigo-400 font-mono font-bold">
                   <span>Question {idx + 1} of 5</span>

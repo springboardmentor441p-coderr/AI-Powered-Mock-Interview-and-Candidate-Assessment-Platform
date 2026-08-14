@@ -50,6 +50,7 @@ export default function App() {
         )}
         {activePage === 'interview-report' && (
           <InterviewReportPage 
+            reportData={finalReport}
             finalReport={finalReport} 
             setActivePage={setActivePage} 
           />
