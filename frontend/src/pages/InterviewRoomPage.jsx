@@ -3,6 +3,7 @@ import { Video, Mic, MicOff, Volume2, Clock, ArrowRight, CheckCircle2, AlertCirc
 import WebcamMonitor from '../components/WebcamMonitor';
 import AudioWaveform from '../components/AudioWaveform';
 import { submitQuestionAnswer, finishInterviewSession } from '../services/api';
+import { nexusAgent } from '../services/aiAgent';
 
 export default function InterviewRoomPage({ sessionData, setActivePage, setFinalReport }) {
   const [currentIdx, setCurrentIdx] = useState(0);
@@ -37,7 +38,7 @@ export default function InterviewRoomPage({ sessionData, setActivePage, setFinal
         {
           id: 1,
           question_number: "Question 1 of 5 (Candidate Introduction)",
-          question_text: "Hello! My name is Real-Time AI Agent. Welcome to your Python developer interview! To get started, please introduce yourself and tell me what technologies or projects you like working on.",
+          question_text: `Hello! My name is ${nexusAgent.name}. Welcome to your Python developer interview! To get started, please introduce yourself and tell me what technologies or projects you like working on.`,
           sample_answer: "Hello! I am Janitha Kavuturu. I love working with Python, building web applications, machine learning models, and clean backend APIs."
         },
         {
@@ -69,7 +70,7 @@ export default function InterviewRoomPage({ sessionData, setActivePage, setFinal
         {
           id: 1,
           question_number: "Question 1 of 5 (Candidate Introduction)",
-          question_text: "Hello! My name is Real-Time AI Agent. Welcome to your Medium-level Python interview! Please introduce yourself, your favorite tech stacks, and your core projects.",
+          question_text: `Hello! My name is ${nexusAgent.name}. Welcome to your Medium-level Python interview! Please introduce yourself, your favorite tech stacks, and your core projects.`,
           sample_answer: "Hello! I am Janitha Kavuturu. I build Python applications using object-oriented principles, modular packages, and FastAPI backend frameworks."
         },
         {
@@ -101,7 +102,7 @@ export default function InterviewRoomPage({ sessionData, setActivePage, setFinal
         {
           id: 1,
           question_number: "Question 1 of 5 (Candidate Introduction)",
-          question_text: "Hello! My name is Real-Time AI Agent. Welcome to your Senior Python interview! Introduce yourself and detail your technical experience.",
+          question_text: `Hello! My name is ${nexusAgent.name}. Welcome to your Senior Python interview! Introduce yourself and detail your technical experience.`,
           sample_answer: "Hello! I am a senior Python engineer experienced in asyncio concurrency, GIL bottlenecks, metaprogramming, and high-throughput microservices."
         },
         {
@@ -135,7 +136,7 @@ export default function InterviewRoomPage({ sessionData, setActivePage, setFinal
         {
           id: 1,
           question_number: "Question 1 of 5 (Candidate Introduction)",
-          question_text: "Hello! My name is Real-Time AI Agent. Welcome to your DSA interview! Introduce yourself and share what data structures you enjoy working with.",
+          question_text: `Hello! My name is ${nexusAgent.name}. Welcome to your DSA interview! Introduce yourself and share what data structures you enjoy working with.`,
           sample_answer: "Hello! I am Janitha Kavuturu. I have knowledge of basic data structures like Arrays, Linked Lists, Stacks, Queues, and searching algorithms."
         },
         {
@@ -169,7 +170,7 @@ export default function InterviewRoomPage({ sessionData, setActivePage, setFinal
         {
           id: 1,
           question_number: "Question 1 of 5 (Candidate Introduction)",
-          question_text: "Hello! My name is Real-Time AI Agent. Welcome to your AI & Data Science interview! Introduce yourself and your background in Artificial Intelligence.",
+          question_text: `Hello! My name is ${nexusAgent.name}. Welcome to your AI & Data Science interview! Introduce yourself and your background in Artificial Intelligence.`,
           sample_answer: "Hello! I am Janitha Kavuturu. I am passionate about AI and Machine Learning, working with Pandas, NumPy, and predictive models."
         },
         {
@@ -209,7 +210,7 @@ export default function InterviewRoomPage({ sessionData, setActivePage, setFinal
   const [chatThread, setChatThread] = useState([
     {
       id: 1,
-      sender: 'INTERVIEWER (REAL-TIME AI AGENT)',
+      sender: `INTERVIEWER (${nexusAgent.name})`,
       text: currentQ.question_text,
       type: 'interviewer'
     }
@@ -264,7 +265,7 @@ export default function InterviewRoomPage({ sessionData, setActivePage, setFinal
   }, []);
 
   const handleForceMalpracticeSubmit = async (reasonText) => {
-    stopSpeaking();
+    nexusAgent.stopSpeaking();
     stopMicRecording();
     setSubmitting(true);
 
@@ -286,50 +287,27 @@ export default function InterviewRoomPage({ sessionData, setActivePage, setFinal
     setActivePage('interview-report');
   };
 
-  // Web Speech Synthesis (AIRA / AI Agent Natural Voiceover)
-  const speakQuestion = (textToSpeak) => {
-    try {
-      if ('speechSynthesis' in window) {
-        window.speechSynthesis.cancel();
-        window.speechSynthesis.resume();
-
-        const utterance = new SpeechSynthesisUtterance(textToSpeak || currentQ.question_text);
-        utterance.rate = 0.95;
-        utterance.pitch = 1.05;
-        utterance.lang = 'en-US';
-
-        utterance.onstart = () => {
-          setIsSpeaking(true);
-          stopMicRecording();
-        };
-        
-        utterance.onend = () => {
-          setIsSpeaking(false);
-          startMicRecording();
-        };
-        
-        utterance.onerror = () => setIsSpeaking(false);
-
-        window.speechSynthesis.speak(utterance);
+  // Trigger speech synthesis via nexusAgent
+  const speakCurrentQuestion = (textToSpeak) => {
+    nexusAgent.speak(
+      textToSpeak || currentQ.question_text,
+      () => {
+        setIsSpeaking(true);
+        stopMicRecording();
+      },
+      () => {
+        setIsSpeaking(false);
+        startMicRecording();
       }
-    } catch (e) {
-      console.warn("Speech synthesis error:", e);
-    }
+    );
   };
 
   useEffect(() => {
     const timeout = setTimeout(() => {
-      speakQuestion(currentQ.question_text);
+      speakCurrentQuestion(currentQ.question_text);
     }, 400);
     return () => clearTimeout(timeout);
   }, [currentIdx]);
-
-  const stopSpeaking = () => {
-    if ('speechSynthesis' in window) {
-      window.speechSynthesis.cancel();
-      setIsSpeaking(false);
-    }
-  };
 
   // CLEAN NON-LOOPING SPEECH RECOGNITION
   const startMicRecording = async () => {
@@ -386,38 +364,9 @@ export default function InterviewRoomPage({ sessionData, setActivePage, setFinal
     return `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
   };
 
-  // ADAPTIVE FOLLOW-UP GENERATOR BASED ON CANDIDATE'S SPOKEN TOPICS & SMART SKIP
-  const generateAdaptiveFollowupPrompt = (spokenText, nextQObj) => {
-    if (!spokenText || spokenText.trim().length === 0) {
-      // User Skipped the question
-      return `Okay, I will continue with the next question! ${nextQObj.question_text}`;
-    }
-
-    const lower = spokenText.toLowerCase();
-
-    if (lower.includes("ai") || lower.includes("machine learning") || lower.includes("ml") || lower.includes("data science")) {
-      return `Great to hear about your passion for AI and Machine Learning! Building on what you just shared: ${nextQObj.question_text}`;
-    }
-    
-    if (lower.includes("python") || lower.includes("script") || lower.includes("code")) {
-      return `Nice! Since you mentioned your strong experience writing Python code, let's explore this next concept: ${nextQObj.question_text}`;
-    }
-
-    if (lower.includes("web") || lower.includes("api") || lower.includes("backend") || lower.includes("fastapi")) {
-      return `Awesome! Given your background building backend web applications and APIs, here is our next question: ${nextQObj.question_text}`;
-    }
-
-    if (lower.includes("list") || lower.includes("tuple") || lower.includes("dictionary") || lower.includes("array")) {
-      return `That's a very clear explanation of data structures! Following up on what you just mentioned: ${nextQObj.question_text}`;
-    }
-
-    // Default conversational bridge
-    return `That's a solid explanation! Building on your answer: ${nextQObj.question_text}`;
-  };
-
   // REAL-TIME AI AGENT SUBMIT TURN HANDLER
   const handleNextQuestion = async () => {
-    stopSpeaking();
+    nexusAgent.stopSpeaking();
     stopMicRecording();
     setSubmitting(true);
 
@@ -459,64 +408,46 @@ export default function InterviewRoomPage({ sessionData, setActivePage, setFinal
     
     if (currentIdx < 4) {
       const nextQObj = questions[currentIdx + 1];
-      const nextInterviewerText = generateAdaptiveFollowupPrompt(spokenText, nextQObj);
+      const nextInterviewerText = nexusAgent.generateAdaptivePrompt(spokenText, nextQObj);
 
-      // Append Next Interviewer Question Bubble (INTERVIEWER) to Chat Thread
+      // Append Next Interviewer Question Bubble to Chat Thread
       setTimeout(() => {
         const interviewerBubble = {
           id: Date.now() + 1,
-          sender: 'INTERVIEWER (REAL-TIME AI AGENT)',
+          sender: `INTERVIEWER (${nexusAgent.name})`,
           text: nextInterviewerText,
           type: 'interviewer'
         };
         setChatThread(prev => [...prev, interviewerBubble]);
-        speakQuestion(nextInterviewerText);
+        speakCurrentQuestion(nextInterviewerText);
       }, 400);
 
       setCurrentIdx(prev => prev + 1);
       setSubmitting(false);
     } else {
       const report = await finishInterviewSession(sessionData?.session_id || 1);
-      
-      const answeredCount = updatedAnswers.filter(a => a.is_answered).length;
-      const totalWords = updatedAnswers.reduce((acc, curr) => acc + (curr.is_answered ? curr.user_answer.split(' ').length : 0), 0);
-      
-      let dynamicOverallScore = 50.0;
-      if (answeredCount === 0) {
-        dynamicOverallScore = 45.0;
-      } else {
-        const completionPct = (answeredCount / 5) * 50;
-        const depthPct = Math.min(30, (totalWords / 5) * 1.5);
-        const visionPct = (telemetry.eyeContactPct / 100) * 20;
-        dynamicOverallScore = Math.min(98.5, Math.max(45.0, Math.round(completionPct + depthPct + visionPct)));
-      }
-
-      let rating = "Needs Technical Refinement";
-      if (dynamicOverallScore >= 90) rating = "Outstanding Candidate (Strong Hire)";
-      else if (dynamicOverallScore >= 80) rating = "Recommended Candidate (Good Hire)";
-      else if (dynamicOverallScore >= 65) rating = "Passable - Needs Practice";
-      else rating = "Unsatisfactory - Unanswered Questions Detected";
+      const evalResult = nexusAgent.evaluateCandidateSession(updatedAnswers, telemetry);
 
       const fullCustomReport = {
         ...report,
-        overall_score: dynamicOverallScore,
-        performance_rating: rating,
+        overall_score: evalResult.score,
+        performance_rating: evalResult.rating,
         category: activeDomain,
         difficulty: activeDifficulty,
         eye_contact_score: telemetry.eyeContactPct,
         attention_score: telemetry.attentionPct,
         confidence_score: telemetry.confidencePct,
         answers_history: updatedAnswers,
-        strengths: answeredCount > 0 ? [
-          `Answered ${answeredCount} out of 5 questions in ${activeDomain} (${activeDifficulty} level)`,
+        strengths: evalResult.answeredCount > 0 ? [
+          `Answered ${evalResult.answeredCount} out of 5 questions in ${activeDomain} (${activeDifficulty} level)`,
           `Maintained ${telemetry.eyeContactPct}% eye contact and ${telemetry.attentionPct}% attention focus`,
-          `Demonstrated microphone communication across real-time AI agent turns`
+          `Demonstrated microphone communication across ${nexusAgent.name} turns`
         ] : [
           `Attempted 5-question proctored interview session`,
           `Webcam and microphone hardware connected successfully`
         ],
-        weaknesses: answeredCount < 5 ? [
-          `Candidate skipped ${5 - answeredCount} questions without speaking`,
+        weaknesses: evalResult.answeredCount < 5 ? [
+          `Candidate skipped ${5 - evalResult.answeredCount} questions without speaking`,
           `Ensure you speak full structured answers into your microphone for every turn`
         ] : [
           `Elaborate further on real-world memory and execution trade-offs`,
@@ -551,7 +482,7 @@ export default function InterviewRoomPage({ sessionData, setActivePage, setFinal
           <div className="w-3 h-3 rounded-full bg-red-500 animate-ping"></div>
           <div>
             <h1 className="text-sm font-bold text-white uppercase tracking-wider flex items-center gap-2">
-              Real-Time AI Agent Interview Room <span className="text-[10px] text-cyan-400 font-mono font-normal">• Live Adaptive Thread</span>
+              {nexusAgent.name} Room <span className="text-[10px] text-cyan-400 font-mono font-normal">• Live Adaptive Thread</span>
             </h1>
             <span className="text-[11px] text-indigo-300 font-mono">
               Domain: <strong className="text-white">{activeDomain}</strong> ({activeDifficulty} Level — {currentQ.question_number})
@@ -572,13 +503,13 @@ export default function InterviewRoomPage({ sessionData, setActivePage, setFinal
         </div>
       </div>
 
-      {/* MAIN TWO-COLUMN LAYOUT: LEFT (REAL-TIME AI AGENT + CHAT THREAD), RIGHT (WEBCAM + TELEMETRY BARS) */}
+      {/* MAIN TWO-COLUMN LAYOUT: LEFT (AI AGENT + CHAT THREAD), RIGHT (WEBCAM + TELEMETRY BARS) */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
         
-        {/* LEFT COLUMN: REAL-TIME AI AGENT AVATAR & SCROLLABLE CHAT THREAD (8 COLS) */}
+        {/* LEFT COLUMN: NEXUS AI AGENT AVATAR & SCROLLABLE CHAT THREAD (8 COLS) */}
         <div className="lg:col-span-8 space-y-6">
           
-          {/* Real-Time AI Agent Avatar Panel */}
+          {/* AI Agent Avatar Panel */}
           <div className="glass-card p-5 rounded-3xl border border-slate-800 bg-slate-950/90 flex flex-col items-center justify-center text-center space-y-2 relative min-h-[180px]">
             <div className={`w-20 h-20 rounded-full bg-gradient-to-tr from-indigo-600 via-cyan-400 to-emerald-400 p-1 shadow-2xl transition-all ${
               isSpeaking ? 'animate-pulse ring-8 ring-cyan-500/30 scale-105' : ''
@@ -589,9 +520,9 @@ export default function InterviewRoomPage({ sessionData, setActivePage, setFinal
             </div>
 
             <div>
-              <h2 className="text-base font-bold text-white tracking-wide">Real-Time AI Agent</h2>
+              <h2 className="text-base font-bold text-white tracking-wide">{nexusAgent.name}</h2>
               <p className="text-xs font-mono text-cyan-400 mt-0.5">
-                {isSpeaking ? "AI Agent is speaking question..." : isRecording ? "AI Agent is listening to your answer..." : "Evaluating response..."}
+                {isSpeaking ? `${nexusAgent.name} is speaking prompt...` : isRecording ? `${nexusAgent.name} is listening...` : "Evaluating response..."}
               </p>
             </div>
           </div>
@@ -600,10 +531,10 @@ export default function InterviewRoomPage({ sessionData, setActivePage, setFinal
           <div className="glass-card p-5 rounded-3xl border border-slate-800 space-y-3 shadow-xl h-[380px] flex flex-col justify-between">
             <div className="flex items-center justify-between border-b border-slate-800 pb-2 shrink-0">
               <span className="text-xs font-mono text-cyan-400 uppercase font-bold flex items-center gap-1.5">
-                <MessageSquare className="w-4 h-4 text-amber-400" /> Real-Time Live AI Agent Conversation Stream
+                <MessageSquare className="w-4 h-4 text-amber-400" /> Real-Time {nexusAgent.name} Stream
               </span>
               <span className="text-[10px] text-emerald-400 font-mono flex items-center gap-1">
-                <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping"></span> Real-Time AI Agent Active
+                <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping"></span> {nexusAgent.name} Active
               </span>
             </div>
 
@@ -651,7 +582,7 @@ export default function InterviewRoomPage({ sessionData, setActivePage, setFinal
 
         </div>
 
-        {/* RIGHT COLUMN: CANDIDATE WEBCAM & DYNAMIC LIVE VISION TELEMETRY BARS (UNTOUCHED / RESTORED FULLY) */}
+        {/* RIGHT COLUMN: CANDIDATE WEBCAM & DYNAMIC LIVE VISION TELEMETRY BARS */}
         <div className="lg:col-span-4 space-y-4">
           
           {/* Candidate Webcam Box */}
