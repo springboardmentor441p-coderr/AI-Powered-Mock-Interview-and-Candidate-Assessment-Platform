@@ -1,5 +1,6 @@
 import random
 from typing import List, Dict
+from services.llm_service import generate_llm_questions, is_llm_available
 
 QUESTION_BANK = {
     "Technical": {
@@ -79,34 +80,17 @@ QUESTION_BANK = {
                 "a": "I diagnosed the issue by checking server logs and error stack traces, identified a database pool connection leak, applied a hotfix patch to close unhandled connections, and restored system operations with zero data loss."
             }
         ]
-    },
-    "Behavioral": {
-        "Medium": [
-            {
-                "q": "Give an example of a situation where you had to lead a project or initiative.",
-                "a": "When leading a team project, I organized daily standups, defined clear module ownership, established Git workflow standards, and ensured on-time delivery while maintaining clean code architecture."
-            },
-            {
-                "q": "Describe a scenario where you failed to meet a target. What did you learn?",
-                "a": "Earlier in a sprint, I underestimated the time needed for third-party API integration. I learned to include buffer estimations and communicate potential blockers to stakeholders early in planning."
-            }
-        ]
-    },
-    "Aptitude": {
-        "Medium": [
-            {
-                "q": "If 5 servers process 500 requests in 5 minutes, how many servers are needed to process 2,000 requests in 10 minutes?",
-                "a": "One server processes 100 requests in 5 minutes (20 requests per minute). To process 2,000 requests in 10 minutes, we need 200 requests per minute. Therefore, 10 servers are needed (200 / 20 = 10)."
-            },
-            {
-                "q": "In a system with 99.9% uptime requirement, how many minutes of downtime are allowed per year?",
-                "a": "A year has 525,600 minutes. 99.9% uptime means 0.1% downtime is allowed. 0.1% of 525,600 = 525.6 minutes (approx 8.76 hours) of downtime allowed per year."
-            }
-        ]
     }
 }
 
 def generate_interview_questions(category: str, difficulty: str, domain: str, num_questions: int = 5, skills: List[str] = None) -> List[Dict]:
+    # 1. Try real LLM generation first if API key configured
+    if is_llm_available():
+        llm_questions = generate_llm_questions(domain, difficulty, num_questions, skills)
+        if llm_questions:
+            return llm_questions
+
+    # 2. Fallback to question pool generator
     cat_pool = QUESTION_BANK.get(category, QUESTION_BANK["Technical"])
     diff_pool = cat_pool.get(difficulty, list(cat_pool.values())[0])
 
