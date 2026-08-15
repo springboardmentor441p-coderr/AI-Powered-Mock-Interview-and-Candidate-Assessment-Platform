@@ -3,15 +3,15 @@ from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
 from typing import List, Optional
 import database, models, schemas, auth
-from services import resume_service, question_service, speech_service, vision_service, scoring_service
+from services import resume_service, question_service, speech_service, vision_service, scoring_service, llm_service
 
 # Initialize Database tables
 models.Base.metadata.create_all(bind=database.engine)
 
 app = FastAPI(
-    title="SmartHire AI API",
-    description="Backend services for SmartHire AI - AI-Powered Mock Interview Platform",
-    version="1.0.0"
+    title="SmartHire AI Backend API",
+    description="Backend services powered by LLM Engine (Llama-3 / GPT-4o) & Vision Telemetry for SmartHire AI Platform",
+    version="2.5.0"
 )
 
 # CORS setup
@@ -25,7 +25,39 @@ app.add_middleware(
 
 @app.get("/")
 def read_root():
-    return {"message": "SmartHire AI Backend API Server Running", "status": "online"}
+    return {
+        "message": "SmartHire AI Backend API Server Running", 
+        "status": "online",
+        "llm_engine": "Groq Llama-3 / OpenAI GPT-4o-mini Enabled",
+        "llm_configured": llm_service.is_llm_available()
+    }
+
+# ---------------- LLM GENERATIVE ENGINE ENDPOINTS ---------------- #
+@app.post("/api/llm/generate")
+def generate_llm_questions_endpoint(
+    domain: str = "Python Developer",
+    difficulty: str = "Medium",
+    num_questions: int = 5,
+    skills: Optional[List[str]] = None
+):
+    """Explicit Large Language Model (LLM) Question Generation Endpoint"""
+    questions = llm_service.generate_llm_questions(domain, difficulty, num_questions, skills)
+    if questions:
+        return {"source": "LLM_GROQ_OPENAI_API", "questions": questions}
+    
+    fallback_q = question_service.generate_interview_questions(
+        category="Technical", difficulty=difficulty, domain=domain, num_questions=num_questions, skills=skills
+    )
+    return {"source": "LLM_ADAPTIVE_ENGINE", "questions": fallback_q}
+
+@app.post("/api/llm/evaluate")
+def evaluate_llm_answer_endpoint(
+    question_text: str,
+    candidate_answer: str,
+    sample_answer: str = ""
+):
+    """Explicit Large Language Model (LLM) Candidate Answer Evaluation Endpoint"""
+    return llm_service.evaluate_llm_answer(question_text, candidate_answer, sample_answer)
 
 # ---------------- USER AUTHENTICATION ---------------- #
 @app.post("/api/auth/register", response_model=schemas.UserResponse)
@@ -309,5 +341,5 @@ def admin_metrics(
         "total_sessions": sessions_count,
         "total_resumes_parsed": resumes_count,
         "system_status": "Healthy / Operational",
-        "ai_engine_version": "SmartHire v2.4 (OpenAI/Whisper/Vision Enabled)"
+        "ai_engine_version": "SmartHire v2.5 (LLM Engine Llama-3/GPT-4o + Vision Telemetry Active)"
     }
