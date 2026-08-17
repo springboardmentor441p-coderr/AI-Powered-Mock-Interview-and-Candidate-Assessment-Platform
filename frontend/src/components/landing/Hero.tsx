@@ -1,33 +1,10 @@
 'use client';
 
-import React, { useState } from 'react';
+import React from 'react';
 import Link from 'next/link';
-import { useApp } from '../../context/AppContext';
-import { 
-  Video, 
-  Mic, 
-  ShieldCheck, 
-  FileCheck, 
-  Play, 
-  CheckCircle2, 
-  Users,
-  ArrowRight,
-  Briefcase,
-  Sparkles,
-  Search
-} from 'lucide-react';
+import { Play } from 'lucide-react';
 
 export const Hero: React.FC = () => {
-  const { loginAsDemoRecruiter, loginAsDemoCandidate } = useApp();
-  const [activeTab, setActiveTab] = useState<'voice' | 'proctor' | 'report'>('voice');
-
-  const scrollToPositions = (e: React.MouseEvent) => {
-    e.preventDefault();
-    const el = document.getElementById('open-positions');
-    if (el) {
-      el.scrollIntoView({ behavior: 'smooth' });
-    }
-  };
 
   return (
     <section className="relative pt-12 pb-20 md:pt-16 md:pb-24 bg-white overflow-hidden">
@@ -69,22 +46,6 @@ export const Hero: React.FC = () => {
               <Play className="w-4 h-4 fill-white" />
               <span>Start AI Candidate Screening</span>
             </Link>
-          </div>
-
-          {/* Key Metric Badges */}
-          <div className="pt-6 flex flex-wrap items-center justify-center gap-6 sm:gap-10 text-slate-600 text-xs font-semibold">
-            <div className="flex items-center gap-2">
-              <CheckCircle2 className="w-4 h-4 text-[#059669]" />
-              <span>Real-Time Voice AI Interviewers</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <ShieldCheck className="w-4 h-4 text-[#059669]" />
-              <span>Vision Proctoring Anti-Cheating</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <Users className="w-4 h-4 text-[#059669]" />
-              <span>Side-by-Side Candidate Ranking</span>
-            </div>
           </div>
         </div>
 

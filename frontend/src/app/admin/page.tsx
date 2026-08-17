@@ -12,7 +12,17 @@ import {
   CheckCircle2
 } from 'lucide-react';
 
+import { ProtectedRoute } from '../../components/auth/ProtectedRoute';
+
 export default function AdminPage() {
+  return (
+    <ProtectedRoute allowedRoles={['admin']}>
+      <AdminPageContent />
+    </ProtectedRoute>
+  );
+}
+
+function AdminPageContent() {
   const { reports } = useApp();
   const [activeTab, setActiveTab] = useState<'overview' | 'questions' | 'users' | 'ai-config'>('overview');
   

@@ -16,41 +16,48 @@ import {
   AlertTriangle,
   Award,
   ExternalLink,
-  Zap
+  Zap,
+  Play
 } from 'lucide-react';
 
 export const MetricsOverview: React.FC<{ onQuickStart?: () => void }> = () => {
   const { user, reports } = useApp();
 
-  const totalSessions = reports.length;
-  const latestReport = totalSessions > 0 ? reports[0] : null;
+  // Filter reports to ensure strictly authenticated user identity
+  const userReports = React.useMemo(() => {
+    if (!user) return [];
+    return reports.filter(r => r.candidateEmail?.toLowerCase() === user.email?.toLowerCase() || user.role === 'recruiter' || user.role === 'admin');
+  }, [reports, user]);
+
+  const totalSessions = userReports.length;
+  const latestReport = totalSessions > 0 ? userReports[0] : null;
 
   const avgScore = totalSessions > 0
-    ? Math.round(reports.reduce((acc, r) => acc + r.overallScore, 0) / totalSessions)
+    ? Math.round(userReports.reduce((acc, r) => acc + r.overallScore, 0) / totalSessions)
     : 0;
 
   const bestScore = totalSessions > 0
-    ? Math.max(...reports.map(r => r.overallScore))
+    ? Math.max(...userReports.map(r => r.overallScore))
     : 0;
 
   const communicationScore = totalSessions > 0
-    ? Math.round(reports.reduce((acc, r) => acc + r.categoryScores.communicationSkills, 0) / totalSessions)
+    ? Math.round(userReports.reduce((acc, r) => acc + r.categoryScores.communicationSkills, 0) / totalSessions)
     : 0;
 
   const confidenceScore = totalSessions > 0
-    ? Math.round(reports.reduce((acc, r) => acc + r.categoryScores.bodyLanguage, 0) / totalSessions)
+    ? Math.round(userReports.reduce((acc, r) => acc + r.categoryScores.bodyLanguage, 0) / totalSessions)
     : 0;
 
   const technicalScore = totalSessions > 0
-    ? Math.round(reports.reduce((acc, r) => acc + r.categoryScores.technicalKnowledge, 0) / totalSessions)
+    ? Math.round(userReports.reduce((acc, r) => acc + r.categoryScores.technicalKnowledge, 0) / totalSessions)
     : 0;
 
   const deliveryScore = totalSessions > 0
-    ? Math.round(reports.reduce((acc, r) => acc + r.categoryScores.deliveryAndPacing, 0) / totalSessions)
+    ? Math.round(userReports.reduce((acc, r) => acc + r.categoryScores.deliveryAndPacing, 0) / totalSessions)
     : 0;
 
   // Chronologically sorted reports for line trend chart
-  const sortedReports = [...reports].sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
+  const sortedReports = [...userReports].sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
   const chartPoints = sortedReports.slice(-6);
 
   // SVG Chart path calculation
@@ -66,7 +73,6 @@ export const MetricsOverview: React.FC<{ onQuickStart?: () => void }> = () => {
       ? paddingX + (idx / (chartPoints.length - 1)) * chartWidth
       : svgWidth / 2;
     
-    // Map 0-100 score to Y coordinate (score 100 -> top paddingY, score 0 -> paddingY + chartHeight)
     const y = paddingY + chartHeight - (rpt.overallScore / 100) * chartHeight;
     return { x, y, score: rpt.overallScore, date: rpt.createdAt };
   });
@@ -75,13 +81,17 @@ export const MetricsOverview: React.FC<{ onQuickStart?: () => void }> = () => {
     return i === 0 ? `M ${pt.x} ${pt.y}` : `${acc} L ${pt.x} ${pt.y}`;
   }, '');
 
-  // Calculate dynamic focus areas based on lowest scores
+  // Dynamic focus areas based on lowest scores or standard targets
   const focusAreas: string[] = [];
-  if (technicalScore < 75) focusAreas.push('TECHNICAL_RELEVANCE');
-  if (confidenceScore < 75) focusAreas.push('CONFIDENCE_BUILDING');
-  if (communicationScore < 75) focusAreas.push('COMMUNICATION_FLUENCY');
-  if (deliveryScore < 75) focusAreas.push('PACING_AND_DELIVERY');
-  if (focusAreas.length === 0) focusAreas.push('ADVANCED_SYSTEM_DESIGN', 'LEADERSHIP_BEHAVIORAL');
+  if (totalSessions === 0) {
+    focusAreas.push('INITIAL_VOICE_SCREENING', 'RESUME_UPLOAD_PARSING', 'TECHNICAL_BEHAVIORAL_PRACTICE');
+  } else {
+    if (technicalScore < 75) focusAreas.push('TECHNICAL_RELEVANCE');
+    if (confidenceScore < 75) focusAreas.push('CONFIDENCE_BUILDING');
+    if (communicationScore < 75) focusAreas.push('COMMUNICATION_FLUENCY');
+    if (deliveryScore < 75) focusAreas.push('PACING_AND_DELIVERY');
+    if (focusAreas.length === 0) focusAreas.push('ADVANCED_SYSTEM_DESIGN', 'LEADERSHIP_BEHAVIORAL');
+  }
 
   return (
     <div className="space-y-6 text-slate-900">
@@ -203,7 +213,28 @@ export const MetricsOverview: React.FC<{ onQuickStart?: () => void }> = () => {
             </div>
           </div>
         </div>
-      ) : null}
+      ) : (
+        <div className="p-8 rounded-3xl bg-white border border-slate-200 shadow-enterprise-md text-center space-y-4">
+          <div className="w-12 h-12 rounded-2xl bg-emerald-50 text-[#059669] border border-emerald-200 flex items-center justify-center mx-auto">
+            <Trophy className="w-6 h-6" />
+          </div>
+          <div className="space-y-1 max-w-md mx-auto">
+            <h3 className="text-lg font-extrabold text-slate-900">No Interview Sessions Yet</h3>
+            <p className="text-xs text-slate-500">
+              Upload your resume and launch your first AI mock interview to analyze technical accuracy, communication fluency, and speech metrics.
+            </p>
+          </div>
+          <div>
+            <Link
+              href="/resume"
+              className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-[#059669] hover:bg-emerald-700 text-white font-bold text-xs shadow-sm transition-all"
+            >
+              <Play className="w-3.5 h-3.5 fill-white" />
+              <span>Launch First AI Interview</span>
+            </Link>
+          </div>
+        </div>
+      )}
 
       {/* Grid: Overall Signal + Score Trend */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
@@ -214,7 +245,6 @@ export const MetricsOverview: React.FC<{ onQuickStart?: () => void }> = () => {
           
           <div className="flex flex-col items-center justify-center py-2">
             <div className="relative w-36 h-36 flex items-center justify-center">
-              {/* Circular score gauge */}
               <svg className="w-full h-full transform -rotate-90" viewBox="0 0 100 100">
                 <circle
                   cx="50"
@@ -285,7 +315,6 @@ export const MetricsOverview: React.FC<{ onQuickStart?: () => void }> = () => {
           {/* SVG Line Chart */}
           <div className="h-48 w-full pt-4">
             <svg className="w-full h-full overflow-visible" viewBox="0 0 500 150">
-              {/* Y Axis Grid Lines */}
               <line x1="0" y1="20" x2="500" y2="20" stroke="#f1f5f9" strokeWidth="1" />
               <text x="0" y="24" className="text-[10px] fill-slate-400 font-mono">100</text>
 
@@ -298,7 +327,6 @@ export const MetricsOverview: React.FC<{ onQuickStart?: () => void }> = () => {
               <line x1="0" y1="140" x2="500" y2="140" stroke="#f1f5f9" strokeWidth="1" />
               <text x="0" y="144" className="text-[10px] fill-slate-400 font-mono">25</text>
 
-              {/* Dynamic Trend Path */}
               {pathD && (
                 <path
                   d={pathD}
@@ -308,7 +336,6 @@ export const MetricsOverview: React.FC<{ onQuickStart?: () => void }> = () => {
                 />
               )}
 
-              {/* Data Points */}
               {pointsCoordinates.map((pt, idx) => (
                 <g key={idx}>
                   <circle cx={pt.x} cy={pt.y} r="5" fill="#059669" />

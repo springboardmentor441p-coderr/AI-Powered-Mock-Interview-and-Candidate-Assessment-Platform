@@ -27,17 +27,18 @@ export default function GeneralLoginPage() {
   const [isRegisterMode, setIsRegisterMode] = useState(false);
   const [rememberMe, setRememberMe] = useState(true);
   const [loading, setLoading] = useState(false);
+  const [authError, setAuthError] = useState('');
 
-  const handleLoginSubmit = (e: React.FormEvent) => {
+  const handleLoginSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!email.trim()) return;
 
     setLoading(true);
+    setAuthError('');
 
-    setTimeout(() => {
-      setLoading(false);
-      loginAsUser(name.trim() || email.split('@')[0], email.trim(), selectedRole);
-      
+    try {
+      await loginAsUser(name.trim() || email.split('@')[0], email.trim(), selectedRole, password);
+
       if (selectedRole === 'recruiter') {
         router.push('/recruiter');
       } else if (selectedRole === 'admin') {
@@ -45,7 +46,11 @@ export default function GeneralLoginPage() {
       } else {
         router.push('/resume');
       }
-    }, 600);
+    } catch (error) {
+      setAuthError(error instanceof Error ? error.message : 'Unable to sign in. Please verify your credentials and try again.');
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -204,6 +209,12 @@ export default function GeneralLoginPage() {
                   <span className="text-xs text-slate-600 font-medium">Keep me signed in</span>
                 </label>
               </div>
+
+              {authError && (
+                <div className="rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-xs font-medium text-red-700">
+                  {authError}
+                </div>
+              )}
 
               <button
                 type="submit"

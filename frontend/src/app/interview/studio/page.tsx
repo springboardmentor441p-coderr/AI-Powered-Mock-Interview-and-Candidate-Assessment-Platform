@@ -1,500 +1,168 @@
 'use client';
 
-import React, { useState, useEffect, useRef } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { 
-  Mic, 
-  MicOff, 
-  Video, 
-  VideoOff, 
-  PhoneOff, 
-  ShieldAlert, 
-  ShieldCheck, 
-  Radio, 
-  Bot,
-  Send,
-  ChevronRight,
-  CheckCircle2,
-  Sparkles,
-  Loader2,
-  Brain,
-  Activity,
-  Award
-} from 'lucide-react';
+import { Bot, CheckCircle2, Loader2, Mic, MicOff, PhoneOff, Radio, RefreshCw, Video, VideoOff } from 'lucide-react';
+import { ProtectedRoute } from '../../../components/auth/ProtectedRoute';
 import { useApp } from '../../../context/AppContext';
-import { SAMPLE_QUESTION_BANK } from '../../../data/mockData';
-import { evaluateInterview, CandidateRawInput } from '../../../utils/evaluationEngine';
-import { Question, ProctoringEvent } from '../../../types';
+import { generatePersonalizedQuestions } from '../../../utils/questionGenerator';
+import { evaluateInterview, type CandidateRawInput } from '../../../utils/evaluationEngine';
+import { createVoiceInterviewPayload, type VoiceInterviewStartResponse } from '../../../lib/voiceInterview';
+import { useVapiInterview } from '../../../hooks/useVapiInterview';
+import type { InterviewConfig } from '../../../types';
+
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api';
 
 export default function InterviewStudioPage() {
-  const router = useRouter();
-  const { user, activeResume, activeConfig, addReport, resetInterviewSession } = useApp();
-
-  // Enforce resume upload validation guard - strictly requires a fresh activeResume for current session
-  useEffect(() => {
-    const hasActiveResume = Boolean(activeResume);
-    if (!hasActiveResume) {
-      router.replace('/resume');
-    }
-  }, [activeResume, router]);
-
-  // Questions for active track
-  const track = activeConfig?.track || 'Technical';
-  const trackQuestions: Question[] = SAMPLE_QUESTION_BANK.filter(q => q.track === track);
-  const questionsToUse = trackQuestions.length > 0 ? trackQuestions : SAMPLE_QUESTION_BANK;
-
-  const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
-  const currentQuestion = questionsToUse[currentQuestionIndex] || questionsToUse[0];
-
-  const [seconds, setSeconds] = useState(0);
-  const [isSpeaking, setIsSpeaking] = useState(true);
-  const [isMuted, setIsMuted] = useState(false);
-  const [cameraOn, setCameraOn] = useState(true);
-  const [gazeWarning, setGazeWarning] = useState(false);
-
-  // Live Vision Assessment Scores
-  const [eyeContact, setEyeContact] = useState(88);
-  const [attention, setAttention] = useState(85);
-  const [engagement, setEngagement] = useState(82);
-
-  // Candidate Answers Storage
-  const [candidateResponseText, setCandidateResponseText] = useState('');
-  const [savedInputs, setSavedInputs] = useState<CandidateRawInput[]>([]);
-  const [proctoringEvents, setProctoringEvents] = useState<ProctoringEvent[]>([]);
-
-  // Post-Interview Evaluation Overlay State
-  const [isEvaluating, setIsEvaluating] = useState(false);
-  const [evalStep, setEvalStep] = useState(1);
-
-  const videoRef = useRef<HTMLVideoElement | null>(null);
-
-  // Live Session Timer
-  useEffect(() => {
-    if (isEvaluating) return;
-    const timer = setInterval(() => setSeconds(s => s + 1), 1000);
-    return () => clearInterval(timer);
-  }, [isEvaluating]);
-
-  // Alternate AI Speaking vs Candidate Listening state
-  useEffect(() => {
-    if (isEvaluating) return;
-    const toggleSpeaking = setInterval(() => {
-      setIsSpeaking(prev => !prev);
-    }, 7000);
-    return () => clearInterval(toggleSpeaking);
-  }, [isEvaluating]);
-
-  // Simulate occasional gaze warning for realistic proctoring behavior
-  useEffect(() => {
-    if (isEvaluating) return;
-    const warningTimer = setTimeout(() => {
-      if (activeConfig?.enableProctoring) {
-        setGazeWarning(true);
-        setProctoringEvents(prev => [
-          ...prev,
-          {
-            id: `proc-${Date.now()}`,
-            timestamp: formatTimer(seconds),
-            type: 'LOOKING_AWAY',
-            severity: 'warning',
-            message: 'Candidate looked away from screen during question delivery.'
-          }
-        ]);
-
-        setTimeout(() => setGazeWarning(false), 4000);
-      }
-    }, 15000);
-
-    return () => clearTimeout(warningTimer);
-  }, [activeConfig, seconds, isEvaluating]);
-
-  // Access user webcam for live video feed
-  useEffect(() => {
-    if (cameraOn && navigator.mediaDevices?.getUserMedia && !isEvaluating) {
-      navigator.mediaDevices.getUserMedia({ video: true, audio: false })
-        .then((stream) => {
-          if (videoRef.current) {
-            videoRef.current.srcObject = stream;
-          }
-        })
-        .catch((err) => {
-          console.warn('Webcam permission denied or unavailable:', err);
-        });
-    } else if ((!cameraOn || isEvaluating) && videoRef.current) {
-      const stream = videoRef.current.srcObject as MediaStream;
-      if (stream) {
-        stream.getTracks().forEach(track => track.stop());
-      }
-      videoRef.current.srcObject = null;
-    }
-  }, [cameraOn, isEvaluating]);
-
-  const formatTimer = (sec: number) => {
-    const m = Math.floor(sec / 60).toString().padStart(2, '0');
-    const s = (sec % 60).toString().padStart(2, '0');
-    return `${m}:${s}`;
-  };
-
-  const handleNextQuestion = () => {
-    const inputEntry: CandidateRawInput = {
-      question: currentQuestion,
-      candidateResponseText: candidateResponseText.trim() || 'No explicit verbal answer provided.',
-      audioDurationSeconds: 45,
-      speechMetrics: {
-        wpm: candidateResponseText.split(/\s+/).length > 20 ? 140 : 100,
-        eyeContactPercent: eyeContact,
-        confidenceScore: 78
-      }
-    };
-
-    const updatedInputs = [...savedInputs, inputEntry];
-    setSavedInputs(updatedInputs);
-    setCandidateResponseText('');
-
-    if (currentQuestionIndex + 1 < questionsToUse.length) {
-      setCurrentQuestionIndex(prev => prev + 1);
-    } else {
-      finishInterview(updatedInputs);
-    }
-  };
-
-  const finishInterview = (inputs: CandidateRawInput[]) => {
-    setIsEvaluating(true);
-
-    const finalConfig = activeConfig || {
-      id: 'cfg-default',
-      title: 'Technical AI Interview Screening',
-      track: 'Technical',
-      experienceLevel: '3-5 Years',
-      difficulty: 'Hard',
-      durationMinutes: 30,
-      persona: {
-        id: 'alex-tech',
-        name: 'Alex Vance',
-        role: 'Principal Engineer & Tech Lead',
-        avatar: '',
-        description: '',
-        accentColor: '#059669',
-        voiceGender: 'male',
-        tone: 'analytical'
-      },
-      preferredLanguage: 'English',
-      enableProctoring: true
-    };
-
-    const candidateName = user?.name || 'Candidate User';
-    const candidateEmail = user?.email || 'candidate@intervio.ai';
-
-    const newReport = evaluateInterview(
-      finalConfig,
-      inputs,
-      proctoringEvents,
-      candidateName,
-      candidateEmail
-    );
-
-    addReport(newReport);
-    resetInterviewSession();
-
-    // Smooth step progress animation before auto-redirection to Dashboard
-    setTimeout(() => setEvalStep(2), 600);
-    setTimeout(() => setEvalStep(3), 1200);
-    setTimeout(() => setEvalStep(4), 1800);
-    setTimeout(() => {
-      router.push('/dashboard');
-    }, 2400);
-  };
-
-  const handleEndInterview = () => {
-    const currentInput: CandidateRawInput = {
-      question: currentQuestion,
-      candidateResponseText: candidateResponseText.trim() || 'Software engineer with fullstack experience and strong focus on scalable architecture.',
-      audioDurationSeconds: seconds > 0 ? seconds : 30,
-      speechMetrics: {
-        wpm: 135,
-        eyeContactPercent: eyeContact,
-        confidenceScore: 78
-      }
-    };
-
-    const inputsToProcess = savedInputs.length > 0 ? [...savedInputs, currentInput] : [currentInput];
-    finishInterview(inputsToProcess);
-  };
-
-  if (isEvaluating) {
-    return (
-      <div className="min-h-screen bg-slate-900 text-white flex items-center justify-center p-6 select-none">
-        <div className="max-w-md w-full bg-slate-800/90 border border-slate-700 p-8 rounded-3xl shadow-2xl text-center space-y-6">
-          <div className="relative w-24 h-24 mx-auto flex items-center justify-center">
-            <div className="absolute inset-0 rounded-full border-4 border-emerald-500/20 border-t-emerald-500 animate-spin" />
-            <Brain className="w-10 h-10 text-[#059669] animate-pulse" />
-          </div>
-
-          <div className="space-y-2">
-            <span className="px-3 py-1 rounded-full bg-emerald-500/20 text-emerald-400 text-xs font-mono font-bold uppercase tracking-wider">
-              AI EVALUATION ENGINE IN PROGRESS
-            </span>
-            <h2 className="text-xl sm:text-2xl font-extrabold tracking-tight">
-              Processing Interview Session
-            </h2>
-            <p className="text-xs text-slate-400">
-              Generating candidate-specific evaluation metrics & hiring insights...
-            </p>
-          </div>
-
-          {/* Progress Steps */}
-          <div className="space-y-3 text-xs text-left pt-2">
-            <div className={`p-3 rounded-xl border flex items-center gap-3 transition-all ${
-              evalStep >= 1 ? 'bg-slate-700/70 border-emerald-500/50 text-emerald-300 font-bold' : 'bg-slate-800 border-slate-700 text-slate-500'
-            }`}>
-              <CheckCircle2 className={`w-4 h-4 shrink-0 ${evalStep >= 1 ? 'text-emerald-400' : 'text-slate-600'}`} />
-              <span>1. Transcribing audio & speech-to-text transcript</span>
-            </div>
-
-            <div className={`p-3 rounded-xl border flex items-center gap-3 transition-all ${
-              evalStep >= 2 ? 'bg-slate-700/70 border-emerald-500/50 text-emerald-300 font-bold' : 'bg-slate-800 border-slate-700 text-slate-500'
-            }`}>
-              {evalStep >= 2 ? <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" /> : <Loader2 className="w-4 h-4 animate-spin text-slate-500 shrink-0" />}
-              <span>2. Evaluating technical knowledge & concept accuracy</span>
-            </div>
-
-            <div className={`p-3 rounded-xl border flex items-center gap-3 transition-all ${
-              evalStep >= 3 ? 'bg-slate-700/70 border-emerald-500/50 text-emerald-300 font-bold' : 'bg-slate-800 border-slate-700 text-slate-500'
-            }`}>
-              {evalStep >= 3 ? <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" /> : <Loader2 className="w-4 h-4 animate-spin text-slate-500 shrink-0" />}
-              <span>3. Analyzing WPM pacing & communication clarity</span>
-            </div>
-
-            <div className={`p-3 rounded-xl border flex items-center gap-3 transition-all ${
-              evalStep >= 4 ? 'bg-slate-700/70 border-emerald-500/50 text-emerald-300 font-bold' : 'bg-slate-800 border-slate-700 text-slate-500'
-            }`}>
-              {evalStep >= 4 ? <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" /> : <Loader2 className="w-4 h-4 animate-spin text-slate-500 shrink-0" />}
-              <span>4. Synthesizing Dashboard Insights & Redirecting...</span>
-            </div>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  return (
-    <div className="min-h-screen bg-slate-50 flex flex-col justify-between p-6 text-slate-900 select-none">
-      
-      {/* Top Header */}
-      <header className="max-w-7xl mx-auto w-full flex items-center justify-between">
-        <div className="flex items-center gap-2.5">
-          <div className="w-8 h-8 rounded-xl bg-[#059669] flex items-center justify-center text-white shadow-sm">
-            <Bot className="w-4 h-4" />
-          </div>
-          <span className="text-lg font-extrabold text-slate-900 tracking-tight">
-            Inter<span className="text-[#059669]">Vio</span> Studio
-          </span>
-        </div>
-
-        <div className="flex items-center gap-3">
-          <span className="text-xs font-bold text-slate-600 bg-white border border-slate-200 px-3 py-1 rounded-full">
-            Question {currentQuestionIndex + 1} of {questionsToUse.length}
-          </span>
-          {/* ON AIR Timer Badge */}
-          <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-red-50 text-red-700 border border-red-200 text-xs font-mono font-extrabold shadow-sm">
-            <span className="w-2.5 h-2.5 rounded-full bg-red-600 animate-ping" />
-            <span>ON AIR · {formatTimer(seconds)}</span>
-          </div>
-        </div>
-      </header>
-
-      {/* Main Canvas: AI Orb & Face Assessment Box */}
-      <main className="max-w-6xl mx-auto w-full grid grid-cols-1 lg:grid-cols-12 gap-8 items-center my-auto py-4">
-        
-        {/* Left Info Box */}
-        <div className="lg:col-span-3 space-y-4">
-          <div className="p-5 rounded-3xl bg-white border border-slate-200 shadow-enterprise-md space-y-2">
-            <span className="text-[10px] font-bold text-[#059669] uppercase tracking-wider block">
-              {activeConfig?.track || 'TECHNICAL'} TRACK
-            </span>
-            <h3 className="text-sm font-extrabold text-slate-900 leading-snug">
-              {activeConfig?.title || 'Technical Interview Session'}
-            </h3>
-            <p className="text-xs text-slate-500">
-              Persona: {activeConfig?.persona.name || 'Alex Vance'}
-            </p>
-          </div>
-        </div>
-
-        {/* Center AI Orb Visualizer Container */}
-        <div className="lg:col-span-5 flex flex-col items-center justify-center text-center space-y-4">
-          <div className={`relative w-44 h-44 rounded-full flex items-center justify-center transition-all duration-500 shadow-xl ${
-            isSpeaking ? 'bg-emerald-100/60 ring-8 ring-emerald-400/40' : 'bg-slate-100/60 ring-8 ring-slate-300/40'
-          }`}>
-            <div className={`w-32 h-32 rounded-full flex items-center justify-center text-white shadow-lg transition-colors ${
-              isSpeaking ? 'bg-[#059669]' : 'bg-slate-700'
-            }`}>
-              <Radio className="w-12 h-12 animate-pulse" />
-            </div>
-          </div>
-
-          <div className="space-y-1">
-            <span className="text-xs font-mono font-extrabold tracking-widest text-slate-700 uppercase block">
-              {isSpeaking ? 'AI INTERVIEWER SPEAKING' : 'LISTENING TO CANDIDATE'}
-            </span>
-            <div className="flex items-center justify-center gap-1">
-              <span className="w-1 h-3 rounded bg-[#059669] animate-bounce" />
-              <span className="w-1 h-5 rounded bg-[#059669] animate-bounce delay-75" />
-              <span className="w-1 h-2 rounded bg-[#059669] animate-bounce delay-150" />
-            </div>
-          </div>
-        </div>
-
-        {/* Right Vision Proctoring Card */}
-        <div className="lg:col-span-4 bg-white p-5 rounded-3xl border border-slate-200 shadow-enterprise-md space-y-4 max-w-sm mx-auto w-full">
-          
-          {/* Webcam Box */}
-          <div className="relative aspect-video rounded-2xl bg-slate-900 overflow-hidden flex items-center justify-center shadow-inner">
-            {cameraOn ? (
-              <video
-                ref={videoRef}
-                autoPlay
-                playsInline
-                muted
-                className="w-full h-full object-cover transform -scale-x-100"
-              />
-            ) : (
-              <div className="text-center text-slate-400 space-y-2">
-                <VideoOff className="w-8 h-8 mx-auto" />
-                <span className="text-xs font-bold block">CAM OFF</span>
-              </div>
-            )}
-
-            <div className="absolute top-2 right-2 px-2.5 py-0.5 rounded-full bg-emerald-600 text-white text-[10px] font-bold shadow-sm">
-              ON SCREEN
-            </div>
-          </div>
-
-          {/* Live Metrics */}
-          <div className="space-y-2.5 text-xs font-bold">
-            <div>
-              <div className="flex justify-between text-slate-700 mb-1">
-                <span>EYE CONTACT</span>
-                <span>{eyeContact}%</span>
-              </div>
-              <div className="w-full bg-slate-100 h-1.5 rounded-full overflow-hidden">
-                <div className="bg-[#059669] h-full rounded-full" style={{ width: `${eyeContact}%` }} />
-              </div>
-            </div>
-
-            <div>
-              <div className="flex justify-between text-slate-700 mb-1">
-                <span>ATTENTION</span>
-                <span>{attention}%</span>
-              </div>
-              <div className="w-full bg-slate-100 h-1.5 rounded-full overflow-hidden">
-                <div className="bg-[#059669] h-full rounded-full" style={{ width: `${attention}%` }} />
-              </div>
-            </div>
-          </div>
-
-          {/* Gaze Warning Box */}
-          {gazeWarning && (
-            <div className="p-3 rounded-2xl bg-rose-50 border border-rose-200 text-rose-900 text-xs space-y-1 shadow-sm">
-              <div className="flex items-center gap-1.5 font-extrabold text-rose-600">
-                <ShieldAlert className="w-4 h-4" />
-                <span>LOOK FORWARD</span>
-              </div>
-              <p className="text-[11px] text-rose-800">
-                Keep your gaze on the screen to ensure valid proctoring verification.
-              </p>
-            </div>
-          )}
-
-          <div className="text-center pt-1 text-[10px] font-mono font-bold text-slate-400">
-            VISION PROCTORING ENGINE · ACTIVE
-          </div>
-        </div>
-
-      </main>
-
-      {/* Bottom Container: Interactive Question Box & Control Bar */}
-      <footer className="max-w-4xl mx-auto w-full space-y-4">
-        
-        {/* Active Question & Response Box */}
-        <div className="p-5 rounded-3xl bg-white border border-slate-200 shadow-enterprise-md space-y-3">
-          <div className="flex items-center justify-between">
-            <span className="text-[10px] font-mono font-bold text-slate-400 uppercase tracking-wider block">
-              INTERVIEW QUESTION ({currentQuestionIndex + 1}/{questionsToUse.length})
-            </span>
-            <span className="text-[10px] font-bold text-[#059669] bg-emerald-50 px-2.5 py-0.5 rounded-full border border-emerald-200 uppercase">
-              {currentQuestion.topic}
-            </span>
-          </div>
-
-          <div className="p-3.5 rounded-2xl bg-slate-100 text-slate-900 font-bold text-xs sm:text-sm">
-            {currentQuestion.text}
-          </div>
-
-          {/* Response Textarea Input */}
-          <div className="space-y-2 pt-1">
-            <label className="text-[11px] font-bold text-slate-600 block">
-              Your Verbal / Written Answer:
-            </label>
-            <textarea
-              value={candidateResponseText}
-              onChange={(e) => setCandidateResponseText(e.target.value)}
-              placeholder="Type or speak your answer here... (e.g. Walk through technical architecture, concepts, trade-offs, and examples)"
-              rows={3}
-              className="w-full p-3 rounded-2xl bg-slate-50 border border-slate-200 text-xs text-slate-900 focus:outline-none focus:border-[#059669] transition-all"
-            />
-          </div>
-        </div>
-
-        {/* Action Controls Bar */}
-        <div className="flex flex-wrap items-center justify-between gap-4">
-          <div className="flex items-center gap-3">
-            <button
-              type="button"
-              onClick={() => setIsMuted(!isMuted)}
-              className={`px-4 py-2.5 rounded-2xl border text-xs font-bold flex items-center gap-2 transition-all shadow-sm ${
-                isMuted ? 'bg-red-50 text-red-600 border-red-200' : 'bg-white hover:bg-slate-50 text-slate-800 border-slate-200'
-              }`}
-            >
-              {isMuted ? <MicOff className="w-4 h-4 text-red-600" /> : <Mic className="w-4 h-4 text-slate-600" />}
-              <span>{isMuted ? 'Muted' : 'Mute Mic'}</span>
-            </button>
-
-            <button
-              type="button"
-              onClick={() => setCameraOn(!cameraOn)}
-              className={`px-4 py-2.5 rounded-2xl border text-xs font-bold flex items-center gap-2 transition-all shadow-sm ${
-                !cameraOn ? 'bg-red-50 text-red-600 border-red-200' : 'bg-white hover:bg-slate-50 text-slate-800 border-slate-200'
-              }`}
-            >
-              {cameraOn ? <Video className="w-4 h-4 text-slate-600" /> : <VideoOff className="w-4 h-4 text-red-600" />}
-              <span>{cameraOn ? 'Cam On' : 'Cam Off'}</span>
-            </button>
-          </div>
-
-          <div className="flex items-center gap-3">
-            <button
-              type="button"
-              onClick={handleNextQuestion}
-              className="px-5 py-2.5 rounded-2xl bg-emerald-50 hover:bg-emerald-100 text-[#059669] border border-emerald-200 text-xs font-extrabold flex items-center gap-1.5 transition-all"
-            >
-              <span>{currentQuestionIndex + 1 < questionsToUse.length ? 'Next Question' : 'Evaluate & Complete'}</span>
-              <ChevronRight className="w-4 h-4" />
-            </button>
-
-            <button
-              type="button"
-              onClick={handleEndInterview}
-              className="px-6 py-2.5 rounded-2xl bg-red-600 hover:bg-red-700 text-white text-xs font-extrabold flex items-center gap-2 shadow-md transition-all transform hover:-translate-y-0.5"
-            >
-              <PhoneOff className="w-4 h-4" />
-              <span>End & Submit</span>
-            </button>
-          </div>
-        </div>
-
-      </footer>
-
-    </div>
-  );
+  return <ProtectedRoute allowedRoles={['candidate', 'recruiter', 'admin']}><InterviewStudio /></ProtectedRoute>;
 }
+
+function InterviewStudio() {
+  const router = useRouter();
+  const { user, activeConfig, activeResume, addReport, resetInterviewSession } = useApp();
+  const config = activeConfig ?? defaultConfig();
+  const questions = useMemo(() => generatePersonalizedQuestions(activeResume, config.track), [activeResume, config.track]);
+  const voice = useVapiInterview();
+  const [session, setSession] = useState<VoiceInterviewStartResponse | null>(null);
+  const [setupError, setSetupError] = useState<string | null>(null);
+  const [seconds, setSeconds] = useState(0);
+  const [cameraOn, setCameraOn] = useState(true);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const videoRef = useRef<HTMLVideoElement | null>(null);
+  const startedRef = useRef(false);
+
+  const startSession = useCallback(async () => {
+    if (startedRef.current || !user) return;
+    startedRef.current = true;
+    setSetupError(null);
+    try {
+      const token = localStorage.getItem('intervio_jwt');
+      const response = await fetch(`${API_BASE_URL}/interview/start`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+        body: JSON.stringify(createVoiceInterviewPayload(config, questions, activeResume))
+      });
+      const payload = await response.json();
+      if (!response.ok || !payload.success) throw new Error(payload.error || 'Unable to prepare the voice interview.');
+      setSession(payload.data);
+      await voice.start(payload.data);
+    } catch (error) {
+      startedRef.current = false;
+      setSetupError(error instanceof Error ? error.message : 'Unable to start the voice interview.');
+    }
+  }, [activeResume, config, questions, user, voice]);
+
+  useEffect(() => { void startSession(); }, [startSession]);
+
+  useEffect(() => {
+    if (voice.status !== 'active') return;
+    const timer = window.setInterval(() => setSeconds((value) => value + 1), 1000);
+    return () => window.clearInterval(timer);
+  }, [voice.status]);
+
+  useEffect(() => {
+    if (!cameraOn || !navigator.mediaDevices?.getUserMedia) return;
+    let stream: MediaStream | null = null;
+    navigator.mediaDevices.getUserMedia({ video: true, audio: false }).then((nextStream) => {
+      stream = nextStream;
+      if (videoRef.current) videoRef.current.srcObject = nextStream;
+    }).catch(() => setCameraOn(false));
+    return () => stream?.getTracks().forEach((track) => track.stop());
+  }, [cameraOn]);
+
+  const isSubmittingRef = useRef(false);
+
+  const completeInterview = useCallback(async () => {
+    if (isSubmittingRef.current) return;
+    isSubmittingRef.current = true;
+    setIsSubmitting(true);
+
+    try {
+      if (session) {
+        try {
+          const token = localStorage.getItem('intervio_jwt');
+          const controller = new AbortController();
+          const timeoutId = setTimeout(() => controller.abort(), 3000);
+          await fetch(`${API_BASE_URL}/interview/complete`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+            body: JSON.stringify({ sessionId: session.sessionId }),
+            signal: controller.signal
+          }).catch((err) => console.warn('Interview complete API warning:', err));
+          clearTimeout(timeoutId);
+        } catch (apiErr) {
+          console.warn('API completion request skipped or timed out:', apiErr);
+        }
+      }
+
+      const answers = voice.transcript.filter((entry) => entry.role === 'user' && entry.isFinal);
+      const inputs: CandidateRawInput[] = questions.map((question, index) => ({
+        question,
+        candidateResponseText: answers[index]?.content || '',
+        audioDurationSeconds: answers[index] ? Math.max(1, Math.round(seconds / Math.max(answers.length, 1))) : 0,
+        speechMetrics: {
+          wpm: answers[index] ? Math.round((answers[index].content.split(/\s+/).filter(Boolean).length / Math.max(seconds / Math.max(answers.length, 1), 1)) * 60) : 0,
+          eyeContactPercent: 0,
+          confidenceScore: 0
+        }
+      }));
+
+      const report = evaluateInterview(config, inputs, [], user?.name || 'Candidate', user?.email || '');
+      await addReport({ ...report, totalDurationSeconds: seconds, videoRecordingAvailable: false });
+      resetInterviewSession();
+      router.push('/dashboard');
+    } catch (err) {
+      console.error('Error completing interview:', err);
+      resetInterviewSession();
+      router.push('/dashboard');
+    } finally {
+      setIsSubmitting(false);
+    }
+  }, [addReport, config, questions, resetInterviewSession, router, seconds, session, user, voice.transcript]);
+
+  const handleEndAndSubmit = useCallback(async () => {
+    voice.end();
+    await completeInterview();
+  }, [voice, completeInterview]);
+
+  useEffect(() => {
+    if (voice.status === 'ended') {
+      void completeInterview();
+    }
+  }, [completeInterview, voice.status]);
+
+  const formatTime = (value: number) => `${Math.floor(value / 60).toString().padStart(2, '0')}:${(value % 60).toString().padStart(2, '0')}`;
+  const connectionText = voice.status === 'connecting' ? 'Connecting securely…' : voice.isAssistantSpeaking ? `${config.persona.name} is speaking` : voice.status === 'active' ? 'Listening to you' : 'Preparing interview';
+  const error = setupError || voice.error;
+
+  return <div className="min-h-screen bg-slate-50 p-4 sm:p-6 text-slate-900">
+    <header className="mx-auto flex max-w-7xl items-center justify-between gap-3">
+      <div className="flex items-center gap-2.5"><div className="flex h-9 w-9 items-center justify-center rounded-xl bg-emerald-600 text-white"><Bot className="h-5 w-5" /></div><span className="text-lg font-extrabold">Inter<span className="text-emerald-600">Vio</span> Studio</span></div>
+      <div className="flex items-center gap-2 rounded-full border border-red-200 bg-red-50 px-3 py-1.5 font-mono text-xs font-bold text-red-700"><Radio className="h-3.5 w-3.5" />ON AIR · {formatTime(seconds)}</div>
+    </header>
+
+    <main className="mx-auto grid max-w-7xl grid-cols-1 items-center gap-6 py-8 lg:grid-cols-12">
+      <section className="space-y-4 lg:col-span-3">
+        <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm"><p className="text-[10px] font-bold uppercase tracking-wider text-emerald-600">{config.track} · {config.difficulty}</p><h1 className="mt-2 text-base font-extrabold">{config.title}</h1><p className="mt-2 text-xs leading-relaxed text-slate-500">{activeResume ? `Resume-aware interview for ${activeResume.detectedRole || 'your selected role'}.` : 'General interview mode. Questions follow your selected track.'}</p></div>
+      </section>
+
+      <section className="flex min-h-[360px] flex-col items-center justify-center rounded-3xl border border-slate-200 bg-white p-8 text-center shadow-sm lg:col-span-5">
+        <div className={`flex h-28 w-28 items-center justify-center rounded-full bg-gradient-to-tr from-emerald-600 to-teal-400 text-white shadow-lg ${voice.isAssistantSpeaking ? 'animate-pulse' : ''}`}><Bot className="h-14 w-14" /></div>
+        <h2 className="mt-6 text-xl font-extrabold">{config.persona.name}</h2><p className="mt-1 text-xs text-slate-500">{config.persona.role}</p>
+        <div className="mt-5 flex items-center gap-2 rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1.5 text-xs font-semibold text-emerald-700"><span className={`h-2 w-2 rounded-full bg-emerald-500 ${voice.status === 'active' ? 'animate-ping' : ''}`} />{connectionText}</div>
+        {error && <div className="mt-5 max-w-md rounded-2xl border border-red-200 bg-red-50 p-3 text-left text-xs text-red-700"><p className="font-bold">Voice connection unavailable</p><p className="mt-1">{error}</p><button onClick={() => void startSession()} className="mt-2 inline-flex items-center gap-1 font-bold underline"><RefreshCw className="h-3 w-3" />Retry</button></div>}
+      </section>
+
+      <section className="lg:col-span-4"><div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm"><div className="relative aspect-video overflow-hidden rounded-2xl bg-slate-900">{cameraOn ? <video ref={videoRef} autoPlay muted playsInline className="h-full w-full object-cover -scale-x-100" /> : <div className="flex h-full flex-col items-center justify-center text-slate-400"><VideoOff className="h-8 w-8" /><span className="mt-2 text-xs font-bold">CAMERA OFF</span></div>}<span className="absolute right-2 top-2 rounded-full bg-emerald-600 px-2 py-0.5 text-[10px] font-bold text-white">ON SCREEN</span></div><p className="mt-3 text-xs text-slate-500">Camera video is only used by the browser preview in this release; it is not sent to Vapi.</p></div></section>
+    </main>
+
+    <section className="mx-auto max-w-4xl rounded-3xl border border-slate-200 bg-white p-4 shadow-sm"><p className="mb-3 text-[10px] font-bold uppercase tracking-wider text-slate-500">Live transcript</p><div className="max-h-36 space-y-2 overflow-y-auto pr-1 text-xs">{voice.transcript.length === 0 ? <p className="text-slate-400">Transcript will appear here once the conversation starts.</p> : voice.transcript.slice(-6).map((entry, index) => <p key={`${entry.role}-${index}`} className={entry.role === 'assistant' ? 'text-emerald-700' : 'text-slate-700'}><span className="font-bold">{entry.role === 'assistant' ? config.persona.name : 'You'}: </span>{entry.content}</p>)}</div></section>
+
+    <footer className="mx-auto mt-6 flex max-w-4xl flex-wrap items-center justify-between gap-3"><div className="flex gap-3"><button onClick={voice.toggleMute} disabled={voice.status !== 'active'} className="inline-flex items-center gap-2 rounded-2xl border border-slate-200 bg-white px-4 py-2.5 text-xs font-bold disabled:opacity-50">{voice.isMuted ? <MicOff className="h-4 w-4 text-red-600" /> : <Mic className="h-4 w-4" />}{voice.isMuted ? 'Unmute mic' : 'Mute mic'}</button><button onClick={() => setCameraOn((value) => !value)} className="inline-flex items-center gap-2 rounded-2xl border border-slate-200 bg-white px-4 py-2.5 text-xs font-bold">{cameraOn ? <Video className="h-4 w-4" /> : <VideoOff className="h-4 w-4" />}{cameraOn ? 'Cam on' : 'Cam off'}</button></div><button onClick={handleEndAndSubmit} disabled={isSubmitting || voice.status === 'ended'} className="inline-flex items-center gap-2 rounded-2xl bg-red-600 px-5 py-2.5 text-xs font-extrabold text-white shadow-sm disabled:opacity-50 hover:bg-red-700 transition-colors">{isSubmitting ? <Loader2 className="h-4 w-4 animate-spin" /> : <PhoneOff className="h-4 w-4" />}{isSubmitting ? 'Saving interview…' : 'End & submit'}</button></footer>
+  </div>;
+}
+
+function defaultConfig(): InterviewConfig {
+  return { id: 'cfg-default', title: 'Technical AI Interview Screening', track: 'Technical', experienceLevel: '3-5 Years', difficulty: 'Hard', durationMinutes: 30, persona: { id: 'alex-tech', name: 'Alex Vance', role: 'Principal Engineer & Tech Lead', avatar: '', description: '', accentColor: '#059669', voiceGender: 'male', tone: 'analytical' }, preferredLanguage: 'English', enableProctoring: true };
+}
+

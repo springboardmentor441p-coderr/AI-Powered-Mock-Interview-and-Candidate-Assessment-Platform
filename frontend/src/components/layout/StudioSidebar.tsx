@@ -18,12 +18,22 @@ import { useApp } from '../../context/AppContext';
 
 export const StudioSidebar: React.FC = () => {
   const pathname = usePathname();
-  const { user, roleMode } = useApp();
+  const { user, reports } = useApp();
+
+  const userReports = React.useMemo(() => {
+    if (!user) return [];
+    return reports.filter(
+      (r) => r.candidateEmail?.toLowerCase() === user.email?.toLowerCase() || user.role === 'recruiter' || user.role === 'admin'
+    );
+  }, [reports, user]);
+
+  const latestReportId = userReports.length > 0 ? userReports[0].id : null;
+  const sessionHistoryHref = latestReportId ? `/report/${latestReportId}` : '/dashboard';
 
   const navItems = [
     { name: 'Résumés & Launch', href: '/resume', icon: FileText },
     { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
-    { name: 'Session History', href: '/report/rpt-8821', icon: History },
+    { name: 'Session History', href: sessionHistoryHref, icon: History },
     { name: 'Profile', href: '/profile', icon: User },
   ];
 
@@ -49,7 +59,7 @@ export const StudioSidebar: React.FC = () => {
         <nav className="space-y-1">
           {navItems.map((item) => {
             const Icon = item.icon;
-            const isActive = pathname === item.href;
+            const isActive = pathname === item.href || (item.name === 'Session History' && pathname?.startsWith('/report/'));
 
             return (
               <Link

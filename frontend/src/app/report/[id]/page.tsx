@@ -1,9 +1,11 @@
 'use client';
 
 import React, { useState } from 'react';
-import { useParams } from 'next/navigation';
+import { useParams, useRouter } from 'next/navigation';
+import Link from 'next/link';
 import { StudioSidebar } from '../../../components/layout/StudioSidebar';
 import { useApp } from '../../../context/AppContext';
+import { ProtectedRoute } from '../../../components/auth/ProtectedRoute';
 import { 
   Trophy, 
   CheckCircle2, 
@@ -15,26 +17,92 @@ import {
   ShieldAlert,
   Clock,
   ExternalLink,
-  ChevronRight
+  ChevronRight,
+  Lock,
+  ArrowLeft
 } from 'lucide-react';
 
 export default function ReportPage() {
+  return (
+    <ProtectedRoute allowedRoles={['candidate', 'recruiter', 'admin']}>
+      <ReportPageContent />
+    </ProtectedRoute>
+  );
+}
+
+function ReportPageContent() {
   const params = useParams();
+  const router = useRouter();
   const reportId = params?.id as string;
-  const { reports } = useApp();
+  const { reports, user } = useApp();
   const [activeTab, setActiveTab] = useState<'overview' | 'transcript' | 'threads' | 'speech' | 'brief'>('overview');
 
-  // Find candidate report by ID or fallback to latest report
-  const report = reports.find(r => r.id === reportId) || reports[0];
+  // Find candidate report by exact ID (NO FALLBACK to reports[0] to prevent data leakage)
+  const report = reports.find(r => r.id === reportId);
+
+  // Check Report Ownership Authorization
+  const isOwner = user && report && report.candidateEmail?.toLowerCase() === user.email?.toLowerCase();
+  const isElevatedRole = user && (user.role === 'recruiter' || user.role === 'admin');
+  const isAuthorized = isOwner || isElevatedRole;
 
   if (!report) {
     return (
       <div className="min-h-screen bg-slate-50 flex text-slate-900">
         <StudioSidebar />
         <main className="flex-1 p-8 flex items-center justify-center">
-          <div className="text-center space-y-3">
-            <h2 className="text-xl font-extrabold text-slate-800">Report Not Found</h2>
-            <p className="text-xs text-slate-500">No interview evaluation data is available for this session.</p>
+          <div className="max-w-md w-full bg-white p-8 rounded-3xl border border-slate-200 shadow-enterprise-md text-center space-y-4">
+            <div className="w-12 h-12 rounded-2xl bg-amber-50 text-amber-600 border border-amber-200 flex items-center justify-center mx-auto">
+              <FileText className="w-6 h-6" />
+            </div>
+            <h2 className="text-xl font-extrabold text-slate-900">Report Not Found</h2>
+            <p className="text-xs text-slate-500">
+              No interview evaluation report exists with ID <code className="bg-slate-100 px-1.5 py-0.5 rounded font-mono text-slate-700">{reportId}</code>.
+            </p>
+            <div className="pt-2">
+              <Link
+                href="/dashboard"
+                className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-[#059669] text-white text-xs font-bold shadow-sm hover:bg-emerald-700 transition-all"
+              >
+                <ArrowLeft className="w-4 h-4" />
+                <span>Return to Dashboard</span>
+              </Link>
+            </div>
+          </div>
+        </main>
+      </div>
+    );
+  }
+
+  // Security Access Denied Screen if user is unauthorized
+  if (!isAuthorized) {
+    return (
+      <div className="min-h-screen bg-slate-50 flex text-slate-900">
+        <StudioSidebar />
+        <main className="flex-1 p-8 flex items-center justify-center">
+          <div className="max-w-md w-full bg-white p-8 rounded-3xl border-2 border-rose-200 shadow-enterprise-lg text-center space-y-4">
+            <div className="w-14 h-14 rounded-2xl bg-rose-50 text-rose-600 border border-rose-200 flex items-center justify-center mx-auto">
+              <Lock className="w-7 h-7" />
+            </div>
+            <div className="space-y-1">
+              <span className="px-3 py-1 rounded-full bg-rose-100 text-rose-700 text-[10px] font-mono font-bold uppercase">
+                403 UNAUTHORIZED ACCESS
+              </span>
+              <h2 className="text-xl font-extrabold text-slate-900 pt-1">
+                Access Denied
+              </h2>
+            </div>
+            <p className="text-xs text-slate-600 leading-relaxed">
+              You do not have permission to view this candidate's interview session report. Session history is private and accessible only to the authenticated candidate or verified hiring managers.
+            </p>
+            <div className="pt-2">
+              <Link
+                href="/dashboard"
+                className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-[#059669] text-white text-xs font-bold shadow-sm hover:bg-emerald-700 transition-all"
+              >
+                <ArrowLeft className="w-4 h-4" />
+                <span>Back to Your Dashboard</span>
+              </Link>
+            </div>
           </div>
         </main>
       </div>
@@ -54,7 +122,7 @@ export default function ReportPage() {
   const formattedDuration = `${minutes}M ${seconds}S`;
 
   // Calculate Speech metrics dynamically
-  const totalWords = report.answers.reduce((acc, a) => acc + a.candidateResponse.split(/\s+/).filter(Boolean).length, 0);
+  const totalWords = report.answers.reduce((acc, a) => acc + (a.candidateResponse?.split(/\s+/).filter(Boolean).length || 0), 0);
   const totalMin = Math.max(0.5, totalSec / 60);
   const calculatedWpm = Math.round(totalWords / totalMin);
 

@@ -14,34 +14,80 @@ import {
   AlertCircle
 } from 'lucide-react';
 
+import { ProtectedRoute } from '../../../components/auth/ProtectedRoute';
+import { InterviewConfig } from '../../../types';
+
 export default function InterviewSetupPage() {
+  return (
+    <ProtectedRoute allowedRoles={['candidate', 'recruiter', 'admin']}>
+      <InterviewSetupPageContent />
+    </ProtectedRoute>
+  );
+}
+
+function InterviewSetupPageContent() {
   const router = useRouter();
+  const { activeResume, setActiveConfig } = useApp();
 
-  React.useEffect(() => {
-    router.replace('/resume');
-  }, [router]);
+  const interviewOptions = [
+    'Technical',
+    'HR',
+    'Behavioral',
+    'Managerial',
+    'System Design',
+    'Coding',
+    'Custom'
+  ] as const;
 
-  const [interviewType, setInterviewType] = useState<'Technical' | 'HR' | 'System Design' | 'Coding' | 'Aptitude'>('HR');
-  const [roleDomain, setRoleDomain] = useState('backend engineering');
-  const [difficulty, setDifficulty] = useState<'Easy' | 'Medium' | 'Hard' | 'FAANG'>('Medium');
-  const [topicsCount, setTopicsCount] = useState(3);
+  const [interviewType, setInterviewType] = useState<'Technical' | 'HR' | 'Behavioral' | 'Managerial' | 'System Design' | 'Coding' | 'Custom'>('Technical');
+  const [roleDomain, setRoleDomain] = useState(activeResume?.detectedRole || 'backend engineering');
+  const [difficulty] = useState<'Easy' | 'Medium' | 'Hard' | 'FAANG'>('Medium');
   const [tailorToResume, setTailorToResume] = useState(true);
-
   const [isGenerating, setIsGenerating] = useState(false);
   const [generationStep, setGenerationStep] = useState<'form' | 'preparing' | 'connecting'>('form');
+
+  React.useEffect(() => {
+    if (activeResume?.detectedRole) {
+      setRoleDomain(activeResume.detectedRole);
+    }
+  }, [activeResume]);
 
   const handleCreateSession = (e: React.FormEvent) => {
     e.preventDefault();
     setIsGenerating(true);
     setGenerationStep('preparing');
 
-    // Simulate topic preparation loading sequence from video
+    const nextConfig: InterviewConfig = {
+      id: `cfg-${Date.now()}`,
+      title: `${interviewType} Interview${activeResume ? ' - Resume Tailored' : ''}`,
+      track: interviewType,
+      experienceLevel: (activeResume?.experienceYears && activeResume.experienceYears >= 5) ? 'Senior' : '3-5 Years',
+      difficulty,
+      durationMinutes: 30,
+      persona: {
+        id: 'alex-tech',
+        name: 'Alex Vance',
+        role: 'Principal Engineer & Tech Lead',
+        avatar: '',
+        description: 'Direct, analytical, and probes deeply into code architecture, data structures, and edge-cases.',
+        accentColor: '#059669',
+        voiceGender: 'male',
+        tone: 'analytical'
+      },
+      preferredLanguage: 'English',
+      enableProctoring: true,
+      resumeSkillsUsed: tailorToResume ? activeResume?.extractedSkills || [] : [],
+      customRoleTitle: roleDomain || undefined
+    };
+
+    setActiveConfig(nextConfig);
+
     setTimeout(() => {
       setGenerationStep('connecting');
       setTimeout(() => {
         router.push('/interview/studio');
-      }, 1500);
-    }, 2000);
+      }, 1200);
+    }, 1500);
   };
 
   return (
@@ -81,23 +127,31 @@ export default function InterviewSetupPage() {
                 </p>
 
                 <form onSubmit={handleCreateSession} className="space-y-5">
-                  
-                  {/* Interview Type */}
-                  <div>
-                    <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1.5">
-                      INTERVIEW TYPE
-                    </label>
-                    <select
-                      value={interviewType}
-                      onChange={(e) => setInterviewType(e.target.value as any)}
-                      className="w-full px-4 py-3 bg-slate-50 border border-slate-300 rounded-xl text-xs font-bold text-slate-900 focus:outline-none focus:border-[#059669] focus:bg-white"
-                    >
-                      <option value="HR">HR</option>
-                      <option value="Technical">Technical</option>
-                      <option value="System Design">System Design</option>
-                      <option value="Coding">Coding</option>
-                      <option value="Aptitude">Aptitude</option>
-                    </select>
+                  <div className="rounded-2xl border border-slate-200 bg-slate-50 p-3">
+                    <div className="mb-2 flex items-center justify-between">
+                      <span className="text-[11px] font-bold uppercase tracking-wider text-slate-700">Interview Type</span>
+                      {activeResume && (
+                        <span className="text-[10px] font-semibold uppercase tracking-wide text-emerald-700 bg-emerald-100 px-2 py-1 rounded-full">
+                          Resume-linked
+                        </span>
+                      )}
+                    </div>
+                    <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+                      {interviewOptions.map((option) => (
+                        <button
+                          key={option}
+                          type="button"
+                          onClick={() => setInterviewType(option)}
+                          className={`rounded-xl border px-3 py-2 text-left text-[11px] font-bold transition-all ${
+                            interviewType === option
+                              ? 'border-[#059669] bg-emerald-50 text-[#059669] shadow-sm'
+                              : 'border-slate-200 bg-white text-slate-600 hover:border-slate-300'
+                          }`}
+                        >
+                          {option}
+                        </button>
+                      ))}
+                    </div>
                   </div>
 
                   {/* Role / Domain */}
@@ -113,39 +167,6 @@ export default function InterviewSetupPage() {
                       placeholder="e.g. Backend Engineering, Product Marketing"
                       className="w-full px-4 py-3 bg-slate-50 border border-slate-300 rounded-xl text-xs font-bold text-slate-900 focus:outline-none focus:border-[#059669] focus:bg-white"
                     />
-                  </div>
-
-                  {/* Difficulty & Topics Row */}
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <div>
-                      <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1.5">
-                        DIFFICULTY
-                      </label>
-                      <select
-                        value={difficulty}
-                        onChange={(e) => setDifficulty(e.target.value as any)}
-                        className="w-full px-4 py-3 bg-slate-50 border border-slate-300 rounded-xl text-xs font-bold text-slate-900 focus:outline-none focus:border-[#059669] focus:bg-white"
-                      >
-                        <option value="Easy">Easy</option>
-                        <option value="Medium">Medium</option>
-                        <option value="Hard">Hard</option>
-                        <option value="FAANG">FAANG</option>
-                      </select>
-                    </div>
-
-                    <div>
-                      <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1.5">
-                        TOPICS
-                      </label>
-                      <input
-                        type="number"
-                        min={1}
-                        max={10}
-                        value={topicsCount}
-                        onChange={(e) => setTopicsCount(parseInt(e.target.value) || 3)}
-                        className="w-full px-4 py-3 bg-slate-50 border border-slate-300 rounded-xl text-xs font-bold text-slate-900 focus:outline-none focus:border-[#059669] focus:bg-white"
-                      />
-                    </div>
                   </div>
 
                   {/* Tailor to my resume toggle */}

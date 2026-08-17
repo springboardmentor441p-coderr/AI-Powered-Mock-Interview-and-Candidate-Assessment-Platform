@@ -1,6 +1,8 @@
 export type InterviewTrack = 
   | 'Technical' 
   | 'HR' 
+  | 'Behavioral' 
+  | 'Managerial' 
   | 'System Design' 
   | 'Coding' 
   | 'Aptitude' 
@@ -80,6 +82,7 @@ export interface EvaluationReport {
   createdAt: string;
   candidateName: string;
   candidateEmail: string;
+  userId?: string;
   overallScore: number;
   readinessRating: string;
   categoryScores: {
@@ -99,26 +102,120 @@ export interface EvaluationReport {
   totalDurationSeconds: number;
 }
 
+export interface StructuredExperience {
+  role: string;
+  company: string;
+  duration?: string;
+  description: string[];
+}
+
+export interface StructuredProject {
+  title: string;
+  techStack?: string[];
+  description: string;
+  link?: string;
+}
+
+export interface StructuredEducation {
+  degree: string;
+  institution: string;
+  year?: string;
+  fieldOfStudy?: string;
+}
+
+export type DocumentClassificationType = 'VALID_RESUME' | 'NOT_A_RESUME' | 'UNCLEAR';
+
+export interface CategorizedSkills {
+  programmingLanguages: string[];
+  frameworks: string[];
+  libraries: string[];
+  databases: string[];
+  tools: string[];
+  softSkills: string[];
+}
+
+export interface ExtractedFieldWithEvidence<T = string> {
+  value: T;
+  confidence: number; // 0.0 to 1.0
+  evidenceSnippet?: string;
+}
+
+export interface StructuredResumeUnderstanding {
+  document_type: DocumentClassificationType;
+  confidence: number; // 0.0 - 1.0
+  rejectionReason?: string;
+  candidate: {
+    name: string;
+    email: string;
+    phone: string;
+    linkedin?: string;
+    github?: string;
+    portfolio?: string;
+    location?: string;
+  };
+  summary?: string;
+  skills: CategorizedSkills;
+  education: Array<StructuredEducation & { evidence?: string; confidence?: number }>;
+  experience: Array<StructuredExperience & { evidence?: string; confidence?: number }>;
+  internships: Array<StructuredExperience & { evidence?: string; confidence?: number }>;
+  projects: Array<StructuredProject & { evidence?: string; confidence?: number }>;
+  certifications: Array<{ title: string; issuer?: string; date?: string; evidence?: string }>;
+  achievements: string[];
+  publications: string[];
+  languages: string[];
+  other: string[];
+  evidenceMap?: Record<string, string>;
+}
+
+export interface ResumeValidation {
+  completenessScore: number;
+  extractedFieldCount: number;
+  totalFieldsCount: number;
+  checksPassed: string[];
+  warnings: string[];
+  confidenceScores?: Record<string, number>;
+}
+
 export interface ParsedResume {
   fileName: string;
+  fileSizeFormatted?: string;
   uploadedAt: string;
-  candidateName?: string;
-  email?: string;
-  phone?: string;
+  isResume?: boolean;
+  document_type?: DocumentClassificationType;
+  confidence?: number;
+  rejectionReason?: string;
+  candidateName: string;
+  email: string;
+  phone: string;
+  linkedin?: string;
+  github?: string;
+  portfolio?: string;
+  summary: string;
   extractedSkills: string[];
-  technicalSkills?: string[];
-  softSkills?: string[];
-  programmingLanguages?: string[];
-  toolsAndTechnologies?: string[];
+  technicalSkills: string[];
+  softSkills: string[];
+  programmingLanguages: string[];
+  toolsAndTechnologies: string[];
+  categorizedSkills?: CategorizedSkills;
   experienceYears: number;
   detectedRole: string;
   education: string[];
   projects: string[];
-  workExperience?: string[];
-  internshipExperience?: string[];
-  certifications?: string[];
-  achievements?: string[];
-  summary: string;
+  workExperience: string[];
+  internshipExperience: string[];
+  certifications: string[];
+  achievements: string[];
+  publications?: string[];
+  languagesSpoken?: string[];
+  awards?: string[];
+  interests?: string[];
+  structuredWorkExperience?: StructuredExperience[];
+  structuredInternships?: StructuredExperience[];
+  structuredProjects?: StructuredProject[];
+  structuredEducation?: StructuredEducation[];
+  structuredUnderstanding?: StructuredResumeUnderstanding;
+  evidenceMap?: Record<string, string>;
+  validation: ResumeValidation;
   isPrimary?: boolean;
   rawText?: string;
 }

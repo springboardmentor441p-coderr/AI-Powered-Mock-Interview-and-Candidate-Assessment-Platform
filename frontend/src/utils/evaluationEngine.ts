@@ -34,53 +34,61 @@ export function evaluateInterview(
 
   const processedAnswers: AnswerRecord[] = rawInputs.map((input) => {
     const text = input.candidateResponseText.trim();
-    const wordCount = text.length > 0 ? text.split(/\s+/).length : 0;
-    const lowerText = text.toLowerCase();
+    const isUnanswered = !text || text === 'No response provided.' || text === 'No explicit verbal answer provided.';
+    
+    const wordCount = isUnanswered ? 0 : text.split(/\s+/).filter(Boolean).length;
+    const lowerText = isUnanswered ? '' : text.toLowerCase();
     
     totalDuration += input.audioDurationSeconds || 30;
 
-    // 1. Technical Accuracy & Key Points Coverage
-    let keyPointsMatched = 0;
-    const expectedPoints = input.question.expectedKeyPoints || [];
-    
-    expectedPoints.forEach((point) => {
-      // Check if key words from point exist in candidate response
-      const keywords = point.toLowerCase().split(/\s+/).filter(w => w.length > 3);
-      const matched = keywords.some(kw => lowerText.includes(kw));
-      if (matched) keyPointsMatched++;
-    });
+    let techAccuracy = 0;
+    let commFluency = 0;
+    let problemSolving = 0;
+    let bodyLangConfidence = 0;
+    let keyPointRatio = 0;
+    let fillerMatches = 0;
 
-    const keyPointRatio = expectedPoints.length > 0 ? keyPointsMatched / expectedPoints.length : 0.5;
-    
-    // Technical Accuracy Score (0-100)
-    let techAccuracy = Math.min(100, Math.max(25, Math.round(keyPointRatio * 75 + (wordCount > 30 ? 25 : wordCount * 0.8))));
+    if (!isUnanswered && wordCount > 0) {
+      // 1. Technical Accuracy & Key Points Coverage
+      let keyPointsMatched = 0;
+      const expectedPoints = input.question.expectedKeyPoints || [];
+      
+      expectedPoints.forEach((point) => {
+        const keywords = point.toLowerCase().split(/\s+/).filter(w => w.length > 3);
+        const matched = keywords.some(kw => lowerText.includes(kw));
+        if (matched) keyPointsMatched++;
+      });
 
-    // 2. Communication Fluency
-    // Penalize filler words ("um", "uh", "like", "you know", "basically")
-    const fillerMatches = (lowerText.match(/\b(um|uh|like|you know|basically|so yeah)\b/g) || []).length;
-    const fillerDensity = wordCount > 0 ? fillerMatches / wordCount : 0;
-    
-    let commFluency = Math.min(100, Math.max(30, Math.round(
-      (wordCount >= 20 ? 80 : wordCount * 4) - (fillerDensity * 150)
-    )));
+      keyPointRatio = expectedPoints.length > 0 ? keyPointsMatched / expectedPoints.length : 0.5;
+      
+      // Technical Accuracy Score (0-100) based on actual content
+      techAccuracy = Math.min(100, Math.round(keyPointRatio * 75 + (wordCount > 30 ? 25 : wordCount * 0.8)));
 
-    // 3. Problem Solving & Structural Depth
-    // Checks for structural signals like "because", "for example", "firstly", "architect", "scale", "solution"
-    const structuralKeywords = ['first', 'second', 'because', 'example', 'however', 'result', 'approach', 'tradeoff', 'architecture', 'optimi'];
-    const structureHits = structuralKeywords.filter(k => lowerText.includes(k)).length;
-    
-    let problemSolving = Math.min(100, Math.max(30, Math.round(
-      50 + (structureHits * 10) + (wordCount > 40 ? 20 : 0)
-    )));
+      // 2. Communication Fluency
+      fillerMatches = (lowerText.match(/\b(um|uh|like|you know|basically|so yeah)\b/g) || []).length;
+      const fillerDensity = wordCount > 0 ? fillerMatches / wordCount : 0;
+      
+      commFluency = Math.min(100, Math.max(10, Math.round(
+        (wordCount >= 20 ? 80 : wordCount * 4) - (fillerDensity * 150)
+      )));
 
-    // 4. Body Language & Confidence
-    const eyeContact = input.speechMetrics?.eyeContactPercent ?? 78;
-    const confidenceInput = input.speechMetrics?.confidenceScore ?? 75;
-    const proctorWarningCount = proctoringEvents.length;
+      // 3. Problem Solving & Structural Depth
+      const structuralKeywords = ['first', 'second', 'because', 'example', 'however', 'result', 'approach', 'tradeoff', 'architecture', 'optimi'];
+      const structureHits = structuralKeywords.filter(k => lowerText.includes(k)).length;
+      
+      problemSolving = Math.min(100, Math.max(10, Math.round(
+        (structureHits * 15) + (wordCount > 30 ? 40 : wordCount * 1.2)
+      )));
 
-    let bodyLangConfidence = Math.min(100, Math.max(20, Math.round(
-      (confidenceInput * 0.5) + (eyeContact * 0.4) - (proctorWarningCount * 5)
-    )));
+      // 4. Body Language & Confidence
+      const eyeContact = input.speechMetrics?.eyeContactPercent ?? 78;
+      const confidenceInput = input.speechMetrics?.confidenceScore ?? 75;
+      const proctorWarningCount = proctoringEvents.length;
+
+      bodyLangConfidence = Math.min(100, Math.max(20, Math.round(
+        (confidenceInput * 0.5) + (eyeContact * 0.4) - (proctorWarningCount * 5)
+      )));
+    }
 
     // Overall Question Score
     const qScore = Math.round(
@@ -96,37 +104,43 @@ export function evaluateInterview(
     const answerStrengths: string[] = [];
     const answerAreasToImprove: string[] = [];
 
-    if (techAccuracy >= 75) {
-      answerStrengths.push(`Addressed core concept requirements effectively (${Math.round(keyPointRatio * 100)}% key points matched).`);
+    if (isUnanswered) {
+      answerAreasToImprove.push(`No response provided for ${input.question.topic}.`);
     } else {
-      answerAreasToImprove.push(`Missed key technical depth on ${input.question.topic}.`);
-    }
+      if (techAccuracy >= 75) {
+        answerStrengths.push(`Addressed core concept requirements effectively (${Math.round(keyPointRatio * 100)}% key points matched).`);
+      } else {
+        answerAreasToImprove.push(`Missed key technical depth on ${input.question.topic}.`);
+      }
 
-    if (commFluency >= 75) {
-      answerStrengths.push('Articulate and clear sentence structure.');
-    } else if (fillerMatches > 2) {
-      answerAreasToImprove.push(`Noticed ${fillerMatches} filler word usage(s) ('um', 'uh', 'like').`);
+      if (commFluency >= 75) {
+        answerStrengths.push('Articulate and clear sentence structure.');
+      } else if (fillerMatches > 2) {
+        answerAreasToImprove.push(`Noticed ${fillerMatches} filler word usage(s) ('um', 'uh', 'like').`);
+      }
     }
 
     return {
       questionId: input.question.id,
       questionText: input.question.text,
       topic: input.question.topic,
-      candidateResponse: text || 'No response provided.',
+      candidateResponse: isUnanswered ? 'No response provided.' : text,
       audioDurationSeconds: input.audioDurationSeconds || 30,
       score: qScore,
       technicalAccuracy: techAccuracy,
       communicationFluency: commFluency,
       problemSolvingDepth: problemSolving,
       bodyLanguageConfidence: bodyLangConfidence,
-      aiFeedback: qScore >= 80 
+      aiFeedback: isUnanswered
+        ? `No verbal or written answer was submitted for ${input.question.topic}.`
+        : qScore >= 80 
         ? `Strong candidate response demonstrating thorough understanding of ${input.question.topic}.`
         : qScore >= 60
         ? `Satisfactory response covering core principles of ${input.question.topic}, though greater technical specificity is recommended.`
         : `Answer lacked technical depth on ${input.question.topic}. Consider anchoring with concrete examples and architectural details.`,
-      strengths: answerStrengths.length > 0 ? answerStrengths : ['Completed response within allocated time.'],
-      areasToImprove: answerAreasToImprove.length > 0 ? answerAreasToImprove : ['Incorporate more quantitative outcomes from past experience.'],
-      idealAnswerComparison: `${Math.round(keyPointRatio * 100)}% alignment with target staff engineer key points.`
+      strengths: answerStrengths.length > 0 ? answerStrengths : ['Session logged for question.'],
+      areasToImprove: answerAreasToImprove.length > 0 ? answerAreasToImprove : ['Provide concrete technical explanations and code examples.'],
+      idealAnswerComparison: isUnanswered ? '0% alignment (No answer provided)' : `${Math.round(keyPointRatio * 100)}% alignment with target staff engineer key points.`
     };
   });
 
@@ -137,20 +151,27 @@ export function evaluateInterview(
   const avgBody = Math.round(totalBodyLanguageConfidence / questionCount);
   
   // Delivery & Pacing calculation
-  const totalWords = rawInputs.reduce((sum, i) => sum + (i.candidateResponseText.trim().split(/\s+/).filter(Boolean).length), 0);
-  const totalMinutes = Math.max(0.5, totalDuration / 60);
-  const calculatedWpm = Math.round(totalWords / totalMinutes);
-  
-  // Ideal WPM range is 120 - 160 WPM
-  let deliveryPacingScore = 85;
-  if (calculatedWpm > 0 && (calculatedWpm < 100 || calculatedWpm > 180)) {
-    deliveryPacingScore = 65;
-  } else if (calculatedWpm >= 120 && calculatedWpm <= 160) {
-    deliveryPacingScore = 95;
+  const totalWords = rawInputs.reduce((sum, i) => {
+    const txt = i.candidateResponseText.trim();
+    if (!txt || txt === 'No response provided.' || txt === 'No explicit verbal answer provided.') return sum;
+    return sum + txt.split(/\s+/).filter(Boolean).length;
+  }, 0);
+
+  let deliveryPacingScore = 0;
+  if (totalWords > 0) {
+    const totalMinutes = Math.max(0.5, totalDuration / 60);
+    const calculatedWpm = Math.round(totalWords / totalMinutes);
+    if (calculatedWpm < 80 || calculatedWpm > 180) {
+      deliveryPacingScore = 50;
+    } else if (calculatedWpm >= 120 && calculatedWpm <= 160) {
+      deliveryPacingScore = 95;
+    } else {
+      deliveryPacingScore = 75;
+    }
   }
 
   // Calculate Overall Score (weighted sum)
-  const overallScore = Math.round(
+  const overallScore = totalWords === 0 ? 0 : Math.round(
     (avgTech * 0.35) + 
     (avgComm * 0.25) + 
     (avgProb * 0.20) + 
@@ -166,44 +187,55 @@ export function evaluateInterview(
 
   // Dynamic Strengths based on candidate performance
   const globalStrengths: string[] = [];
-  if (avgTech >= 75) {
-    globalStrengths.push(`Demonstrated solid domain expertise in ${config.track} principles and key technical topics.`);
+  if (totalWords === 0) {
+    globalStrengths.push('Session completed and logged.');
   } else {
-    globalStrengths.push(`Completed all ${processedAnswers.length} interview questions, showing persistence and structure.`);
-  }
-  if (avgComm >= 75) {
-    globalStrengths.push('Articulate communication with clear problem breakdown.');
-  }
-  if (avgBody >= 75) {
-    globalStrengths.push('Maintained strong gaze stability and visual engagement throughout the recording session.');
+    if (avgTech >= 75) {
+      globalStrengths.push(`Demonstrated solid domain expertise in ${config.track} principles and key technical topics.`);
+    }
+    if (avgComm >= 75) {
+      globalStrengths.push('Articulate communication with clear problem breakdown.');
+    }
+    if (avgBody >= 75) {
+      globalStrengths.push('Maintained strong gaze stability and visual engagement throughout the recording session.');
+    }
+    if (globalStrengths.length === 0) {
+      globalStrengths.push(`Submitted responses for ${processedAnswers.filter(a => a.candidateResponse !== 'No response provided.').length} of ${processedAnswers.length} interview questions.`);
+    }
   }
 
   // Dynamic Weaknesses / Areas to Improve
   const globalWeaknesses: string[] = [];
-  if (avgTech < 70) {
-    globalWeaknesses.push(`Technical knowledge score needs improvement (${avgTech}/100) on core ${config.track} topics.`);
-  }
-  if (avgComm < 70) {
-    globalWeaknesses.push('Frequent use of filler words or brief responses reduces presentation clarity.');
-  }
-  if (proctoringEvents.length > 0) {
-    globalWeaknesses.push(`Proctoring system flagged ${proctoringEvents.length} gaze/window violation(s) during session.`);
-  }
-  if (globalWeaknesses.length === 0) {
-    globalWeaknesses.push('Slight hesitation when discussing edge-case failure modes under pressure.');
+  if (totalWords === 0) {
+    globalWeaknesses.push('No verbal or written responses were provided for evaluation during the interview.');
+  } else {
+    if (avgTech < 70) {
+      globalWeaknesses.push(`Technical knowledge score needs improvement (${avgTech}/100) on core ${config.track} topics.`);
+    }
+    if (avgComm < 70) {
+      globalWeaknesses.push('Brief or incomplete answers reduced communication score.');
+    }
+    if (proctoringEvents.length > 0) {
+      globalWeaknesses.push(`Proctoring system flagged ${proctoringEvents.length} gaze/window violation(s) during session.`);
+    }
   }
 
   // Dynamic Recommended Improvements / Suggestions
   const globalSuggestions: string[] = [];
-  if (avgTech < 75) {
-    globalSuggestions.push('Anchor answers in specific framework mechanisms, code examples, and quantifiable project metrics.');
+  if (totalWords === 0) {
+    globalSuggestions.push('Ensure your microphone is enabled or type your answers into the input box before submitting each question.');
+    globalSuggestions.push('Provide clear, structured explanations covering system design, trade-offs, and examples.');
+  } else {
+    if (avgTech < 75) {
+      globalSuggestions.push('Anchor answers in specific framework mechanisms, code examples, and quantifiable project metrics.');
+    }
+    if (avgComm < 75) {
+      globalSuggestions.push('Practice pausing silently instead of using filler words when formulating complex thoughts.');
+    }
+    globalSuggestions.push('Review system scaling trade-offs and edge failure handling prior to high-stakes interviews.');
   }
-  if (avgComm < 75) {
-    globalSuggestions.push('Practice pausing silently instead of using filler words when formulating complex thoughts.');
-  }
-  globalSuggestions.push('Review system scaling trade-offs and edge failure handling prior to high-stakes interviews.');
 
-  const reportId = `rpt-${Date.now()}`;
+  const reportId = createUniqueEntityId('rpt');
 
   return {
     id: reportId,
@@ -234,6 +266,15 @@ export function evaluateInterview(
   };
 }
 
+function createUniqueEntityId(prefix: string): string {
+  const stamp = Date.now();
+  const randomPart = typeof crypto !== 'undefined' && 'randomUUID' in crypto
+    ? crypto.randomUUID().slice(0, 8)
+    : Math.random().toString(36).slice(2, 10);
+
+  return `${prefix}-${stamp}-${randomPart}`;
+}
+
 export function createCandidateApplicationFromReport(report: EvaluationReport): CandidateApplication {
   let recommendation: CandidateApplication['recommendation'] = 'Needs Review';
   if (report.overallScore >= 85) recommendation = 'Strong Hire';
@@ -241,7 +282,7 @@ export function createCandidateApplicationFromReport(report: EvaluationReport): 
   else if (report.overallScore < 50) recommendation = 'Reject';
 
   return {
-    id: `app-${Date.now()}`,
+    id: createUniqueEntityId('app'),
     candidateName: report.candidateName || 'Candidate User',
     candidateEmail: report.candidateEmail || 'candidate@intervio.ai',
     candidateAvatar: `https://ui-avatars.com/api/?name=${encodeURIComponent(report.candidateName || 'Candidate')}&background=059669&color=fff`,

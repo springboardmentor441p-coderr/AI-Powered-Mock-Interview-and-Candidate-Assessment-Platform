@@ -66,11 +66,18 @@ export const INITIAL_USER: UserProfile = {
     {
       fileName: 'Alex_Chen_Senior_FullStack_Resume.pdf',
       uploadedAt: '2026-08-01',
+      candidateName: 'Alex Chen',
+      email: 'alex.chen@devmail.io',
+      phone: '+1 (555) 234-5678',
       extractedSkills: [
         'React', 'Next.js', 'TypeScript', 'Node.js', 'Express',
         'PostgreSQL', 'Docker', 'AWS S3', 'GraphQL', 'Redis',
         'System Design', 'CI/CD Pipelines'
       ],
+      technicalSkills: ['React', 'Next.js', 'Node.js', 'Express', 'GraphQL', 'System Design'],
+      softSkills: ['Leadership', 'Problem Solving', 'Communication', 'Agile'],
+      programmingLanguages: ['JavaScript', 'TypeScript', 'SQL', 'HTML5', 'CSS3'],
+      toolsAndTechnologies: ['Docker', 'AWS', 'PostgreSQL', 'Redis', 'Git'],
       experienceYears: 4,
       detectedRole: 'Senior Full Stack Engineer',
       education: ['B.S. Computer Science - University of Washington (2022)'],
@@ -79,7 +86,34 @@ export const INITIAL_USER: UserProfile = {
         'High-Throughput E-Commerce Microservice API Gateway',
         'AI Powered Code Quality Scanner CLI'
       ],
-      summary: 'Experienced Full-Stack Developer with 4 years building high-concurrency microservices, single-page applications, and cloud databases.'
+      workExperience: [
+        'Senior Full Stack Engineer at TechCorp Solutions (2023 - Present)',
+        'Software Engineer at CloudScale Systems (2022 - 2023)'
+      ],
+      internshipExperience: [
+        'Frontend Software Engineering Intern at DataViz Labs (2021)'
+      ],
+      certifications: [
+        'AWS Certified Solutions Architect - Associate'
+      ],
+      achievements: [
+        'Reduced database latency by 45% using Redis caching layers'
+      ],
+      summary: 'Experienced Full-Stack Developer with 4 years building high-concurrency microservices, single-page applications, and cloud databases.',
+      validation: {
+        completenessScore: 95,
+        extractedFieldCount: 14,
+        totalFieldsCount: 14,
+        checksPassed: [
+          '✓ Candidate Full Name Identified',
+          '✓ Email Address Extracted',
+          '✓ Phone Number Extracted',
+          '✓ 12 Technical Skills & Technologies Categorized',
+          '✓ Work & Internship History Extracted',
+          '✓ Academic Background Identified'
+        ],
+        warnings: []
+      }
     }
   ]
 };

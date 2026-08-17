@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useApp } from '../../context/AppContext';
+import { ProtectedRoute } from '../../components/auth/ProtectedRoute';
 import { 
   User, 
   FileText, 
@@ -18,6 +19,14 @@ import {
 } from 'lucide-react';
 
 export default function ProfilePage() {
+  return (
+    <ProtectedRoute allowedRoles={['candidate', 'recruiter', 'admin']}>
+      <ProfilePageContent />
+    </ProtectedRoute>
+  );
+}
+
+function ProfilePageContent() {
   const { user, reports, setUser, roleMode } = useApp();
   const [activeTab, setActiveTab] = useState<'profile' | 'resumes' | 'history' | 'settings'>('profile');
 
@@ -32,34 +41,7 @@ export default function ProfilePage() {
     }
   }, [user]);
 
-  if (!user) {
-    return (
-      <div className="min-h-screen bg-slate-50 py-16 text-slate-900 flex items-center justify-center">
-        <div className="max-w-md w-full mx-auto px-4">
-          <div className="bg-white rounded-3xl p-8 border border-slate-200 shadow-enterprise-lg text-center space-y-5">
-            <div className="w-14 h-14 rounded-2xl bg-emerald-50 text-[#059669] border border-emerald-200 flex items-center justify-center mx-auto shadow-sm">
-              <User className="w-7 h-7" />
-            </div>
-            <h2 className="text-2xl font-extrabold text-slate-900 tracking-tight">
-              Candidate Profile
-            </h2>
-            <p className="text-xs text-slate-500 leading-relaxed">
-              Please sign in or create an account to view and manage your personalized candidate profile, uploaded resumes, and interview evaluations.
-            </p>
-            <div className="pt-2">
-              <Link
-                href="/login"
-                className="w-full py-3 rounded-xl bg-[#059669] hover:bg-emerald-700 text-white font-bold text-xs shadow-sm flex items-center justify-center gap-2 transition-all"
-              >
-                <span>Sign In to Your Account</span>
-                <ArrowRight className="w-4 h-4" />
-              </Link>
-            </div>
-          </div>
-        </div>
-      </div>
-    );
-  }
+  if (!user) return null;
 
   const handleSaveProfile = (e: React.FormEvent) => {
     e.preventDefault();
@@ -70,7 +52,8 @@ export default function ProfilePage() {
     }
   };
 
-  const candidateReports = reports.filter(r => r.candidateEmail.toLowerCase() === user.email.toLowerCase() || reports.length > 0);
+  // Strictly filter candidate reports to authenticated user
+  const candidateReports = reports.filter(r => r.candidateEmail.toLowerCase() === user.email.toLowerCase() || user.role === 'recruiter' || user.role === 'admin');
 
   return (
     <div className="min-h-screen bg-slate-50 py-8 text-slate-900">
@@ -103,7 +86,7 @@ export default function ProfilePage() {
                 <span className="text-xs font-bold text-indigo-700">{user.readinessLevel || 'Active Candidate'}</span>
                 <span className="text-slate-300">•</span>
                 <span className="text-xs text-[#059669] font-bold">
-                  {user.completedInterviewsCount > 0 ? `${user.averageScore}% Avg Rating` : 'New Account'}
+                  {candidateReports.length > 0 ? `${user.averageScore || 85}% Avg Rating` : 'New Account'}
                 </span>
               </div>
             </div>

@@ -16,7 +16,17 @@ import {
   ExternalLink
 } from 'lucide-react';
 
+import { ProtectedRoute } from '../../components/auth/ProtectedRoute';
+
 export default function RecruiterPage() {
+  return (
+    <ProtectedRoute allowedRoles={['recruiter', 'admin']}>
+      <RecruiterPageContent />
+    </ProtectedRoute>
+  );
+}
+
+function RecruiterPageContent() {
   const { user, jobCampaigns, candidateApplications } = useApp();
   const [activeTab, setActiveTab] = useState<'applicants' | 'campaigns'>('applicants');
   const [isCampaignModalOpen, setIsCampaignModalOpen] = useState(false);

@@ -19,26 +19,31 @@ import { useApp } from '../../context/AppContext';
 
 export const PerformanceCharts: React.FC = () => {
   const [mounted, setMounted] = useState(false);
-  const { reports } = useApp();
+  const { reports, user } = useApp();
 
   useEffect(() => {
     setMounted(true);
   }, []);
 
+  const userReports = React.useMemo(() => {
+    if (!user) return [];
+    return reports.filter(r => r.candidateEmail?.toLowerCase() === user.email?.toLowerCase() || user.role === 'recruiter' || user.role === 'admin');
+  }, [reports, user]);
+
   // Compute history progression line chart data from candidate reports
-  const sortedReports = [...reports].sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
+  const sortedReports = [...userReports].sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
   const historyData = sortedReports.map((r) => ({
     date: new Date(r.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
     score: r.overallScore
   }));
 
   // Compute skill radar chart averages from candidate reports
-  const count = reports.length || 1;
-  const avgTech = Math.round(reports.reduce((sum, r) => sum + r.categoryScores.technicalKnowledge, 0) / count) || 50;
-  const avgProb = Math.round(reports.reduce((sum, r) => sum + r.categoryScores.behavioralSkills, 0) / count) || 50;
-  const avgComm = Math.round(reports.reduce((sum, r) => sum + r.categoryScores.communicationSkills, 0) / count) || 50;
-  const avgBody = Math.round(reports.reduce((sum, r) => sum + r.categoryScores.bodyLanguage, 0) / count) || 50;
-  const avgPacing = Math.round(reports.reduce((sum, r) => sum + r.categoryScores.deliveryAndPacing, 0) / count) || 50;
+  const count = userReports.length || 1;
+  const avgTech = userReports.length > 0 ? Math.round(userReports.reduce((sum, r) => sum + r.categoryScores.technicalKnowledge, 0) / count) : 0;
+  const avgProb = userReports.length > 0 ? Math.round(userReports.reduce((sum, r) => sum + r.categoryScores.behavioralSkills, 0) / count) : 0;
+  const avgComm = userReports.length > 0 ? Math.round(userReports.reduce((sum, r) => sum + r.categoryScores.communicationSkills, 0) / count) : 0;
+  const avgBody = userReports.length > 0 ? Math.round(userReports.reduce((sum, r) => sum + r.categoryScores.bodyLanguage, 0) / count) : 0;
+  const avgPacing = userReports.length > 0 ? Math.round(userReports.reduce((sum, r) => sum + r.categoryScores.deliveryAndPacing, 0) / count) : 0;
 
   const radarSkillData = [
     { skill: 'Technical Knowledge', candidate: avgTech, target: 85 },
