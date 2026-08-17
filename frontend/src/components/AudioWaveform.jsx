@@ -1,16 +1,8 @@
-import React, { useState, useEffect } from 'react';
-import { Mic, MicOff, Volume2 } from 'lucide-react';
+import React from 'react';
+import { Mic, MicOff } from 'lucide-react';
 
 export default function AudioWaveform({ isRecording }) {
-  const [bars, setBars] = useState([20, 45, 80, 60, 30, 90, 70, 40, 65, 85, 35, 50]);
-
-  useEffect(() => {
-    if (!isRecording) return;
-    const interval = setInterval(() => {
-      setBars(prev => prev.map(() => Math.floor(Math.random() * 85) + 15));
-    }, 150);
-    return () => clearInterval(interval);
-  }, [isRecording]);
+  const defaultHeights = [30, 55, 80, 65, 40, 90, 75, 45, 60, 85, 35, 50];
 
   return (
     <div className="flex items-center gap-3 bg-slate-900/80 border border-slate-800 px-4 py-2.5 rounded-xl">
@@ -19,20 +11,23 @@ export default function AudioWaveform({ isRecording }) {
       </div>
 
       <div className="flex items-center gap-1 h-8 px-2">
-        {bars.map((height, i) => (
+        {defaultHeights.map((height, i) => (
           <div
             key={i}
-            className={`w-1 rounded-full transition-all duration-150 ${
-              isRecording ? 'bg-gradient-to-t from-indigo-500 to-cyan-400' : 'bg-slate-700'
+            className={`w-1 rounded-full transition-all duration-300 ${
+              isRecording ? 'bg-gradient-to-t from-indigo-500 to-cyan-400 animate-pulse' : 'bg-slate-700'
             }`}
-            style={{ height: isRecording ? `${height}%` : '20%' }}
+            style={{ 
+              height: isRecording ? `${height}%` : '20%',
+              animationDelay: `${i * 80}ms`
+            }}
           />
         ))}
       </div>
 
       <div className="text-right font-mono text-[11px]">
         <span className={isRecording ? 'text-emerald-400 font-bold' : 'text-slate-500'}>
-          {isRecording ? 'LIVE AUDIO INPUT' : 'MIC PAUSED'}
+          {isRecording ? 'LIVE MIC ACTIVE' : 'MIC PAUSED'}
         </span>
       </div>
     </div>

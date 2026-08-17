@@ -1,17 +1,37 @@
+import os
+import logging
+from typing import List, Optional
 from fastapi import FastAPI, Depends, HTTPException, status, UploadFile, File
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
-from typing import List, Optional
+from dotenv import load_dotenv
+
+# Ensure .env is loaded cleanly from backend/.env or root .env
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+PROJECT_ROOT = os.path.dirname(BASE_DIR)
+ENV_FILE_BACKEND = os.path.join(BASE_DIR, ".env")
+ENV_FILE_ROOT = os.path.join(PROJECT_ROOT, ".env")
+
+if os.path.exists(ENV_FILE_BACKEND):
+    load_dotenv(ENV_FILE_BACKEND)
+elif os.path.exists(ENV_FILE_ROOT):
+    load_dotenv(ENV_FILE_ROOT)
+else:
+    load_dotenv()
+
 import database, models, schemas, auth
 from services import resume_service, question_service, speech_service, vision_service, scoring_service, llm_service
 
 # Initialize Database tables
 models.Base.metadata.create_all(bind=database.engine)
 
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger("smarthire")
+
 app = FastAPI(
     title="SmartHire AI Backend API",
-    description="Backend services powered by LLM Engine (Llama-3 / GPT-4o) & Vision Telemetry for SmartHire AI Platform",
-    version="2.5.0"
+    description="Backend services powered by Groq LLM (openai/gpt-oss-120b) & Mira AI Interviewer Engine for SmartHire-AI",
+    version="3.0.0"
 )
 
 # CORS setup
@@ -26,10 +46,12 @@ app.add_middleware(
 @app.get("/")
 def read_root():
     return {
-        "message": "SmartHire AI Backend API Server Running", 
+        "message": "SmartHire AI Backend API Server Running",
+        "interviewer": "Mira AI Interviewer",
         "status": "online",
-        "llm_engine": "Groq Llama-3 / OpenAI GPT-4o-mini Enabled",
-        "llm_configured": llm_service.is_llm_available()
+        "llm_provider": "Groq",
+        "llm_model": os.getenv("GROQ_MODEL", "openai/gpt-oss-120b"),
+        "llm_available": llm_service.is_llm_available()
     }
 
 # ---------------- LLM GENERATIVE ENGINE ENDPOINTS ---------------- #
@@ -38,17 +60,28 @@ def generate_llm_questions_endpoint(
     domain: str = "Python Developer",
     difficulty: str = "Medium",
     num_questions: int = 5,
-    skills: Optional[List[str]] = None
+    skills: Optional[List[str]] = None,
+    previous_question: str = "",
+    candidate_answer: str = "",
+    resume_text: str = ""
 ):
-    """Explicit Large Language Model (LLM) Question Generation Endpoint"""
-    questions = llm_service.generate_llm_questions(domain, difficulty, num_questions, skills)
-    if questions:
-        return {"source": "LLM_GROQ_OPENAI_API", "questions": questions}
-    
-    fallback_q = question_service.generate_interview_questions(
-        category="Technical", difficulty=difficulty, domain=domain, num_questions=num_questions, skills=skills
+    """Dynamically generate interview questions using Groq LLM (openai/gpt-oss-120b)."""
+    questions = llm_service.generate_llm_questions(
+        domain=domain,
+        difficulty=difficulty,
+        num_questions=num_questions,
+        skills=skills,
+        previous_question=previous_question,
+        candidate_answer=candidate_answer,
+        resume_text=resume_text
     )
-    return {"source": "LLM_ADAPTIVE_ENGINE", "questions": fallback_q}
+    if questions:
+        return {"source": "GROQ_LLM", "model": llm_service.GROQ_MODEL, "questions": questions}
+    
+    raise HTTPException(
+        status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+        detail="Groq LLM question generation is currently unavailable. Please verify GROQ_API_KEY environment variable."
+    )
 
 @app.post("/api/llm/evaluate")
 def evaluate_llm_answer_endpoint(
@@ -56,7 +89,16 @@ def evaluate_llm_answer_endpoint(
     candidate_answer: str,
     sample_answer: str = ""
 ):
-    """Explicit Large Language Model (LLM) Candidate Answer Evaluation Endpoint"""
+    """Evaluate candidate answer using Groq LLM (openai/gpt-oss-120b)."""
+    if not candidate_answer or not candidate_answer.strip():
+        return {
+            "technical_score": 0.0,
+            "clarity_score": 0.0,
+            "feedback": "No candidate answer was provided to evaluate.",
+            "strengths": [],
+            "weaknesses": ["Answer skipped or empty transcript."]
+        }
+
     return llm_service.evaluate_llm_answer(question_text, candidate_answer, sample_answer)
 
 # ---------------- USER AUTHENTICATION ---------------- #
@@ -106,6 +148,9 @@ async def upload_resume(
     raw_text = resume_service.extract_text_from_pdf_bytes(contents)
     parsed = resume_service.parse_resume(raw_text)
 
+    if not parsed.get("extraction_successful") and not parsed.get("skills"):
+        logger.warning("Resume parse returned no skills for file: %s", file.filename)
+
     resume_record = models.Resume(
         user_id=current_user.id,
         filename=file.filename,
@@ -134,10 +179,10 @@ def start_interview(
     db: Session = Depends(database.get_db),
     current_user: models.User = Depends(auth.get_current_user)
 ):
-    # Fetch user's latest resume skills if available
     latest_resume = db.query(models.Resume).filter(models.Resume.user_id == current_user.id).order_by(models.Resume.id.desc()).first()
-    skills = latest_resume.parsed_skills if latest_resume else ["Python", "JavaScript", "SQL"]
+    skills = latest_resume.parsed_skills if (latest_resume and latest_resume.parsed_skills) else None
 
+    # Call dynamic LLM question generator
     questions = question_service.generate_interview_questions(
         category=req.category,
         difficulty=req.difficulty,
@@ -146,9 +191,15 @@ def start_interview(
         skills=skills
     )
 
+    if not questions:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Mira AI Interviewer was unable to generate questions via Groq LLM. Please check your GROQ_API_KEY environment variable."
+        )
+
     new_session = models.InterviewSession(
         user_id=current_user.id,
-        title=f"{req.category} Mock Interview - {req.domain}",
+        title=f"{req.category} Interview with Mira ({req.domain})",
         category=req.category,
         difficulty=req.difficulty,
         domain=req.domain,
@@ -174,10 +225,17 @@ def submit_answer(
     db: Session = Depends(database.get_db),
     current_user: models.User = Depends(auth.get_current_user)
 ):
-    # Analyze speech
     speech_metrics = speech_service.analyze_speech_communication(req.transcript or req.candidate_answer)
-    # Process vision metrics
     vision_metrics = vision_service.process_vision_metrics(req.eye_contact_ratio or 0.85)
+
+    # Call LLM answer evaluation if available
+    llm_eval = llm_service.evaluate_llm_answer(
+        question_text=req.question_text,
+        candidate_answer=req.candidate_answer or req.transcript,
+        sample_answer=""
+    )
+
+    tech_score = llm_eval.get("technical_score", 0.0)
 
     qa_record = models.QuestionAnswer(
         session_id=req.session_id,
@@ -186,9 +244,9 @@ def submit_answer(
         transcript=req.transcript or req.candidate_answer,
         filler_words_detected=speech_metrics["detected_fillers"],
         grammar_score=speech_metrics["grammar_score"],
-        relevance_score=85.0 if len(req.candidate_answer) > 40 else 60.0,
+        relevance_score=float(tech_score),
         eye_contact_percentage=vision_metrics["eye_contact_percentage"],
-        feedback_notes=f"Speaking pace: {speech_metrics['pace_rating']}. Fillers detected: {speech_metrics['filler_count']}."
+        feedback_notes=llm_eval.get("feedback", "Evaluation recorded.")
     )
     db.add(qa_record)
     db.commit()
@@ -197,7 +255,8 @@ def submit_answer(
         "status": "recorded",
         "question_index": req.question_index,
         "speech_metrics": speech_metrics,
-        "vision_metrics": vision_metrics
+        "vision_metrics": vision_metrics,
+        "llm_evaluation": llm_eval
     }
 
 @app.post("/api/interview/finish/{session_id}")
@@ -212,22 +271,21 @@ def finish_interview(
 
     answers = db.query(models.QuestionAnswer).filter(models.QuestionAnswer.session_id == session_id).all()
     
-    # Aggregate scores
     if answers:
         avg_grammar = sum(a.grammar_score for a in answers) / len(answers)
         avg_relevance = sum(a.relevance_score for a in answers) / len(answers)
         avg_eye_contact = sum(a.eye_contact_percentage for a in answers) / len(answers)
         total_fillers = sum(sum(a.filler_words_detected.values()) for a in answers if a.filler_words_detected)
     else:
-        avg_grammar = 78.0
-        avg_relevance = 82.0
-        avg_eye_contact = 85.0
-        total_fillers = 3
+        avg_grammar = 0.0
+        avg_relevance = 0.0
+        avg_eye_contact = 0.0
+        total_fillers = 0
 
-    comm_score = min(avg_grammar + 5.0, 95.0)
-    conf_score = min(avg_eye_contact + 4.0, 95.0)
-    tech_score = min(avg_relevance + 2.0, 95.0)
-    prof_score = 88.0
+    comm_score = min(avg_grammar + 5.0, 100.0) if answers else 0.0
+    conf_score = min(avg_eye_contact + 4.0, 100.0) if answers else 0.0
+    tech_score = avg_relevance if answers else 0.0
+    prof_score = 85.0 if answers else 0.0
 
     eval_result = scoring_service.calculate_overall_assessment(
         communication_score=comm_score,
@@ -236,7 +294,7 @@ def finish_interview(
         professionalism_score=prof_score,
         filler_word_count=total_fillers,
         words_per_minute=135.0,
-        eye_contact_ratio=avg_eye_contact / 100.0
+        eye_contact_ratio=avg_eye_contact / 100.0 if avg_eye_contact > 0 else 0.0
     )
 
     session.communication_score = eval_result["communication_score"]
@@ -247,7 +305,7 @@ def finish_interview(
     session.performance_rating = eval_result["performance_rating"]
     session.filler_word_count = total_fillers
     session.words_per_minute = 135.0
-    session.eye_contact_ratio = avg_eye_contact / 100.0
+    session.eye_contact_ratio = avg_eye_contact / 100.0 if avg_eye_contact > 0 else 0.0
     session.strengths = eval_result["strengths"]
     session.weaknesses = eval_result["weaknesses"]
     session.improvement_tips = eval_result["improvement_tips"]
@@ -341,5 +399,5 @@ def admin_metrics(
         "total_sessions": sessions_count,
         "total_resumes_parsed": resumes_count,
         "system_status": "Healthy / Operational",
-        "ai_engine_version": "SmartHire v2.5 (LLM Engine Llama-3/GPT-4o + Vision Telemetry Active)"
+        "ai_engine_version": "SmartHire v3.0 (Groq LLM openai/gpt-oss-120b + Mira Active)"
     }

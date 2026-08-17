@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { Camera } from 'lucide-react';
+import { Camera, AlertCircle } from 'lucide-react';
 
 export default function WebcamMonitor({ onMetricsUpdate }) {
   const videoRef = useRef(null);
@@ -19,7 +19,7 @@ export default function WebcamMonitor({ onMetricsUpdate }) {
         setStreamActive(true);
       }
     } catch (err) {
-      console.warn("Webcam access error / fallback mode:", err);
+      console.warn("Webcam access error:", err);
       setPermissionDenied(true);
       setStreamActive(false);
     }
@@ -28,35 +28,22 @@ export default function WebcamMonitor({ onMetricsUpdate }) {
   useEffect(() => {
     startCamera();
 
-    // SMOOTH REAL-TIME VISION TELEMETRY (Updates every 800ms)
-    const interval = setInterval(() => {
-      const dynamicEyePct = Math.min(100, Math.max(80, Math.floor(90 + (Math.random() * 8 - 4))));
-      const dynamicAttentionPct = Math.min(100, Math.max(86, Math.floor(95 + (Math.random() * 6 - 3))));
-      const dynamicConfidencePct = Math.min(100, Math.max(76, Math.floor(86 + (Math.random() * 10 - 5))));
-      const dynamicPresencePct = Math.min(100, Math.max(94, Math.floor(98 + (Math.random() * 4 - 2))));
-
-      const emotions = ['Focused & Confident', 'Attentive & Calm', 'Composed & Ready', 'Analytical & Engaged'];
-      const currentEmo = emotions[Math.floor(Math.random() * emotions.length)];
-
-      if (onMetricsUpdate) {
-        onMetricsUpdate({
-          eyeContactRatio: dynamicEyePct / 100.0,
-          eyeContactPct: dynamicEyePct,
-          attentionPct: dynamicAttentionPct,
-          confidencePct: dynamicConfidencePct,
-          presencePct: dynamicPresencePct,
-          emotion: currentEmo
-        });
-      }
-    }, 800);
-
     return () => {
-      clearInterval(interval);
       if (videoRef.current && videoRef.current.srcObject) {
         videoRef.current.srcObject.getTracks().forEach(track => track.stop());
       }
     };
   }, []);
+
+  useEffect(() => {
+    if (onMetricsUpdate) {
+      onMetricsUpdate({
+        streamActive: streamActive,
+        faceDetected: streamActive ? "Detected" : "Not Detected",
+        cameraStatus: streamActive ? "Camera Stream Active (720p HD)" : (permissionDenied ? "Permission Denied" : "Initializing Camera...")
+      });
+    }
+  }, [streamActive, permissionDenied, onMetricsUpdate]);
 
   return (
     <div className="relative rounded-2xl overflow-hidden glass-card border border-slate-800 bg-slate-950 aspect-video shadow-2xl group">
@@ -70,18 +57,18 @@ export default function WebcamMonitor({ onMetricsUpdate }) {
         className={`w-full h-full object-cover transform -scale-x-100 ${streamActive ? 'block' : 'hidden'}`}
       />
 
-      {/* Fallback View if Camera Permission Pending */}
+      {/* Fallback View if Camera Permission Pending / Denied */}
       {!streamActive && (
         <div className="w-full h-full flex flex-col items-center justify-center bg-slate-900/95 relative p-6 text-center space-y-3">
-          <div className="w-16 h-16 rounded-2xl bg-indigo-500/10 border border-indigo-500/30 flex items-center justify-center text-indigo-400 animate-pulse">
+          <div className="w-16 h-16 rounded-2xl bg-indigo-500/10 border border-indigo-500/30 flex items-center justify-center text-indigo-400">
             <Camera className="w-8 h-8" />
           </div>
           
           <div>
-            <p className="text-sm font-bold text-white">Live Camera Preview</p>
+            <p className="text-sm font-bold text-white">Live Camera Stream</p>
             <p className="text-xs text-slate-400 max-w-xs mt-1">
               {permissionDenied 
-                ? "Camera permission requested. Click below to allow camera access." 
+                ? "Camera permission denied or camera device unavailable. Click below to retry camera access." 
                 : "Initializing Live Webcam Stream..."}
             </p>
           </div>
@@ -96,9 +83,9 @@ export default function WebcamMonitor({ onMetricsUpdate }) {
       )}
 
       {/* Camera Live Indicator */}
-      <div className="absolute top-3 left-3 bg-red-500/90 backdrop-blur px-2.5 py-0.5 rounded-md text-[10px] font-mono font-bold text-white uppercase tracking-wider shadow-md flex items-center gap-1.5">
-        <span className="w-2 h-2 rounded-full bg-white animate-ping"></span>
-        ON SCREEN
+      <div className="absolute top-3 left-3 bg-slate-900/90 backdrop-blur px-2.5 py-0.5 rounded-md text-[10px] font-mono font-bold text-white uppercase tracking-wider shadow-md flex items-center gap-1.5 border border-slate-800">
+        <span className={`w-2 h-2 rounded-full ${streamActive ? 'bg-emerald-400 animate-ping' : 'bg-red-500'}`}></span>
+        {streamActive ? "CAMERA LIVE" : "CAMERA OFF"}
       </div>
 
     </div>

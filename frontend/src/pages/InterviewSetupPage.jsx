@@ -147,7 +147,7 @@ export default function InterviewSetupPage({ setActivePage, setInterviewSession 
           
           {/* HEADER */}
           <div className="glass-card p-8 rounded-3xl border border-slate-800 space-y-2">
-            <h1 className="text-2xl font-extrabold text-white">Welcome to your AI Interview</h1>
+            <h1 className="text-2xl font-extrabold text-white">Welcome to your AI Interview with Mira</h1>
             <p className="text-xs text-slate-400">Running a quick system diagnostic before starting your 5-question adaptive interview session.</p>
           </div>
 
@@ -213,7 +213,7 @@ export default function InterviewSetupPage({ setActivePage, setInterviewSession 
             <ul className="text-xs text-slate-300 space-y-2 list-disc list-inside leading-relaxed font-sans">
               <li>Find a quiet, well-lit space with a stable internet connection.</li>
               <li>Ensure you sit upright with your face clearly visible in the video stream.</li>
-              <li>Speak your answers clearly into your microphone when AIRA finishes asking each question.</li>
+              <li>Speak your answers clearly into your microphone when Mira finishes asking each question.</li>
               <li><strong className="text-red-400">Anti-Malpractice Warning:</strong> Switching browser tabs or turning away will result in warning alerts and instant session disqualification.</li>
             </ul>
 
@@ -252,7 +252,7 @@ export default function InterviewSetupPage({ setActivePage, setInterviewSession 
               }`}
             >
               {loading ? "Initializing Live AI Room..." : (
-                <>I'm Ready to Start Interview <ArrowRight className="w-4 h-4" /></>
+                <>I'm Ready to Start Interview with Mira <ArrowRight className="w-4 h-4" /></>
               )}
             </button>
           </div>
