@@ -212,8 +212,8 @@ def generate_llm_questions(
     resume_text: str = "",
 ) -> Optional[List[Dict[str, Any]]]:
     """
-    Dynamically generates unique, highly specific technical interview questions using Groq LLM (openai/gpt-oss-120b).
-    Guarantees topic diversity across Easy/Medium/Hard tiers and rejects repetitive questions.
+    Dynamically generates unique, moderately detailed technical interview questions using Groq LLM (openai/gpt-oss-120b).
+    Enforces 30-50 word length, conversational style, single-topic focus, and tier-based technical depth.
     """
     skills_text = ", ".join(skills) if (skills and len(skills) > 0) else domain
     prev_q_list = previous_questions or []
@@ -221,11 +221,20 @@ def generate_llm_questions(
 
     difficulty_guidance = ""
     if difficulty.lower() == "easy":
-        difficulty_guidance = "Ask core language concepts, fundamental data structures, standard library tools, or basic REST API design."
+        difficulty_guidance = (
+            "Focus on fundamental language concepts, basic data structures, or standard framework usage. "
+            "Questions should test core understanding without complex multi-step scenarios."
+        )
     elif difficulty.lower() == "medium":
-        difficulty_guidance = "Ask production scenario questions involving memory management, async IO, database indexing, framework internals, or error debugging."
+        difficulty_guidance = (
+            "Focus on real-world production scenarios, performance optimization, database queries, or framework mechanics. "
+            "Questions should test practical problem-solving in a realistic context."
+        )
     else:  # Hard
-        difficulty_guidance = "Ask high-scale system design architecture, distributed system consistency, multi-region fault tolerance, zero-downtime deployment pipelines, or microsecond latency trade-offs."
+        difficulty_guidance = (
+            "Focus on complex system architecture, high-concurrency bottlenecks, distributed system trade-offs, or advanced internal mechanics. "
+            "Questions should test deep technical judgment and architectural reasoning."
+        )
 
     prompt = f"""
 You are {INTERVIEWER_NAME}, a senior AI technical interviewer conducting a live, realistic technical job interview.
@@ -244,19 +253,23 @@ Candidate's Previous Answer Context:
 
 Number of Unique Questions Needed: {num_questions}
 
-CRITICAL RULES:
-1. Do NOT ask generic intro templates like 'Welcome! Please introduce yourself...' or 'What technical tools, frameworks, and best practices do you utilize...'.
-2. Ask realistic, deep technical questions tailored specifically to {domain} and candidate skills ({skills_text}).
-3. For Question 1, ask a realistic, specific technical question about the candidate's hands-on experience and architectural decisions in {domain}.
-4. Every single question must be unique and cover a DISTINCT sub-topic.
-5. Do NOT repeat or paraphrase any question from the PREVIOUS QUESTIONS listed above.
+STRICT QUESTION STYLE & LENGTH REQUIREMENTS:
+1. TARGET LENGTH: Each question MUST be between 30 and 50 words long (usually 2 to 3 sentences).
+2. SINGLE TOPIC: Focus each question on ONE main technical concept or scenario. Do NOT ask 4 or 5 nested questions in one turn.
+3. CONVERSATIONAL & REALISTIC: Frame questions like a real technical interviewer setting up a short scenario (e.g., "Suppose you are...", "In a situation where...").
+4. ANSWERABLE: Provide enough context for the candidate to give a clear 30 to 60 second verbal answer.
+5. NO GENERIC INTROS: Do NOT ask generic intro templates like 'Welcome! Introduce yourself...' or 'What technical tools and frameworks do you use...'.
+6. NO REPETITION: Every question must be 100% unique and cover a distinct sub-topic. Do NOT repeat or paraphrase any question from PREVIOUS QUESTIONS listed above.
+
+DESIRED QUESTION STYLE EXAMPLE TO FOLLOW:
+"Suppose your FastAPI application is receiving thousands of requests per minute and response times are increasing. How would you identify the bottleneck and improve the application's performance?"
 
 Return ONLY a valid JSON object in this format:
 {{
     "questions": [
         {{
             "id": 1,
-            "question_text": "Detailed, specific technical question here",
+            "question_text": "30 to 50 word conversational technical question here",
             "sample_answer": "Expected ideal response",
             "skill_focus": "Specific topic tag"
         }}
@@ -264,7 +277,7 @@ Return ONLY a valid JSON object in this format:
 }}
 """
 
-    content = _call_groq(prompt, temperature=0.85)
+    content = _call_groq(prompt, temperature=0.75)
     if content:
         try:
             parsed = json.loads(content)
@@ -283,7 +296,7 @@ Return ONLY a valid JSON object in this format:
             logger.error("Groq returned invalid JSON: %s", exc)
 
     # Fallback to OpenAI if configured
-    content = _call_openai(prompt, temperature=0.85)
+    content = _call_openai(prompt, temperature=0.75)
     if content:
         try:
             parsed = json.loads(content)
