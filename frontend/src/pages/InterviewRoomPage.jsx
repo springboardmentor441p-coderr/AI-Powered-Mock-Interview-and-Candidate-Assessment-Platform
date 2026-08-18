@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Video, Mic, MicOff, Volume2, Clock, ArrowRight, CheckCircle2, AlertCircle, RefreshCw, Send, Sparkles, VolumeX, Bot, User, MessageSquare, PhoneOff, Bell, AlertTriangle, ShieldAlert, XCircle } from 'lucide-react';
+import { Video, Mic, MicOff, Volume2, Clock, ArrowRight, CheckCircle2, AlertCircle, RefreshCw, Send, Sparkles, VolumeX, Bot, User, MessageSquare, PhoneOff, Bell, AlertTriangle, ShieldAlert, XCircle, Loader2 } from 'lucide-react';
 import WebcamMonitor from '../components/WebcamMonitor';
 import AudioWaveform from '../components/AudioWaveform';
 import { submitQuestionAnswer, finishInterviewSession, fetchNextAdaptiveQuestion, transcribeAudioBlob } from '../services/api';
@@ -12,6 +12,7 @@ export default function InterviewRoomPage({ sessionData, setActivePage, setFinal
   const [isSpeaking, setIsSpeaking] = useState(false);
   const [timerSeconds, setTimerSeconds] = useState(0);
   const [submitting, setSubmitting] = useState(false);
+  const [transcribingAudio, setTranscribingAudio] = useState(false);
   const [activePopup, setActivePopup] = useState(null);
   const [violationCount, setViolationCount] = useState(0);
   const [candidateAnswersList, setCandidateAnswersList] = useState([]);
@@ -346,6 +347,32 @@ export default function InterviewRoomPage({ sessionData, setActivePage, setFinal
     setSpeechEngineStatus("Microphone Ready");
   };
 
+  // MANUAL VOICE TRANSCRIPTION ACTION (RECORD & CONVERT SPOKEN AUDIO TO TEXT)
+  const processRecordedAudioTranscription = async () => {
+    if (audioChunksRef.current.length === 0) return "";
+    try {
+      setTranscribingAudio(true);
+      setSpeechEngineStatus("Transcribing Spoken Voice...");
+      const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
+      if (audioBlob.size > 200) {
+        const whisperText = await transcribeAudioBlob(audioBlob);
+        setTranscribingAudio(false);
+        if (whisperText && whisperText.trim()) {
+          const clean = whisperText.trim();
+          candidateAnswerRef.current = clean;
+          setCandidateAnswer(clean);
+          setSpeechEngineStatus("Transcript Ready");
+          return clean;
+        }
+      }
+    } catch (err) {
+      console.warn("[Audio Transcription] Error:", err);
+      setTranscribingAudio(false);
+    }
+    setTranscribingAudio(false);
+    return candidateAnswerRef.current || candidateAnswer || "";
+  };
+
   const formatTimer = (secs) => {
     const m = Math.floor(secs / 60);
     const s = secs % 60;
@@ -363,20 +390,7 @@ export default function InterviewRoomPage({ sessionData, setActivePage, setFinal
 
     // SERVER-SIDE WHISPER FALLBACK: If candidate spoke into mic but WebSpeech produced no text
     if (!currentText && audioChunksRef.current.length > 0) {
-      try {
-        setSpeechEngineStatus("Transcribing...");
-        const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
-        if (audioBlob.size > 500) {
-          const whisperText = await transcribeAudioBlob(audioBlob);
-          if (whisperText) {
-            currentText = whisperText.trim();
-            candidateAnswerRef.current = currentText;
-            setCandidateAnswer(currentText);
-          }
-        }
-      } catch (err) {
-        console.warn("[Whisper Fallback] Error:", err);
-      }
+      currentText = await processRecordedAudioTranscription();
     }
 
     stopMicRecording();
@@ -757,6 +771,15 @@ export default function InterviewRoomPage({ sessionData, setActivePage, setFinal
             >
               <Mic className="w-4 h-4 text-cyan-400" /> {isRecording ? "Mute Mic" : "Unmute Mic / Speak"}
             </button>
+
+            <button
+              onClick={processRecordedAudioTranscription}
+              disabled={transcribingAudio}
+              className="px-4 py-2 rounded-xl text-xs font-bold border border-cyan-500/40 bg-cyan-500/10 text-cyan-300 hover:bg-cyan-500/20 transition-all flex items-center gap-1.5"
+            >
+              {transcribingAudio ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <RefreshCw className="w-3.5 h-3.5" />}
+              {transcribingAudio ? "Transcribing Voice..." : "Transcribe Voice Audio"}
+            </button>
             
             <span className="text-xs text-slate-400 font-mono">
               Camera Status: <span className={cameraMetrics.streamActive ? "text-emerald-400 font-bold" : "text-amber-400"}>
@@ -768,7 +791,7 @@ export default function InterviewRoomPage({ sessionData, setActivePage, setFinal
           <div className="flex items-center gap-3">
             <button
               onClick={handleNextQuestion}
-              disabled={submitting}
+              disabled={submitting || transcribingAudio}
               className="px-6 py-2.5 rounded-xl font-bold text-xs bg-indigo-600 hover:bg-indigo-500 text-white shadow-lg transition-all flex items-center gap-2"
             >
               {submitting ? "Mira Processing..." : (
