@@ -24,6 +24,7 @@ export default function InterviewRoomPage({ sessionData, setActivePage, setFinal
   const isRecordingRef = useRef(true);
   const isStartingRef = useRef(false);
   const candidateAnswerRef = useRef('');
+  const finalTranscriptRef = useRef('');
 
   // Sync ref with state to prevent stale closures in speech event listeners
   useEffect(() => {
@@ -143,7 +144,9 @@ export default function InterviewRoomPage({ sessionData, setActivePage, setFinal
       },
       () => {
         setIsSpeaking(false);
-        startMicRecording();
+        setTimeout(() => {
+          startMicRecording();
+        }, 400);
       }
     );
   };
@@ -163,12 +166,12 @@ export default function InterviewRoomPage({ sessionData, setActivePage, setFinal
     if (currentQ && !isSpeaking && !submitting) {
       const timeout = setTimeout(() => {
         startMicRecording();
-      }, 600);
+      }, 500);
       return () => clearTimeout(timeout);
     }
   }, [currentIdx]);
 
-  // RAPID INSTANT SPEECH RECOGNITION (SEGMENT RE-TRIGGER LOOP)
+  // ULTIMATE REAL-TIME SPEECH RECOGNITION (INTERIM + FINAL TRANSCRIPT ACCUMULATION)
   const startMicRecording = async () => {
     if (isStartingRef.current) return;
     isStartingRef.current = true;
@@ -190,12 +193,12 @@ export default function InterviewRoomPage({ sessionData, setActivePage, setFinal
       }
 
       const recognition = new SpeechRecognition();
-      recognition.continuous = false; // Fast phrase-level recognition in Chrome
+      recognition.continuous = true;
       recognition.interimResults = true;
       recognition.lang = 'en-US';
 
       recognition.onstart = () => {
-        console.log("[SpeechRecognition] Listening for candidate spoken phrases...");
+        console.log("[SpeechRecognition] Engine listening for candidate audio...");
         setIsRecording(true);
         isRecordingRef.current = true;
         isStartingRef.current = false;
@@ -205,38 +208,41 @@ export default function InterviewRoomPage({ sessionData, setActivePage, setFinal
       };
 
       recognition.onaudiostart = () => {
-        console.log("[SpeechRecognition] Microphone audio capture stream open.");
+        console.log("[SpeechRecognition] Audio capture stream opened.");
       };
 
       recognition.onsoundstart = () => {
-        console.log("[SpeechRecognition] Microphone sound activity detected.");
+        console.log("[SpeechRecognition] Sound activity detected on microphone.");
       };
 
       recognition.onspeechstart = () => {
-        console.log("[SpeechRecognition] Candidate speech stream detected!");
+        console.log("[SpeechRecognition] Human speech stream detected!");
         setSpeechEngineStatus("Human Speech Detected...");
       };
 
       recognition.onresult = (event) => {
-        let phraseText = '';
+        let currentInterim = '';
         for (let i = event.resultIndex; i < event.results.length; i++) {
-          phraseText += event.results[i][0].transcript + ' ';
+          const transcriptChunk = event.results[i][0].transcript;
+          if (event.results[i].isFinal) {
+            finalTranscriptRef.current += transcriptChunk + ' ';
+          } else {
+            currentInterim += transcriptChunk + ' ';
+          }
         }
-        const cleanPhrase = phraseText.trim();
-        if (cleanPhrase) {
-          console.log("[SpeechRecognition] Spoken phrase captured:", cleanPhrase);
-          const prevText = candidateAnswerRef.current ? candidateAnswerRef.current.trim() : '';
-          const combinedText = prevText ? `${prevText} ${cleanPhrase}` : cleanPhrase;
 
-          candidateAnswerRef.current = combinedText;
-          setCandidateAnswer(combinedText);
-          setSpeechEngineStatus("Live Spoken Response Captured!");
+        const fullText = (finalTranscriptRef.current + ' ' + currentInterim).trim();
+        if (fullText) {
+          console.log("[SpeechRecognition] Live transcript:", fullText);
+          candidateAnswerRef.current = fullText;
+          setCandidateAnswer(fullText);
+          setSpeechEngineStatus("Transcribing Spoken Response...");
           setSpeechError(null);
         }
       };
 
       recognition.onspeechend = () => {
-        console.log("[SpeechRecognition] Spoken phrase segment completed.");
+        console.log("[SpeechRecognition] Speech segment completed.");
       };
 
       recognition.onerror = (event) => {
@@ -260,15 +266,15 @@ export default function InterviewRoomPage({ sessionData, setActivePage, setFinal
       };
 
       recognition.onend = () => {
-        console.log("[SpeechRecognition] Phrase segment ended. Restarting phrase listener...");
+        console.log("[SpeechRecognition] Engine ended. Active state:", isRecordingRef.current);
         isStartingRef.current = false;
         if (isRecordingRef.current) {
-          setSpeechEngineStatus("Listening for Next Phrase...");
+          setSpeechEngineStatus("Listening for Speech...");
           setTimeout(() => {
             if (isRecordingRef.current) {
               try { recognitionRef.current?.start(); } catch (e) {}
             }
-          }, 150);
+          }, 200);
         } else {
           setSpeechEngineStatus("Speech Engine Idle");
         }
@@ -318,6 +324,7 @@ export default function InterviewRoomPage({ sessionData, setActivePage, setFinal
     const finalCandidateAnswer = isAnswered ? rawInput : "Not answered";
 
     candidateAnswerRef.current = '';
+    finalTranscriptRef.current = '';
     setCandidateAnswer('');
 
     // 1. IMMEDIATELY APPEND CANDIDATE BUBBLE ("YOU") TO CHAT THREAD
@@ -666,6 +673,7 @@ export default function InterviewRoomPage({ sessionData, setActivePage, setFinal
           value={candidateAnswer}
           onChange={(e) => {
             candidateAnswerRef.current = e.target.value;
+            finalTranscriptRef.current = e.target.value;
             setCandidateAnswer(e.target.value);
           }}
           placeholder="Speak your answer out loud into your microphone, or type your answer here..."
@@ -686,7 +694,7 @@ export default function InterviewRoomPage({ sessionData, setActivePage, setFinal
                 isRecording ? 'bg-slate-900 text-slate-200 border-slate-800' : 'bg-red-500/20 text-red-400 border-red-500/40'
               }`}
             >
-              <Mic className="w-4 h-4 text-cyan-400" /> {isRecording ? "Mute Mic" : "Unmute Mic"}
+              <Mic className="w-4 h-4 text-cyan-400" /> {isRecording ? "Mute Mic" : "Unmute Mic / Speak"}
             </button>
             
             <span className="text-xs text-slate-400 font-mono">
