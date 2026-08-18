@@ -1,5 +1,6 @@
 import os
 import json
+import time
 import logging
 import difflib
 from typing import List, Dict, Any, Optional
@@ -87,11 +88,11 @@ def is_question_too_similar(new_question: str, previous_questions: List[str], th
     return False
 
 # =========================================================
-# GROQ HELPER
+# GROQ HELPER (WITH NETWORK RETRY LOGIC)
 # =========================================================
 
-def _call_groq(prompt: str, temperature: float = 0.8) -> Optional[str]:
-    """Send a prompt to Groq using model openai/gpt-oss-120b and return response."""
+def _call_groq(prompt: str, temperature: float = 0.8, max_retries: int = 3) -> Optional[str]:
+    """Send a prompt to Groq using model openai/gpt-oss-120b with retry logic."""
     if not GROQ_API_KEY:
         logger.warning("GROQ_API_KEY is not configured.")
         return None
@@ -119,31 +120,36 @@ def _call_groq(prompt: str, temperature: float = 0.8) -> Optional[str]:
         },
     }
 
-    try:
-        logger.info("Calling Groq model: %s", GROQ_MODEL)
-        response = requests.post(
-            GROQ_URL,
-            headers=headers,
-            json=payload,
-            timeout=30,
-        )
+    for attempt in range(1, max_retries + 1):
+        try:
+            logger.info("Calling Groq model: %s (attempt %d/%d)", GROQ_MODEL, attempt, max_retries)
+            response = requests.post(
+                GROQ_URL,
+                headers=headers,
+                json=payload,
+                timeout=30,
+            )
 
-        logger.info("Groq HTTP status: %s", response.status_code)
+            logger.info("Groq HTTP status: %s", response.status_code)
 
-        if response.status_code != 200:
-            logger.error("Groq API error %s: %s", response.status_code, response.text[:1500])
-            return None
+            if response.status_code == 200:
+                data = response.json()
+                content = data["choices"][0]["message"]["content"]
+                return content
+            elif response.status_code in [429, 500, 502, 503, 504]:
+                logger.warning("Groq API transient status %s. Retrying in %ds...", response.status_code, attempt)
+                time.sleep(attempt)
+            else:
+                logger.error("Groq API error %s: %s", response.status_code, response.text[:1500])
+                return None
 
-        data = response.json()
-        content = data["choices"][0]["message"]["content"]
-        return content
+        except requests.RequestException as exc:
+            logger.warning("Groq network glitch on attempt %d/%d: %s", attempt, max_retries, exc)
+            if attempt < max_retries:
+                time.sleep(attempt)
 
-    except requests.RequestException as exc:
-        logger.error("Groq network error: %s", exc)
-        return None
-    except Exception as exc:
-        logger.exception("Unexpected Groq error: %s", exc)
-        return None
+    logger.error("Groq API failed after %d attempts.", max_retries)
+    return None
 
 # =========================================================
 # OPENAI HELPER (Secondary Fallback if configured)
@@ -185,14 +191,12 @@ def _call_openai(prompt: str, temperature: float = 0.8) -> Optional[str]:
             json=payload,
             timeout=30,
         )
-        if response.status_code != 200:
-            logger.error("OpenAI API error %s: %s", response.status_code, response.text[:1500])
-            return None
-        data = response.json()
-        return data["choices"][0]["message"]["content"]
+        if response.status_code == 200:
+            data = response.json()
+            return data["choices"][0]["message"]["content"]
     except Exception as exc:
         logger.exception("OpenAI error: %s", exc)
-        return None
+    return None
 
 # =========================================================
 # DYNAMIC INTERVIEW QUESTION GENERATION (STRICT GROQ ONLY)
@@ -413,7 +417,7 @@ Return ONLY a valid JSON object:
         "clarity_score": 0.0,
         "relevance_score": 0.0,
         "completeness_score": 0.0,
-        "feedback": "LLM Evaluation Unavailable: Groq API key or network connection issue.",
+        "feedback": "LLM Evaluation Unavailable: Groq API network connection issue.",
         "strengths": [],
         "weaknesses": ["Evaluation could not be performed by Groq LLM."]
     }

@@ -57,11 +57,6 @@ def read_root():
 # ---------------- TRUTHFUL SYSTEM READINESS CHECK ---------------- #
 @app.get("/api/system/check")
 def system_check_endpoint(db: Session = Depends(database.get_db)):
-    """
-    Truthful System Diagnostic Endpoint.
-    Verifies database connectivity, Groq LLM status, and model availability.
-    Does NOT expose API keys.
-    """
     db_status = "Connected"
     try:
         db.execute(models.User.__table__.select().limit(1))
@@ -107,7 +102,7 @@ def generate_llm_questions_endpoint(
     
     raise HTTPException(
         status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-        detail="Groq LLM question generation is currently unavailable. Please verify GROQ_API_KEY environment variable."
+        detail="Unable to start the AI interview. Please try again."
     )
 
 @app.post("/api/llm/next-question")
@@ -137,7 +132,7 @@ def generate_next_question_endpoint(payload: Dict[str, Any]):
 
     raise HTTPException(
         status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-        detail="Unable to generate adaptive next question via Groq LLM."
+        detail="Unable to generate next adaptive question. Please try again."
     )
 
 @app.post("/api/llm/evaluate")
@@ -147,7 +142,6 @@ def evaluate_llm_answer_endpoint(
     sample_answer: str = ""
 ):
     """Evaluate candidate answer using Groq LLM (openai/gpt-oss-120b)."""
-    # Explicit unanswered question handling
     if not candidate_answer or candidate_answer.strip() in ["", "Not answered", "[Candidate skipped question without speaking]"]:
         return {
             "evaluation_status": "Unanswered",
@@ -259,7 +253,7 @@ def start_interview(
     if not questions:
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail="Mira AI Interviewer was unable to generate questions via Groq LLM. Please check your GROQ_API_KEY environment variable."
+            detail="Unable to start the AI interview. Please try again."
         )
 
     new_session = models.InterviewSession(

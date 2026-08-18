@@ -30,7 +30,7 @@ export default function InterviewRoomPage({ sessionData, setActivePage, setFinal
   const activeDomain = sessionData?.domain || sessionData?.category || "Python Developer";
   const activeDifficulty = sessionData?.difficulty || "Medium";
 
-  // Check if dynamic Groq questions were returned from backend
+  // Check if dynamic questions were returned from backend
   const backendQuestions = sessionData?.questions && Array.isArray(sessionData.questions) && sessionData.questions.length > 0 ? sessionData.questions : null;
   const hasGenerationError = sessionData?.error || !backendQuestions;
 
@@ -277,7 +277,7 @@ export default function InterviewRoomPage({ sessionData, setActivePage, setFinal
     if (currentIdx < maxQuestions - 1) {
       let nextQObj = null;
 
-      // Fetch dynamic adaptive next question from backend Groq LLM
+      // Fetch dynamic adaptive next question from backend
       nextQObj = await fetchNextAdaptiveQuestion({
         domain: activeDomain,
         difficulty: activeDifficulty,
@@ -315,9 +315,8 @@ export default function InterviewRoomPage({ sessionData, setActivePage, setFinal
         setCurrentIdx(prev => prev + 1);
         setSubmitting(false);
       } else {
-        // Show error if next question could not be generated
         setSubmitting(false);
-        alert("Unable to generate the next dynamic question via Groq LLM backend API.");
+        alert("Unable to generate the next question. Please try again.");
       }
     } else {
       // Finalize session
@@ -369,7 +368,7 @@ export default function InterviewRoomPage({ sessionData, setActivePage, setFinal
     }
   };
 
-  // IF GROQ GENERATION FAILED / ERROR VIEW
+  // IF QUESTION GENERATION FAILED / CANDIDATE ERROR VIEW
   if (hasGenerationError) {
     return (
       <div className="max-w-3xl mx-auto px-4 py-16 text-center space-y-6 font-sans">
@@ -377,9 +376,9 @@ export default function InterviewRoomPage({ sessionData, setActivePage, setFinal
           <div className="w-16 h-16 rounded-2xl bg-red-500/10 border border-red-500/30 flex items-center justify-center text-red-400 mx-auto">
             <XCircle className="w-8 h-8" />
           </div>
-          <h2 className="text-xl font-bold text-white">Dynamic Question Generation Error</h2>
+          <h2 className="text-xl font-bold text-white">Interview Setup Notice</h2>
           <p className="text-xs text-slate-300 max-w-md mx-auto leading-relaxed">
-            {sessionData?.error || "The Groq LLM backend service was unable to generate dynamic interview questions. Please verify your GROQ_API_KEY in backend/.env and ensure the backend server is running."}
+            {sessionData?.error || "Unable to start the AI interview. Please try again."}
           </p>
           <button
             onClick={() => setActivePage('interview-setup')}
