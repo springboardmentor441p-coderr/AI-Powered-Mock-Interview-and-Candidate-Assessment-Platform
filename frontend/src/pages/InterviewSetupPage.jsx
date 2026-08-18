@@ -1,23 +1,19 @@
 import React, { useState, useEffect } from 'react';
-import { Video, Shield, CheckCircle2, Wifi, Camera, Mic, ArrowRight, AlertTriangle, Sparkles, Server, Cpu, FileCheck, XCircle, RefreshCw } from 'lucide-react';
+import { Shield, CheckCircle2, Camera, Mic, ArrowRight, Sparkles, Clock, FileText, AlertCircle, RefreshCw } from 'lucide-react';
 import { startInterviewSession, fetchSystemCheck } from '../services/api';
 
 export default function InterviewSetupPage({ setActivePage, setInterviewSession }) {
-  const [step, setStep] = useState(1); // 1: Setup Domain, 2: System Diagnostic Check
+  const [step, setStep] = useState(1); // 1: Setup Role & Difficulty, 2: Interview Preparation & Hardware Check
   const [category, setCategory] = useState('Technical Interview');
   const [domain, setDomain] = useState('Python Developer');
   const [difficulty, setDifficulty] = useState('Medium');
   const [numQuestions, setNumQuestions] = useState(5);
   const [loading, setLoading] = useState(false);
 
-  // REAL SYSTEM DIAGNOSTIC STATES (No dummy hardcoded green checks)
-  const [sysCheck, setSysCheck] = useState({
-    camera: { status: 'testing', label: 'Testing Camera Permission...' },
-    mic: { status: 'testing', label: 'Testing Audio Stream...' },
-    speechRec: { status: 'testing', label: 'Checking Speech-to-Text API...' },
-    backend: { status: 'testing', label: 'Connecting to FastAPI Backend...' },
-    llm: { status: 'testing', label: 'Verifying Groq LLM Engine...' }
-  });
+  // CANDIDATE-FRIENDLY HARDWARE PERMISSION STATES (No internal dev jargon)
+  const [cameraGranted, setCameraGranted] = useState(false);
+  const [micGranted, setMicGranted] = useState(false);
+  const [checkingHardware, setCheckingHardware] = useState(true);
 
   const [agreedToRules, setAgreedToRules] = useState(false);
 
@@ -31,66 +27,40 @@ export default function InterviewSetupPage({ setActivePage, setInterviewSession 
     'HR & Behavioral'
   ];
 
-  // Run Truthful Hardware & API Readiness Test when entering Step 2
-  const runSystemDiagnostic = async () => {
-    setSysCheck({
-      camera: { status: 'testing', label: 'Testing Camera Permission...' },
-      mic: { status: 'testing', label: 'Testing Audio Stream...' },
-      speechRec: { status: 'testing', label: 'Checking Speech-to-Text API...' },
-      backend: { status: 'testing', label: 'Connecting to FastAPI Backend...' },
-      llm: { status: 'testing', label: 'Verifying Groq LLM Engine...' }
-    });
+  // Human-friendly hardware check on step 2
+  const checkMediaPermissions = async () => {
+    setCheckingHardware(true);
+    let camOk = false;
+    let micOk = false;
 
-    // 1. Camera Test
     try {
       const vStream = await navigator.mediaDevices.getUserMedia({ video: true });
       vStream.getTracks().forEach(t => t.stop());
-      setSysCheck(prev => ({ ...prev, camera: { status: 'success', label: 'Camera Feed Active (720p HD)' } }));
-    } catch (err) {
-      setSysCheck(prev => ({ ...prev, camera: { status: 'failed', label: 'Permission Required / Camera Unavailable' } }));
+      camOk = true;
+    } catch (e) {
+      camOk = false;
     }
 
-    // 2. Mic Test
     try {
       const aStream = await navigator.mediaDevices.getUserMedia({ audio: true });
       aStream.getTracks().forEach(t => t.stop());
-      setSysCheck(prev => ({ ...prev, mic: { status: 'success', label: 'Microphone Active' } }));
-    } catch (err) {
-      setSysCheck(prev => ({ ...prev, mic: { status: 'failed', label: 'Permission Required / Mic Disconnected' } }));
+      micOk = true;
+    } catch (e) {
+      micOk = false;
     }
 
-    // 3. Speech Recognition Test
-    const hasSpeech = Boolean(window.SpeechRecognition || window.webkitSpeechRecognition);
-    setSysCheck(prev => ({
-      ...prev,
-      speechRec: hasSpeech 
-        ? { status: 'success', label: 'Speech-to-Text Engine Available' }
-        : { status: 'failed', label: 'STT Not Supported by Browser (Use Chrome/Edge)' }
-    }));
-
-    // 4. Backend API & Groq LLM Check
-    const sysData = await fetchSystemCheck();
-    const isBackendUp = sysData.backend_status === 'Online';
-    const isLlmUp = sysData.llm_configured;
-
-    setSysCheck(prev => ({
-      ...prev,
-      backend: isBackendUp
-        ? { status: 'success', label: 'Backend API Connected' }
-        : { status: 'failed', label: 'Backend API Offline (Local Mode)' },
-      llm: isLlmUp
-        ? { status: 'success', label: `Groq LLM Configured (${sysData.llm_model})` }
-        : { status: 'failed', label: 'Groq API Key Not Configured in backend/.env' }
-    }));
+    setCameraGranted(camOk);
+    setMicGranted(micOk);
+    setCheckingHardware(false);
   };
 
   useEffect(() => {
     if (step === 2) {
-      runSystemDiagnostic();
+      checkMediaPermissions();
     }
   }, [step]);
 
-  const handleProceedToReadinessCheck = () => {
+  const handleProceedToPrep = () => {
     setStep(2);
   };
 
@@ -115,27 +85,25 @@ export default function InterviewSetupPage({ setActivePage, setInterviewSession 
     setActivePage('interview-room');
   };
 
-  const allChecksPassed = sysCheck.camera.status === 'success' && sysCheck.mic.status === 'success';
-
   return (
     <div className="max-w-4xl mx-auto px-4 py-8 space-y-8 pb-20 font-sans">
       
-      {/* STEP 1: SELECT DOMAIN & DIFFICULTY LEVEL */}
+      {/* STEP 1: SELECT TARGET ROLE & DIFFICULTY LEVEL */}
       {step === 1 && (
         <div className="space-y-6">
           <div className="glass-card p-8 rounded-3xl border border-slate-800 space-y-4 text-center">
             <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-indigo-500/10 border border-indigo-500/30 text-indigo-400 text-xs font-mono">
-              <Sparkles className="w-3.5 h-3.5" /> Dynamic Groq LLM Interview Setup
+              <Sparkles className="w-3.5 h-3.5" /> AI Technical Interview Setup
             </div>
-            <h1 className="text-3xl font-extrabold text-white">Select Target Domain & Difficulty</h1>
-            <p className="text-xs text-slate-400 max-w-lg mx-auto">Interview questions are dynamically generated by Groq LLM (openai/gpt-oss-120b) tailored specifically to your chosen role and resume skills.</p>
+            <h1 className="text-3xl font-extrabold text-white">Select Your Target Role & Difficulty</h1>
+            <p className="text-xs text-slate-400 max-w-lg mx-auto">Mira will conduct a dynamic 5-question interview tailored specifically to your chosen role and difficulty tier.</p>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             
-            {/* Domain Selector */}
+            {/* Target Role Selector */}
             <div className="glass-card p-6 rounded-3xl border border-slate-800 space-y-4">
-              <h2 className="text-sm font-bold text-white uppercase font-mono tracking-wider">Target Domain / Role</h2>
+              <h2 className="text-sm font-bold text-white uppercase font-mono tracking-wider">Target Role</h2>
               <div className="space-y-2">
                 {domainsList.map((d) => (
                   <button
@@ -152,7 +120,7 @@ export default function InterviewSetupPage({ setActivePage, setInterviewSession 
               </div>
             </div>
 
-            {/* Difficulty Selector */}
+            {/* Difficulty Tier Selector */}
             <div className="glass-card p-6 rounded-3xl border border-slate-800 space-y-6 flex flex-col justify-between">
               <div className="space-y-4">
                 <h2 className="text-sm font-bold text-white uppercase font-mono tracking-wider">Select Difficulty Tier</h2>
@@ -169,16 +137,28 @@ export default function InterviewSetupPage({ setActivePage, setInterviewSession 
                     </button>
                   ))}
                 </div>
-                <p className="text-[11px] text-slate-400 italic">
-                  Selected Role: <strong className="text-cyan-400">{domain}</strong> ({difficulty} Level — Dynamic Groq Questions)
-                </p>
+
+                <div className="p-4 rounded-2xl bg-slate-900/80 border border-slate-800 space-y-2 text-xs">
+                  <div className="flex justify-between font-mono text-[11px]">
+                    <span className="text-slate-400">Selected Role:</span>
+                    <span className="text-cyan-400 font-bold">{domain}</span>
+                  </div>
+                  <div className="flex justify-between font-mono text-[11px]">
+                    <span className="text-slate-400">Difficulty Tier:</span>
+                    <span className="text-indigo-400 font-bold">{difficulty} Level</span>
+                  </div>
+                  <div className="flex justify-between font-mono text-[11px]">
+                    <span className="text-slate-400">Question Format:</span>
+                    <span className="text-slate-300">5 Dynamic Questions</span>
+                  </div>
+                </div>
               </div>
 
               <button
-                onClick={handleProceedToReadinessCheck}
+                onClick={handleProceedToPrep}
                 className="w-full py-4 rounded-2xl font-bold text-xs bg-gradient-to-r from-indigo-600 to-cyan-500 text-white shadow-xl shadow-indigo-500/25 hover:opacity-90 transition-all flex items-center justify-center gap-2"
               >
-                Proceed to System Check <ArrowRight className="w-4 h-4" />
+                Proceed to Interview Preparation <ArrowRight className="w-4 h-4" />
               </button>
             </div>
 
@@ -186,143 +166,111 @@ export default function InterviewSetupPage({ setActivePage, setInterviewSession 
         </div>
       )}
 
-      {/* STEP 2: TRUTHFUL SYSTEM READINESS CHECK */}
+      {/* STEP 2: CANDIDATE INTERVIEW PREPARATION & PERMISSION STATUS */}
       {step === 2 && (
         <div className="space-y-6">
           
           {/* HEADER */}
           <div className="glass-card p-8 rounded-3xl border border-slate-800 flex items-center justify-between">
             <div>
-              <h1 className="text-2xl font-extrabold text-white">System Readiness Diagnostic</h1>
-              <p className="text-xs text-slate-400 mt-1">Verifying hardware permissions and backend Groq LLM API connectivity.</p>
+              <h1 className="text-2xl font-extrabold text-white">Interview Preparation</h1>
+              <p className="text-xs text-slate-400 mt-1">Review your hardware access and interview guidelines before starting with Mira.</p>
             </div>
 
             <button
-              onClick={runSystemDiagnostic}
+              onClick={checkMediaPermissions}
               className="px-3.5 py-2 rounded-xl text-xs font-mono font-bold bg-slate-900 border border-slate-800 text-slate-300 hover:text-white flex items-center gap-1.5"
             >
-              <RefreshCw className="w-3.5 h-3.5" /> Re-Test Hardware
+              <RefreshCw className="w-3.5 h-3.5" /> Re-check Devices
             </button>
           </div>
 
-          {/* TRUTHFUL DIAGNOSTIC BADGES GRID */}
+          {/* HUMAN-FRIENDLY CAMERA & MICROPHONE PERMISSION STATUS */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             
-            {/* Box 1: Camera Permission */}
-            <div className="glass-card p-4 rounded-2xl border border-slate-800 flex items-center justify-between">
+            {/* Camera Permission Card */}
+            <div className="glass-card p-5 rounded-2xl border border-slate-800 flex items-center justify-between">
               <div className="flex items-center gap-3">
-                <div className="p-2.5 rounded-xl bg-indigo-500/10 text-indigo-400">
+                <div className="p-3 rounded-xl bg-indigo-500/10 text-indigo-400">
                   <Camera className="w-5 h-5" />
                 </div>
                 <div>
-                  <p className="text-xs font-bold text-white">Webcam Camera Stream</p>
-                  <p className="text-[11px] text-slate-400 font-mono">{sysCheck.camera.label}</p>
+                  <p className="text-xs font-bold text-white">Camera Access</p>
+                  <p className="text-[11px] text-slate-400">
+                    {checkingHardware 
+                      ? "Checking camera permission..." 
+                      : (cameraGranted ? "Camera feed active" : "Please allow camera access in browser")}
+                  </p>
                 </div>
               </div>
 
-              {sysCheck.camera.status === 'testing' ? (
-                <span className="px-2.5 py-1 rounded-md bg-amber-500/10 text-amber-400 text-[10px] font-mono animate-pulse">Testing...</span>
-              ) : sysCheck.camera.status === 'success' ? (
-                <span className="px-2.5 py-1 rounded-md bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 text-[10px] font-mono font-bold flex items-center gap-1">
+              {checkingHardware ? (
+                <span className="px-2.5 py-1 rounded-md bg-amber-500/10 text-amber-400 text-[10px] font-mono animate-pulse">Checking...</span>
+              ) : cameraGranted ? (
+                <span className="px-3 py-1 rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/40 text-[10px] font-mono font-bold flex items-center gap-1">
                   <CheckCircle2 className="w-3 h-3" /> Ready
                 </span>
               ) : (
-                <span className="px-2.5 py-1 rounded-md bg-red-500/10 text-red-400 border border-red-500/30 text-[10px] font-mono font-bold flex items-center gap-1">
-                  <XCircle className="w-3 h-3" /> Permission Needed
+                <span className="px-3 py-1 rounded-full bg-amber-500/20 text-amber-400 border border-amber-500/40 text-[10px] font-mono font-bold">
+                  Permission Needed
                 </span>
               )}
             </div>
 
-            {/* Box 2: Microphone Audio */}
-            <div className="glass-card p-4 rounded-2xl border border-slate-800 flex items-center justify-between">
+            {/* Microphone Permission Card */}
+            <div className="glass-card p-5 rounded-2xl border border-slate-800 flex items-center justify-between">
               <div className="flex items-center gap-3">
-                <div className="p-2.5 rounded-xl bg-emerald-500/10 text-emerald-400">
+                <div className="p-3 rounded-xl bg-emerald-500/10 text-emerald-400">
                   <Mic className="w-5 h-5" />
                 </div>
                 <div>
-                  <p className="text-xs font-bold text-white">Microphone Audio Feed</p>
-                  <p className="text-[11px] text-slate-400 font-mono">{sysCheck.mic.label}</p>
+                  <p className="text-xs font-bold text-white">Microphone Access</p>
+                  <p className="text-[11px] text-slate-400">
+                    {checkingHardware 
+                      ? "Checking microphone permission..." 
+                      : (micGranted ? "Microphone active" : "Please allow microphone access in browser")}
+                  </p>
                 </div>
               </div>
 
-              {sysCheck.mic.status === 'testing' ? (
-                <span className="px-2.5 py-1 rounded-md bg-amber-500/10 text-amber-400 text-[10px] font-mono animate-pulse">Testing...</span>
-              ) : sysCheck.mic.status === 'success' ? (
-                <span className="px-2.5 py-1 rounded-md bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 text-[10px] font-mono font-bold flex items-center gap-1">
+              {checkingHardware ? (
+                <span className="px-2.5 py-1 rounded-md bg-amber-500/10 text-amber-400 text-[10px] font-mono animate-pulse">Checking...</span>
+              ) : micGranted ? (
+                <span className="px-3 py-1 rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/40 text-[10px] font-mono font-bold flex items-center gap-1">
                   <CheckCircle2 className="w-3 h-3" /> Ready
                 </span>
               ) : (
-                <span className="px-2.5 py-1 rounded-md bg-red-500/10 text-red-400 border border-red-500/30 text-[10px] font-mono font-bold flex items-center gap-1">
-                  <XCircle className="w-3 h-3" /> Permission Needed
-                </span>
-              )}
-            </div>
-
-            {/* Box 3: Speech Recognition */}
-            <div className="glass-card p-4 rounded-2xl border border-slate-800 flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <div className="p-2.5 rounded-xl bg-cyan-500/10 text-cyan-400">
-                  <FileCheck className="w-5 h-5" />
-                </div>
-                <div>
-                  <p className="text-xs font-bold text-white">Browser Speech Recognition (STT)</p>
-                  <p className="text-[11px] text-slate-400 font-mono">{sysCheck.speechRec.label}</p>
-                </div>
-              </div>
-
-              {sysCheck.speechRec.status === 'success' ? (
-                <span className="px-2.5 py-1 rounded-md bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 text-[10px] font-mono font-bold flex items-center gap-1">
-                  <CheckCircle2 className="w-3 h-3" /> Available
-                </span>
-              ) : (
-                <span className="px-2.5 py-1 rounded-md bg-amber-500/10 text-amber-400 border border-amber-500/30 text-[10px] font-mono font-bold">
-                  Fallback Mode
-                </span>
-              )}
-            </div>
-
-            {/* Box 4: Groq LLM Connectivity */}
-            <div className="glass-card p-4 rounded-2xl border border-slate-800 flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <div className="p-2.5 rounded-xl bg-purple-500/10 text-purple-400">
-                  <Cpu className="w-5 h-5" />
-                </div>
-                <div>
-                  <p className="text-xs font-bold text-white">Groq LLM Engine</p>
-                  <p className="text-[11px] text-slate-400 font-mono">{sysCheck.llm.label}</p>
-                </div>
-              </div>
-
-              {sysCheck.llm.status === 'testing' ? (
-                <span className="px-2.5 py-1 rounded-md bg-amber-500/10 text-amber-400 text-[10px] font-mono animate-pulse">Checking...</span>
-              ) : sysCheck.llm.status === 'success' ? (
-                <span className="px-2.5 py-1 rounded-md bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 text-[10px] font-mono font-bold flex items-center gap-1">
-                  <CheckCircle2 className="w-3 h-3" /> Configured
-                </span>
-              ) : (
-                <span className="px-2.5 py-1 rounded-md bg-amber-500/10 text-amber-400 border border-amber-500/30 text-[10px] font-mono font-bold">
-                  Fallback Engine
+                <span className="px-3 py-1 rounded-full bg-amber-500/20 text-amber-400 border border-amber-500/40 text-[10px] font-mono font-bold">
+                  Permission Needed
                 </span>
               )}
             </div>
 
           </div>
 
-          {/* INTERVIEW GUIDELINES & PROCTORING RULES */}
+          {/* PERMISSION NOTICE BANNER IF NOT GRANTED */}
+          {(!cameraGranted || !micGranted) && !checkingHardware && (
+            <div className="p-4 rounded-2xl bg-amber-500/10 border border-amber-500/30 text-amber-300 text-xs flex items-center gap-3">
+              <AlertCircle className="w-5 h-5 shrink-0" />
+              <span>Please allow camera and microphone access to begin your interview.</span>
+            </div>
+          )}
+
+          {/* INTERVIEW GUIDELINES */}
           <div className="glass-card p-6 rounded-3xl border border-slate-800 space-y-4">
             <h2 className="text-sm font-bold text-white uppercase font-mono tracking-wider flex items-center gap-2">
-              <Shield className="w-4 h-4 text-cyan-400" /> Interview Proctoring & Malpractice Policy
+              <Shield className="w-4 h-4 text-cyan-400" /> Interview Guidelines & Policy
             </h2>
 
-            <ul className="text-xs text-slate-300 space-y-2 list-disc list-inside leading-relaxed font-sans">
-              <li>Ensure your webcam stream and microphone access are granted before launching.</li>
-              <li>Mira will ask dynamically generated technical questions tailored to your chosen domain.</li>
-              <li>Speak your answers clearly out loud into your microphone. If you choose to skip a question, it will be logged as <strong>Unanswered</strong>.</li>
-              <li><strong className="text-red-400">Malpractice Rule:</strong> Switching browser tabs during the session will trigger warning alerts. Second violation results in immediate exam termination.</li>
+            <ul className="text-xs text-slate-300 space-y-2.5 list-disc list-inside leading-relaxed font-sans">
+              <li>Position yourself in a quiet, well-lit environment facing your camera.</li>
+              <li>Mira will ask 5 dynamic technical questions based on your chosen role ({domain}) and difficulty tier.</li>
+              <li>Speak your answers clearly out loud into your microphone. If you choose to skip a question, it will be recorded as <strong>Unanswered</strong>.</li>
+              <li><strong className="text-red-400">Proctoring Notice:</strong> Switching browser tabs during the session will trigger warning alerts.</li>
             </ul>
 
             {/* AGREEMENT CHECKBOX */}
-            <div className="pt-2 border-t border-slate-800">
+            <div className="pt-3 border-t border-slate-800">
               <label className="flex items-center gap-3 cursor-pointer select-none">
                 <input 
                   type="checkbox" 
@@ -331,7 +279,7 @@ export default function InterviewSetupPage({ setActivePage, setInterviewSession 
                   className="w-4 h-4 rounded border-slate-700 bg-slate-900 text-indigo-600 focus:ring-indigo-500" 
                 />
                 <span className="text-xs text-slate-200 font-medium">
-                  I agree to the interview guidelines and proctoring rules.
+                  I understand the interview guidelines and am ready to begin.
                 </span>
               </label>
             </div>
@@ -343,7 +291,7 @@ export default function InterviewSetupPage({ setActivePage, setInterviewSession 
               onClick={() => setStep(1)}
               className="px-4 py-2 rounded-xl text-xs font-semibold text-slate-400 hover:text-white"
             >
-              ← Back to Domain Setup
+              ← Back to Role Selection
             </button>
 
             <button
@@ -355,8 +303,8 @@ export default function InterviewSetupPage({ setActivePage, setInterviewSession 
                   : 'bg-slate-900 border border-slate-800 text-slate-500 cursor-not-allowed'
               }`}
             >
-              {loading ? "Generating Groq LLM Questions..." : (
-                <>I'm Ready to Start Interview with Mira <ArrowRight className="w-4 h-4" /></>
+              {loading ? "Preparing Your Interview..." : (
+                <>Start Interview with Mira <ArrowRight className="w-4 h-4" /></>
               )}
             </button>
           </div>

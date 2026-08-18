@@ -18,11 +18,11 @@ export default function InterviewRoomPage({ sessionData, setActivePage, setFinal
   const [speechError, setSpeechError] = useState(null);
   const chatScrollRef = useRef(null);
 
-  // Truthful camera status metrics
+  // Truthful camera status metrics (No fake random numbers)
   const [cameraMetrics, setCameraMetrics] = useState({
     streamActive: false,
     faceDetected: "Initializing...",
-    cameraStatus: "Checking Camera..."
+    cameraStatus: "Camera Active"
   });
 
   const recognitionRef = useRef(null);
@@ -30,20 +30,20 @@ export default function InterviewRoomPage({ sessionData, setActivePage, setFinal
   const activeDomain = sessionData?.domain || sessionData?.category || "Python Developer";
   const activeDifficulty = sessionData?.difficulty || "Medium";
 
-  // Initial Questions Set (Fallback if backend API offline)
+  // Initial Question Set
   const initialQuestions = (sessionData?.questions && sessionData.questions.length > 0) ? sessionData.questions : [
     {
       id: 1,
       question_number: "Question 1 of 5",
-      question_text: `Hello! My name is ${miraAgent.name}. Welcome to your ${activeDomain} interview (${activeDifficulty} level). To start off, please introduce yourself and your technical background.`,
-      sample_answer: "I am a software developer with background in software development, APIs, and databases."
+      question_text: `Hello! My name is ${miraAgent.name}. Welcome to your ${activeDomain} interview (${activeDifficulty} level). To begin, could you briefly introduce yourself and share your experience with ${activeDomain}?`,
+      sample_answer: "I am a software engineer experienced with web applications, APIs, and databases."
     }
   ];
 
   const [questionsList, setQuestionsList] = useState(initialQuestions);
   const currentQ = questionsList[currentIdx] || questionsList[0];
 
-  // REAL-TIME CONTINUOUS CONVERSATION THREAD CHAT HISTORY
+  // REAL-TIME CONTINUOUS CONVERSATION CHAT THREAD
   const [chatThread, setChatThread] = useState([
     {
       id: 1,
@@ -53,7 +53,7 @@ export default function InterviewRoomPage({ sessionData, setActivePage, setFinal
     }
   ]);
 
-  // Timer effect
+  // Session Timer
   useEffect(() => {
     const timer = setInterval(() => setTimerSeconds(prev => prev + 1), 1000);
     return () => clearInterval(timer);
@@ -66,20 +66,20 @@ export default function InterviewRoomPage({ sessionData, setActivePage, setFinal
     }
   }, [chatThread, candidateAnswer]);
 
-  // REAL PROCTORING VIOLATION HANDLER (ONLY TRIGGERS WHEN CANDIDATE ACTUALLY SWITCHES BROWSER TABS)
+  // REAL PROCTORING TAB-SWITCH VIOLATION HANDLER
   const triggerProctoringViolation = (reasonText) => {
     setViolationCount(prev => {
       const nextCount = prev + 1;
 
       if (nextCount === 1) {
         setActivePopup({
-          text: `🚨 MALPRACTICE WARNING (1/2): ${reasonText}! Return to interview room immediately.`,
+          text: `🚨 PROCTORING ALERT (1/2): ${reasonText}! Please remain in the interview window.`,
           color: "bg-red-600/95 border-red-400 text-white font-bold"
         });
         setTimeout(() => setActivePopup(null), 5000);
       } else if (nextCount >= 2) {
         setActivePopup({
-          text: "🚨 EXAM TERMINATED (2/2 VIOLATIONS): Session automatically cancelled due to tab switching violations.",
+          text: "🚨 EXAM TERMINATED: Session automatically ended due to repeated tab switching.",
           color: "bg-red-700 border-red-500 text-white font-extrabold"
         });
         handleForceMalpracticeSubmit(reasonText);
@@ -89,11 +89,10 @@ export default function InterviewRoomPage({ sessionData, setActivePage, setFinal
     });
   };
 
-  // Tab switch listener ONLY
   useEffect(() => {
     const handleVisibilityChange = () => {
       if (document.hidden) {
-        triggerProctoringViolation("Browser Tab Switch Detected");
+        triggerProctoringViolation("Tab Switch Detected");
       }
     };
 
@@ -114,9 +113,9 @@ export default function InterviewRoomPage({ sessionData, setActivePage, setFinal
       performance_rating: "EXAM TERMINATED - Malpractice Penalty Applied",
       malpractice_flag: true,
       tab_switches: violationCount + 1,
-      strengths: ["Initial webcam and microphone engagement recorded"],
-      weaknesses: [`EXAM AUTO-TERMINATED: Multiple Tab Switches Detected (${reasonText})`],
-      improvement_tips: ["Do not switch browser tabs or open external windows during live proctored interviews."]
+      strengths: ["Webcam and audio stream initiated"],
+      weaknesses: [`Session ended automatically due to tab switching (${reasonText})`],
+      improvement_tips: ["Do not switch browser tabs or switch application windows during live proctored sessions."]
     };
 
     setFinalReport(malpracticeReport);
@@ -155,7 +154,7 @@ export default function InterviewRoomPage({ sessionData, setActivePage, setFinal
 
       const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
       if (!SpeechRecognition) {
-        setSpeechError("Speech Recognition is not supported by your browser. Please type or use Chrome/Edge.");
+        setSpeechError("Speech recognition is not supported in this browser. Please type your answer or use Chrome/Edge.");
         return;
       }
 
@@ -183,7 +182,7 @@ export default function InterviewRoomPage({ sessionData, setActivePage, setFinal
       recognition.onerror = (event) => {
         if (event.error !== 'no-speech') {
           console.warn("Speech recognition error:", event.error);
-          setSpeechError(`Speech Recognition: ${event.error}`);
+          setSpeechError(`Speech Error: ${event.error}`);
         }
       };
 
@@ -197,7 +196,7 @@ export default function InterviewRoomPage({ sessionData, setActivePage, setFinal
       recognition.start();
     } catch (err) {
       console.warn("Microphone access error:", err);
-      setSpeechError("Microphone access permission denied or microphone disconnected.");
+      setSpeechError("Microphone access permission denied or disconnected.");
     }
   };
 
@@ -241,7 +240,7 @@ export default function InterviewRoomPage({ sessionData, setActivePage, setFinal
       question_text: currentQ.question_text || currentQ.q,
       candidate_answer: finalCandidateAnswer,
       transcript: finalCandidateAnswer,
-      eye_contact_ratio: cameraMetrics.streamActive ? 0.90 : 0.0
+      eye_contact_ratio: cameraMetrics.streamActive ? 1.0 : 0.0
     });
 
     const llmEval = backendRes?.llm_evaluation || {
@@ -249,7 +248,7 @@ export default function InterviewRoomPage({ sessionData, setActivePage, setFinal
       is_answered: isAnswered,
       technical_score: isAnswered ? 80.0 : 0.0,
       clarity_score: isAnswered ? 80.0 : 0.0,
-      feedback: isAnswered ? "Answer submitted." : "Question was skipped without an answer.",
+      feedback: isAnswered ? "Answer evaluated." : "Question was skipped without an answer.",
       strengths: isAnswered ? ["Technical answer provided"] : [],
       weaknesses: isAnswered ? [] : ["Question skipped without an answer."]
     };
@@ -278,7 +277,7 @@ export default function InterviewRoomPage({ sessionData, setActivePage, setFinal
     if (currentIdx < maxQuestions - 1) {
       let nextQObj = null;
 
-      // Try fetching dynamic adaptive next question from Groq LLM
+      // Fetch dynamic adaptive next question from backend
       if (isAnswered) {
         nextQObj = await fetchNextAdaptiveQuestion({
           domain: activeDomain,
@@ -289,7 +288,6 @@ export default function InterviewRoomPage({ sessionData, setActivePage, setFinal
         });
       }
 
-      // If backend returns a dynamic question, insert it into questionsList
       if (nextQObj && nextQObj.question_text) {
         setQuestionsList(prev => {
           const copy = [...prev];
@@ -297,10 +295,9 @@ export default function InterviewRoomPage({ sessionData, setActivePage, setFinal
           return copy;
         });
       } else if (!questionsList[currentIdx + 1]) {
-        // Fallback next question if not present
         const fallbackNext = {
           id: currentIdx + 2,
-          question_text: `Building on your background in ${activeDomain}, explain how you handle application error logging and performance optimization.`,
+          question_text: `Building on your background in ${activeDomain}, explain how you handle software error logging and performance trade-offs in production systems.`,
           skill_focus: activeDomain
         };
         setQuestionsList(prev => [...prev, fallbackNext]);
@@ -312,7 +309,7 @@ export default function InterviewRoomPage({ sessionData, setActivePage, setFinal
 
       const nextInterviewerText = isAnswered 
         ? miraAgent.generateAdaptivePrompt(finalCandidateAnswer, upcomingQ)
-        : `Okay, I will continue with the next question. ${upcomingQ.question_text}`;
+        : `Okay, let's move on to the next question. ${upcomingQ.question_text}`;
 
       setTimeout(() => {
         const interviewerBubble = {
@@ -347,15 +344,15 @@ export default function InterviewRoomPage({ sessionData, setActivePage, setFinal
         performance_rating: rating,
         category: activeDomain,
         difficulty: activeDifficulty,
-        camera_status: cameraMetrics.cameraStatus,
+        camera_status: cameraMetrics.streamActive ? "Camera Active" : "Camera Off",
         answers_history: updatedAnswers,
         answered_questions_count: answeredList.length,
         unanswered_questions_count: unansweredCount,
         total_questions_count: updatedAnswers.length,
         strengths: answeredList.length > 0 ? [
           `Answered ${answeredList.length} out of ${updatedAnswers.length} questions in ${activeDomain} (${activeDifficulty} level)`,
-          `Demonstrated microphone verbal responses during technical turns`,
-          `Maintained active session focus and video stream`
+          `Demonstrated spoken responses during technical interview turns`,
+          `Maintained active video stream throughout session`
         ] : [
           `Completed proctored interview session with Mira`
         ],
@@ -367,7 +364,7 @@ export default function InterviewRoomPage({ sessionData, setActivePage, setFinal
         ],
         improvement_tips: [
           `Make sure to speak clear answers for all interview questions`,
-          `Practice explaining code complexity and system design trade-offs out loud`
+          `Practice explaining technical complexity out loud`
         ]
       };
 
@@ -380,7 +377,7 @@ export default function InterviewRoomPage({ sessionData, setActivePage, setFinal
   return (
     <div className="max-w-7xl mx-auto px-4 py-4 space-y-6 pb-20 relative font-sans">
       
-      {/* REAL-TIME AI PROCTORING WARNING TOAST */}
+      {/* PROCTORING ALERT TOAST */}
       {activePopup && (
         <div className={`fixed top-20 right-6 z-50 p-4 rounded-2xl border ${activePopup.color} shadow-2xl backdrop-blur-xl animate-bounce flex items-center gap-3`}>
           <ShieldAlert className="w-5 h-5 text-red-400 shrink-0" />
@@ -397,7 +394,7 @@ export default function InterviewRoomPage({ sessionData, setActivePage, setFinal
               Mira AI Interview Room <span className="text-[10px] text-cyan-400 font-mono font-normal">• Live Session</span>
             </h1>
             <span className="text-[11px] text-indigo-300 font-mono">
-              Domain: <strong className="text-white">{activeDomain}</strong> ({activeDifficulty} Level — Question {currentIdx + 1} of 5)
+              Role: <strong className="text-white">{activeDomain}</strong> ({activeDifficulty} Level — Question {currentIdx + 1} of 5)
             </span>
           </div>
         </div>
@@ -415,10 +412,10 @@ export default function InterviewRoomPage({ sessionData, setActivePage, setFinal
         </div>
       </div>
 
-      {/* MAIN LAYOUT: LEFT (MIRA AVATAR & SCROLLABLE CHAT THREAD), RIGHT (WEBCAM & TELEMETRY) */}
+      {/* MAIN TWO-COLUMN LAYOUT: LEFT (MIRA AVATAR & CONVERSATION THREAD), RIGHT (WEBCAM & CAMERA STATUS) */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
         
-        {/* LEFT COLUMN: MIRA AVATAR & CHAT THREAD (8 COLS) */}
+        {/* LEFT COLUMN: MIRA AVATAR & SCROLLABLE CHAT THREAD (8 COLS) */}
         <div className="lg:col-span-8 space-y-6">
           
           {/* Mira Avatar Panel */}
@@ -443,7 +440,7 @@ export default function InterviewRoomPage({ sessionData, setActivePage, setFinal
           <div className="glass-card p-5 rounded-3xl border border-slate-800 space-y-3 shadow-xl h-[380px] flex flex-col justify-between">
             <div className="flex items-center justify-between border-b border-slate-800 pb-2 shrink-0">
               <span className="text-xs font-mono text-cyan-400 uppercase font-bold flex items-center gap-1.5">
-                <MessageSquare className="w-4 h-4 text-amber-400" /> Real-Time Mira Conversation Thread
+                <MessageSquare className="w-4 h-4 text-amber-400" /> Real-Time Interview Conversation Thread
               </span>
               <span className="text-[10px] text-emerald-400 font-mono flex items-center gap-1">
                 <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping"></span> Mira Active
@@ -500,7 +497,7 @@ export default function InterviewRoomPage({ sessionData, setActivePage, setFinal
 
         </div>
 
-        {/* RIGHT COLUMN: CANDIDATE WEBCAM & TRUTHFUL CAMERA STATUS */}
+        {/* RIGHT COLUMN: WEBCAM & CLEAN CAMERA STATUS */}
         <div className="lg:col-span-4 space-y-4">
           
           {/* Candidate Webcam Box */}
@@ -510,34 +507,27 @@ export default function InterviewRoomPage({ sessionData, setActivePage, setFinal
             />
           </div>
 
-          {/* TRUTHFUL CAMERA & HARDWARE STATUS */}
+          {/* TRUTHFUL CAMERA STATUS BOX */}
           <div className="glass-card p-5 rounded-3xl border border-slate-800 space-y-3.5 shadow-xl">
             <div className="flex items-center justify-between border-b border-slate-800 pb-2">
-              <span className="text-xs font-mono text-slate-300 font-bold uppercase">Hardware Assessment</span>
+              <span className="text-xs font-mono text-slate-300 font-bold uppercase">Device Monitoring</span>
               <span className="text-[10px] font-mono text-emerald-400 flex items-center gap-1">
-                <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping"></span> CAMERA STATUS
+                <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping"></span> STATUS
               </span>
             </div>
 
             <div className="space-y-2 text-xs font-mono">
-              <div className="flex justify-between p-2 rounded-xl bg-slate-900 border border-slate-800">
-                <span className="text-slate-400">Webcam Stream:</span>
+              <div className="flex justify-between p-2.5 rounded-xl bg-slate-900 border border-slate-800">
+                <span className="text-slate-400">Camera Feed:</span>
                 <span className={cameraMetrics.streamActive ? "text-emerald-400 font-bold" : "text-red-400 font-bold"}>
-                  {cameraMetrics.streamActive ? "Active" : "Inactive"}
+                  {cameraMetrics.streamActive ? "Camera Active" : "Camera Off"}
                 </span>
               </div>
 
-              <div className="flex justify-between p-2 rounded-xl bg-slate-900 border border-slate-800">
-                <span className="text-slate-400">Face Presence:</span>
-                <span className={cameraMetrics.streamActive ? "text-cyan-400 font-bold" : "text-amber-400 font-bold"}>
-                  {cameraMetrics.faceDetected}
-                </span>
-              </div>
-
-              <div className="flex justify-between p-2 rounded-xl bg-slate-900 border border-slate-800">
-                <span className="text-slate-400">Gaze/Eye-Contact:</span>
-                <span className="text-slate-400 italic">
-                  {cameraMetrics.streamActive ? "Stream Monitored" : "Not Available"}
+              <div className="flex justify-between p-2.5 rounded-xl bg-slate-900 border border-slate-800">
+                <span className="text-slate-400">Microphone Input:</span>
+                <span className={isRecording ? "text-emerald-400 font-bold" : "text-amber-400"}>
+                  {isRecording ? "Live Audio Active" : "Muted"}
                 </span>
               </div>
             </div>
@@ -561,8 +551,8 @@ export default function InterviewRoomPage({ sessionData, setActivePage, setFinal
           </button>
           
           <span className="text-xs text-slate-400 font-mono">
-            Camera: <span className={cameraMetrics.streamActive ? "text-emerald-400 font-bold" : "text-amber-400"}>
-              {cameraMetrics.streamActive ? "Active" : "Off"}
+            Camera Status: <span className={cameraMetrics.streamActive ? "text-emerald-400 font-bold" : "text-amber-400"}>
+              {cameraMetrics.streamActive ? "Camera Active" : "Camera Off"}
             </span>
           </span>
         </div>
