@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Video, Mic, MicOff, Volume2, Clock, ArrowRight, CheckCircle2, AlertCircle, RefreshCw, Send, Sparkles, VolumeX, Bot, User, MessageSquare, PhoneOff, Bell, AlertTriangle, ShieldAlert, XCircle, Loader2 } from 'lucide-react';
 import WebcamMonitor from '../components/WebcamMonitor';
 import AudioWaveform from '../components/AudioWaveform';
@@ -42,6 +42,10 @@ export default function InterviewRoomPage({ sessionData, setActivePage, setFinal
     faceDetected: "Initializing...",
     cameraStatus: "Camera Active"
   });
+
+  const handleCameraMetricsUpdate = useCallback((m) => {
+    setCameraMetrics(m);
+  }, []);
 
   const activeDomain = sessionData?.domain || sessionData?.category || "Python Developer";
   const activeDifficulty = sessionData?.difficulty || "Medium";
@@ -696,7 +700,7 @@ export default function InterviewRoomPage({ sessionData, setActivePage, setFinal
           {/* Candidate Webcam Box */}
           <div className="relative">
             <WebcamMonitor 
-              onMetricsUpdate={(m) => setCameraMetrics(m)}
+              onMetricsUpdate={handleCameraMetricsUpdate}
             />
           </div>
 

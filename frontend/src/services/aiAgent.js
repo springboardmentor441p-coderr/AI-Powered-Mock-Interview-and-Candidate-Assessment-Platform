@@ -7,6 +7,7 @@ class MiraAgent {
   constructor(agentName = "Mira") {
     this.name = agentName;
     this.role = "Senior AI Technical Interviewer";
+    this.currentUtterance = null; // Module/instance ref to prevent Chrome garbage collection of active speech
   }
 
   /**
@@ -25,6 +26,7 @@ class MiraAgent {
       }
 
       window.speechSynthesis.cancel(); // Clear any previous queued speech
+      this.currentUtterance = null;
 
       const cleanText = (text || '').replace(/<[^>]*>?/gm, '').trim();
       if (!cleanText) {
@@ -32,12 +34,15 @@ class MiraAgent {
         return;
       }
 
+      // Create utterance and store in class instance reference to prevent V8 garbage collection
       const utterance = new SpeechSynthesisUtterance(cleanText);
+      this.currentUtterance = utterance;
+
       utterance.rate = 0.95;
       utterance.pitch = 1.05;
       utterance.lang = 'en-US';
 
-      const setVoiceAndSpeak = () => {
+      const performSpeak = () => {
         try {
           const voices = window.speechSynthesis.getVoices();
           if (voices && voices.length > 0) {
@@ -58,11 +63,13 @@ class MiraAgent {
 
           utterance.onend = () => {
             console.log(`[${this.name}] Finished speaking question.`);
+            this.currentUtterance = null;
             if (onEndCallback) onEndCallback();
           };
 
           utterance.onerror = (e) => {
-            console.warn(`[${this.name}] SpeechUtterance error:`, e);
+            console.warn(`[${this.name}] SpeechUtterance error:`, e.error, e);
+            this.currentUtterance = null;
             if (onEndCallback) onEndCallback();
           };
 
@@ -77,18 +84,21 @@ class MiraAgent {
 
       const voices = window.speechSynthesis.getVoices();
       if (voices && voices.length > 0) {
-        setVoiceAndSpeak();
+        performSpeak();
       } else {
         window.speechSynthesis.onvoiceschanged = () => {
           window.speechSynthesis.onvoiceschanged = null;
-          setVoiceAndSpeak();
+          performSpeak();
         };
         setTimeout(() => {
-          setVoiceAndSpeak();
+          if (this.currentUtterance === utterance) {
+            performSpeak();
+          }
         }, 300);
       }
     } catch (err) {
       console.warn(`[${this.name}] Speech synthesis error:`, err);
+      this.currentUtterance = null;
       if (onEndCallback) onEndCallback();
     }
   }
@@ -99,6 +109,7 @@ class MiraAgent {
   stopSpeaking() {
     if ('speechSynthesis' in window) {
       window.speechSynthesis.cancel();
+      this.currentUtterance = null;
     }
   }
 

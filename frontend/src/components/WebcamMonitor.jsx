@@ -6,6 +6,11 @@ export default function WebcamMonitor({ onMetricsUpdate }) {
   const [streamActive, setStreamActive] = useState(false);
   const [permissionDenied, setPermissionDenied] = useState(false);
 
+  const onMetricsUpdateRef = useRef(onMetricsUpdate);
+  useEffect(() => {
+    onMetricsUpdateRef.current = onMetricsUpdate;
+  }, [onMetricsUpdate]);
+
   const startCamera = async () => {
     try {
       setPermissionDenied(false);
@@ -36,14 +41,14 @@ export default function WebcamMonitor({ onMetricsUpdate }) {
   }, []);
 
   useEffect(() => {
-    if (onMetricsUpdate) {
-      onMetricsUpdate({
+    if (onMetricsUpdateRef.current) {
+      onMetricsUpdateRef.current({
         streamActive: streamActive,
         faceDetected: streamActive ? "Detected" : "Not Detected",
         cameraStatus: streamActive ? "Camera Stream Active (720p HD)" : (permissionDenied ? "Permission Denied" : "Initializing Camera...")
       });
     }
-  }, [streamActive, permissionDenied, onMetricsUpdate]);
+  }, [streamActive, permissionDenied]);
 
   return (
     <div className="relative rounded-2xl overflow-hidden glass-card border border-slate-800 bg-slate-950 aspect-video shadow-2xl group">
