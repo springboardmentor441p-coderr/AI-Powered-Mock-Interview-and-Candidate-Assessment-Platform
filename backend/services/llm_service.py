@@ -212,8 +212,8 @@ def generate_llm_questions(
     resume_text: str = "",
 ) -> Optional[List[Dict[str, Any]]]:
     """
-    Dynamically generates unique, moderately detailed technical interview questions using Groq LLM (openai/gpt-oss-120b).
-    Enforces 30-50 word length, conversational style, single-topic focus, and tier-based technical depth.
+    Dynamically generates unique, highly specific technical interview questions using Groq LLM (openai/gpt-oss-120b).
+    Balances Role-Based, Resume-Aware, and Adaptive Follow-Up questions with strict length & repetition constraints.
     """
     skills_text = ", ".join(skills) if (skills and len(skills) > 0) else domain
     prev_q_list = previous_questions or []
@@ -242,8 +242,8 @@ You are {INTERVIEWER_NAME}, a senior AI technical interviewer conducting a live,
 Target Role / Domain: {domain}
 Difficulty Tier: {difficulty}
 Difficulty Directive: {difficulty_guidance}
-Candidate Skills: {skills_text}
-Candidate Resume Context: {resume_text if resume_text else "No resume uploaded."}
+Candidate Skills / Stack: {skills_text}
+Candidate Resume Context: {resume_text if resume_text else "No resume text provided."}
 
 PREVIOUS QUESTIONS ASKED IN THIS SESSION:
 {prev_q_formatted}
@@ -253,13 +253,26 @@ Candidate's Previous Answer Context:
 
 Number of Unique Questions Needed: {num_questions}
 
-STRICT QUESTION STYLE & LENGTH REQUIREMENTS:
-1. TARGET LENGTH: Each question MUST be between 30 and 50 words long (usually 2 to 3 sentences).
-2. SINGLE TOPIC: Focus each question on ONE main technical concept or scenario. Do NOT ask 4 or 5 nested questions in one turn.
-3. CONVERSATIONAL & REALISTIC: Frame questions like a real technical interviewer setting up a short scenario (e.g., "Suppose you are...", "In a situation where...").
-4. ANSWERABLE: Provide enough context for the candidate to give a clear 30 to 60 second verbal answer.
-5. NO GENERIC INTROS: Do NOT ask generic intro templates like 'Welcome! Introduce yourself...' or 'What technical tools and frameworks do you use...'.
-6. NO REPETITION: Every question must be 100% unique and cover a distinct sub-topic. Do NOT repeat or paraphrase any question from PREVIOUS QUESTIONS listed above.
+QUESTION GENERATION DIRECTIVES (NATURAL INTERVIEW MIX):
+1. NATURAL QUESTION BLEND:
+   - Combine ROLE-BASED questions (testing core technical domain knowledge for {domain}) with RESUME-AWARE questions (referencing technologies, skills, or projects in candidate's resume/skills).
+   - Do NOT invent skills or projects that are not present in the candidate's context.
+   - If a previous candidate answer is provided, generate an ADAPTIVE follow-up that explores a technical topic mentioned by the candidate without repeating previous questions.
+
+2. STRICT LENGTH & STRUCTURE:
+   - TARGET LENGTH: 30 to 50 words per question (usually 2 to 3 sentences).
+   - SINGLE TOPIC: Focus each question on ONE main technical concept or scenario. Do NOT ask 4 or 5 nested sub-questions.
+   - CONVERSATIONAL & REALISTIC: Frame questions like a real technical interviewer setting up a short scenario (e.g. "Suppose your application...", "In a scenario where...").
+   - ANSWERABLE: Provide enough context for the candidate to deliver a clear 30 to 60 second verbal answer.
+
+3. DIFFICULTY DEPTH:
+   - Easy: Fundamental language & framework concepts, basic API design, core data structures.
+   - Medium: Production debugging, performance optimization, database indexing, async concurrency, Docker deployment.
+   - Hard: System architecture, high-concurrency bottlenecks, zero-downtime rollouts, distributed trade-offs.
+
+4. NO REPETITION & NO GENERIC INTROS:
+   - Do NOT ask generic intro templates like 'Welcome! Introduce yourself...' or 'What technical tools do you use...'.
+   - Every question MUST be 100% unique and cover a distinct sub-topic. Do NOT repeat or paraphrase any question from PREVIOUS QUESTIONS listed above.
 
 DESIRED QUESTION STYLE EXAMPLE TO FOLLOW:
 "Suppose your FastAPI application is receiving thousands of requests per minute and response times are increasing. How would you identify the bottleneck and improve the application's performance?"
