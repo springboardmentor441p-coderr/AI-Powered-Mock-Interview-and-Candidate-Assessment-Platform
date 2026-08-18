@@ -424,6 +424,7 @@ export const InterviewRoom = () => {
       utterance.onend = () => {
         setIsSpeaking(false);
         speakingRef.current = false;
+        setInterviewState(INTERVIEW_STATES.LISTENING);
         setTimeout(() => {
           if (recognitionRef.current && isMicOn && !speakingRef.current) {
             try { recognitionRef.current.start(); } catch (e) { }
@@ -816,22 +817,18 @@ export const InterviewRoom = () => {
 
     if (isExplicitNextCommand) {
       if (isLastQuestion) {
-        speakAIText("Understood. That completes our final question! Generating your evaluation report now...", () => handleCompleteInterview());
+        handleCompleteInterview();
       } else {
-        speakAIText("Understood, let me read the next question for you.", () => autoAdvanceNextQuestion());
+        autoAdvanceNextQuestion();
       }
       return;
     }
 
-    // 8. CANDIDATE VERBAL ANSWER (AI listens attentively without forcing an auto-skip!)
+    // 8. CANDIDATE VERBAL ANSWER (Record response silently without repeating candidate's answer or speaking filler)
     const wordCount = rawText.split(/\s+/).length;
-    if (wordCount < 3) {
-      speakAIText("I am listening. Please feel free to elaborate on your answer.");
-      return;
+    if (wordCount >= 3) {
+      setCandidateAnswers(prev => ({ ...prev, [qIndex]: rawText }));
     }
-
-    // For substantial candidate responses: Acknowledge candidate's points warmly without repeating command keywords!
-    speakAIText("Thank you for your explanation. I have recorded your response. Please say 'I am done' when you are ready for the next part.");
   };
 
   const autoAdvanceNextQuestion = async () => {
