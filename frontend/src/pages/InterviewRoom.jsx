@@ -27,7 +27,7 @@ import {
   Send,
   CheckCircle2
 } from 'lucide-react';
-import { AIAvatar } from '../components/Avatar/Avatar';
+import { AIAvatar, INTERVIEW_STATES } from '../components/Avatar/Avatar';
 import { SpeechToText } from '../components/SpeechToText/SpeechToText';
 import { VisionAnalyzer } from '../components/VisionAnalyzer/VisionAnalyzer';
 import { useApp } from '../context/AppContext';
@@ -37,6 +37,10 @@ export const InterviewRoom = () => {
   const navigate = useNavigate();
   const { candidate = {}, generatedQuestions, setFinalReport, addCompletedInterview, jdData = {}, resumeData = {}, interviewDuration, setupChecks = {}, interviewHistory = [] } = useApp();
   const [showHistoryModal, setShowHistoryModal] = useState(false);
+
+  // Recommended Interview Flow State Machine
+  const [interviewState, setInterviewState] = useState(INTERVIEW_STATES.SPEAKING);
+  const [evaluationsPerQuestion, setEvaluationsPerQuestion] = useState({});
 
   // Proctoring & Vision Telemetry State
   const [faceCount, setFaceCount] = useState(1);
@@ -830,10 +834,87 @@ export const InterviewRoom = () => {
     speakAIText("Thank you for your explanation. I have recorded your response. Please say 'I am done' when you are ready for the next part.");
   };
 
-  const autoAdvanceNextQuestion = () => {
+  const autoAdvanceNextQuestion = async () => {
+    if (isTerminatingRef.current) return;
+
+    const currentQObj = questions[qIndex];
+    const candidateAnsText = candidateAnswers[qIndex] || candidateSpeechText || '';
+
+    // Step 1: ANALYZING STATE (Backend evaluates candidate answer against correctness, relevance, resume & JD context)
+    setInterviewState(INTERVIEW_STATES.ANALYZING);
+    setLiveSubtitles('🤖 AI is evaluating your answer against JD criteria & resume context...');
+
+    try {
+      const evalResp = await fetch('http://localhost:8000/api/v1/interview/evaluate-answer', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          question_text: currentQObj ? (currentQObj.questionText || currentQObj.question_text) : '',
+          expected_skills: currentQObj ? (currentQObj.expected_skills || [currentQObj.topic || 'Technical']) : [],
+          question_type: currentQObj ? (currentQObj.question_type || currentQObj.category || 'Technical') : 'Technical',
+          candidate_answer: candidateAnsText,
+          resume_context: JSON.stringify(resumeData || {}),
+          jd_context: jdData?.rawText || ''
+        })
+      });
+      if (evalResp.ok) {
+        const evalData = await evalResp.json();
+        setEvaluationsPerQuestion(prev => ({ ...prev, [qIndex]: evalData }));
+
+        // If candidate scored weakly or showed gap on skill, generate dynamic adaptive follow-up
+        if ((evalData.overall_score && evalData.overall_score < 7.0) || (evalData.technical_accuracy && evalData.technical_accuracy < 7.0)) {
+          setInterviewState(INTERVIEW_STATES.GENERATING);
+          setLiveSubtitles(`🤖 Preparing dynamic follow-up probing question for: ${currentQObj?.topic || 'Skill'}...`);
+
+          try {
+            const adaptResp = await fetch('http://localhost:8000/api/v1/interview/adaptive-question', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                weak_question_text: currentQObj ? (currentQObj.questionText || currentQObj.question_text) : '',
+                candidate_weak_answer: candidateAnsText,
+                weak_skill: (currentQObj?.expected_skills && currentQObj.expected_skills[0]) || currentQObj?.topic || 'Technical'
+              })
+            });
+            if (adaptResp.ok) {
+              const adaptData = await adaptResp.json();
+              if (adaptData && adaptData.question_text) {
+                const formattedAdaptQ = {
+                  id: `adaptive-${Date.now()}`,
+                  category: adaptData.category || 'Adaptive Technical',
+                  question_type: adaptData.question_type || 'Technical',
+                  topic: adaptData.topic || 'Adaptive Probing',
+                  difficulty: adaptData.difficulty || 'Medium',
+                  questionText: adaptData.question_text,
+                  expected_skills: adaptData.expected_skills || [],
+                  expected_points: adaptData.expected_points || []
+                };
+                setQuestions(prevQs => {
+                  const nextQs = [...prevQs];
+                  nextQs.splice(qIndex + 1, 0, formattedAdaptQ);
+                  return nextQs;
+                });
+              }
+            }
+          } catch (adaptErr) {
+            console.warn("Adaptive question fetch notice:", adaptErr);
+          }
+        }
+      }
+    } catch (err) {
+      console.warn("Answer evaluation fetch notice:", err);
+    }
+
+    // Step 2: GENERATING STATE (Preparing next question)
+    setInterviewState(INTERVIEW_STATES.GENERATING);
+    setLiveSubtitles('🤖 Preparing next question...');
+    await new Promise(r => setTimeout(r, 1200));
+
+    // Step 3: Transition back to SPEAKING for next question
     if (qIndex < questions.length - 1) {
       const nextIdx = qIndex + 1;
       setQIndex(nextIdx);
+      setInterviewState(INTERVIEW_STATES.SPEAKING);
       setTimeout(() => {
         speakCurrentQuestion(nextIdx);
       }, 400);
@@ -1309,6 +1390,25 @@ export const InterviewRoom = () => {
         </div>
       </div>
 
+      {/* 1.5 RECOMMENDED INTERVIEW FLOW STATE CONTROLLER BAR */}
+      <div className="glass-card rounded-xl p-2.5 border border-slate-800 bg-slate-950/90 flex flex-wrap items-center justify-between gap-2 font-mono text-xs shadow-md">
+        <div className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg font-bold transition-all ${interviewState === INTERVIEW_STATES.SPEAKING ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/40 shadow-sm shadow-cyan-500/20' : 'text-slate-500 opacity-60'}`}>
+          <span>🔊 1. SPEAKING</span>
+        </div>
+        <span className="text-slate-700 hidden sm:inline">➔</span>
+        <div className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg font-bold transition-all ${interviewState === INTERVIEW_STATES.LISTENING ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 shadow-sm shadow-emerald-500/20' : 'text-slate-500 opacity-60'}`}>
+          <span>🎤 2. LISTENING</span>
+        </div>
+        <span className="text-slate-700 hidden sm:inline">➔</span>
+        <div className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg font-bold transition-all ${interviewState === INTERVIEW_STATES.ANALYZING ? 'bg-purple-500/20 text-purple-300 border border-purple-500/40 shadow-sm shadow-purple-500/20' : 'text-slate-500 opacity-60'}`}>
+          <span>🤖 3. ANALYZING</span>
+        </div>
+        <span className="text-slate-700 hidden sm:inline">➔</span>
+        <div className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg font-bold transition-all ${interviewState === INTERVIEW_STATES.GENERATING ? 'bg-amber-500/20 text-amber-300 border border-amber-500/40 shadow-sm shadow-amber-500/20' : 'text-slate-500 opacity-60'}`}>
+          <span>🤖 4. GENERATING</span>
+        </div>
+      </div>
+
       {/* 2. PERSON-TO-PERSON HERO VIDEO CONTAINER */}
       <div className="relative glass-card rounded-2xl border border-cyan-500/30 overflow-hidden bg-slate-950 min-h-[440px] sm:min-h-[500px] flex items-center justify-center shadow-2xl">
         {/* AI Avatar Center Stage */}
@@ -1320,6 +1420,7 @@ export const InterviewRoom = () => {
                 : (currentQ ? (currentQ.questionText || currentQ.question_text) : '')
             }
             isSpeaking={isSpeaking}
+            interviewState={interviewState}
           />
         </div>
 
