@@ -1,0 +1,13 @@
+venv/
+env/
+venv*/
+.venv/
+__pycache__/
+*.py[cod]
+*.sqlite3
+smarthire.db
+.env
+instance/
+.pytest_cache/
+.vscode/
+.idea/
