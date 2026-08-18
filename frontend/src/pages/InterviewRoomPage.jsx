@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Video, Mic, MicOff, Volume2, Clock, ArrowRight, CheckCircle2, AlertCircle, RefreshCw, Send, Sparkles, VolumeX, Bot, User, MessageSquare, PhoneOff, Bell, AlertTriangle, ShieldAlert, XCircle, Loader2 } from 'lucide-react';
 import WebcamMonitor from '../components/WebcamMonitor';
 import AudioWaveform from '../components/AudioWaveform';
-import { submitQuestionAnswer, finishInterviewSession, fetchNextAdaptiveQuestion, transcribeAudioBlob } from '../services/api';
+import { submitQuestionAnswer, finishInterviewSession, fetchNextAdaptiveQuestion } from '../services/api';
 import { miraAgent } from '../services/aiAgent';
 
 export default function InterviewRoomPage({ sessionData, setActivePage, setFinalReport }) {
@@ -12,20 +12,15 @@ export default function InterviewRoomPage({ sessionData, setActivePage, setFinal
   const [isSpeaking, setIsSpeaking] = useState(false);
   const [timerSeconds, setTimerSeconds] = useState(0);
   const [submitting, setSubmitting] = useState(false);
-  const [transcribingAudio, setTranscribingAudio] = useState(false);
-  const [isDemoTranscript, setIsDemoTranscript] = useState(false);
   const [activePopup, setActivePopup] = useState(null);
   const [violationCount, setViolationCount] = useState(0);
   const [candidateAnswersList, setCandidateAnswersList] = useState([]);
   const [speechError, setSpeechError] = useState(null);
-  const [micPermissionGranted, setMicPermissionGranted] = useState(false);
+  const [micPermissionGranted, setMicPermissionGranted] = useState(true);
   const [speechEngineStatus, setSpeechEngineStatus] = useState("Microphone Ready");
 
   const chatScrollRef = useRef(null);
   const recognitionRef = useRef(null);
-  const mediaRecorderRef = useRef(null);
-  const audioChunksRef = useRef([]);
-  const micStreamRef = useRef(null);
   
   const isRecordingRef = useRef(true);
   const isStartingRef = useRef(false);
@@ -174,17 +169,7 @@ export default function InterviewRoomPage({ sessionData, setActivePage, setFinal
     }
   }, [currentIdx]);
 
-  // DEMO FALLBACK TRANSCRIPT LOAD FUNCTION
-  const loadDemoTranscript = () => {
-    const demoText = "Hi Mira, I have experience working with Python, FastAPI, PostgreSQL, and Docker. I have built backend APIs and worked on database-driven applications.";
-    candidateAnswerRef.current = demoText;
-    finalTranscriptRef.current = demoText;
-    setCandidateAnswer(demoText);
-    setIsDemoTranscript(true);
-    setSpeechEngineStatus("Demo Transcript Loaded");
-  };
-
-  // DUAL SPEECH-TO-TEXT PIPELINE (BROWSER WEB SPEECH + BACKEND WHISPER MEDIA RECORDER FALLBACK)
+  // UNLOCKED BROWSER SPEECH RECOGNITION (DIRECT MICROPHONE HARDWARE INPUT)
   const startMicRecording = async () => {
     if (isStartingRef.current) return;
     isStartingRef.current = true;
@@ -192,38 +177,10 @@ export default function InterviewRoomPage({ sessionData, setActivePage, setFinal
     try {
       setSpeechError(null);
 
-      // 1. Initiate Microphone Audio Stream for MediaRecorder backup
-      try {
-        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-        micStreamRef.current = stream;
-        setMicPermissionGranted(true);
-        
-        audioChunksRef.current = [];
-        if (window.MediaRecorder) {
-          const recorder = new MediaRecorder(stream);
-          recorder.ondataavailable = (e) => {
-            if (e.data && e.data.size > 0) {
-              audioChunksRef.current.push(e.data);
-            }
-          };
-          recorder.start(500);
-          mediaRecorderRef.current = recorder;
-        }
-      } catch (err) {
-        console.warn("[Microphone] Access permission denied:", err);
-        setMicPermissionGranted(false);
-        setSpeechEngineStatus("Voice transcription unavailable");
-        setSpeechError("Voice transcription is unavailable in this browser. Please allow microphone access or type your answer below.");
-        setIsRecording(false);
-        isStartingRef.current = false;
-        return;
-      }
-
-      // 2. Launch Browser Native Web Speech API
       const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
       if (!SpeechRecognition) {
         setSpeechEngineStatus("Voice transcription unavailable");
-        setSpeechError("Voice transcription is unavailable in this browser. Please type your answer below.");
+        setSpeechError("Live speech recognition is not supported in this browser. Please type your answer below.");
         isStartingRef.current = false;
         return;
       }
@@ -242,6 +199,7 @@ export default function InterviewRoomPage({ sessionData, setActivePage, setFinal
         setIsRecording(true);
         isRecordingRef.current = true;
         isStartingRef.current = false;
+        setMicPermissionGranted(true);
         setSpeechEngineStatus("Listening...");
         setSpeechError(null);
       };
@@ -272,10 +230,9 @@ export default function InterviewRoomPage({ sessionData, setActivePage, setFinal
 
         const fullText = (finalTranscriptRef.current + ' ' + currentInterim).trim();
         if (fullText) {
-          console.log("[SpeechRecognition] Live transcript:", fullText);
+          console.log("[SpeechRecognition] Live transcript received:", fullText);
           candidateAnswerRef.current = fullText;
           setCandidateAnswer(fullText);
-          setIsDemoTranscript(false);
           setSpeechEngineStatus("Transcript Ready");
           setSpeechError(null);
         }
@@ -295,11 +252,11 @@ export default function InterviewRoomPage({ sessionData, setActivePage, setFinal
 
         if (event.error === 'not-allowed' || event.error === 'permission-denied') {
           setMicPermissionGranted(false);
-          setSpeechEngineStatus("Voice transcription unavailable");
-          setSpeechError("Microphone permission required. Please allow microphone access or type your answer below.");
+          setSpeechEngineStatus("Microphone Permission Required");
+          setSpeechError("Microphone permission required. Please allow microphone access in your browser.");
         } else if (event.error === 'network') {
           setSpeechEngineStatus("Speech Service Connecting...");
-          setSpeechError("Speech recognition connecting... Speak into your microphone or click 'Demo Voice Transcript' below.");
+          setSpeechError("Speech recognition connecting... Speak into your microphone or type your answer below.");
         } else {
           setSpeechEngineStatus(`Speech Notice: ${event.error}`);
         }
@@ -344,51 +301,7 @@ export default function InterviewRoomPage({ sessionData, setActivePage, setFinal
       try { recognitionRef.current.stop(); } catch (e) {}
     }
 
-    if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
-      try { mediaRecorderRef.current.stop(); } catch (e) {}
-    }
-
-    if (micStreamRef.current) {
-      try { micStreamRef.current.getTracks().forEach(t => t.stop()); } catch (e) {}
-      micStreamRef.current = null;
-    }
-
     setSpeechEngineStatus("Microphone Ready");
-  };
-
-  // MANUAL VOICE TRANSCRIPTION ACTION (RECORD & CONVERT SPOKEN AUDIO TO TEXT WITH DEMO FALLBACK)
-  const processRecordedAudioTranscription = async () => {
-    if (audioChunksRef.current.length === 0) {
-      loadDemoTranscript();
-      return candidateAnswerRef.current;
-    }
-    try {
-      setTranscribingAudio(true);
-      setSpeechEngineStatus("Transcribing Spoken Voice...");
-      const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
-      if (audioBlob.size > 200) {
-        const whisperText = await transcribeAudioBlob(audioBlob);
-        setTranscribingAudio(false);
-        if (whisperText && whisperText.trim()) {
-          const clean = whisperText.trim();
-          candidateAnswerRef.current = clean;
-          setCandidateAnswer(clean);
-          setIsDemoTranscript(false);
-          setSpeechEngineStatus("Transcript Ready");
-          return clean;
-        }
-      }
-    } catch (err) {
-      console.warn("[Audio Transcription] Error:", err);
-      setTranscribingAudio(false);
-    }
-    setTranscribingAudio(false);
-    
-    // DEMO FALLBACK: If real STT produced no transcript, populate presentation demo transcript
-    if (!candidateAnswerRef.current || candidateAnswerRef.current.trim().length === 0) {
-      loadDemoTranscript();
-    }
-    return candidateAnswerRef.current || candidateAnswer || "";
   };
 
   const formatTimer = (secs) => {
@@ -402,24 +315,16 @@ export default function InterviewRoomPage({ sessionData, setActivePage, setFinal
     if (!currentQ || submitting) return;
 
     miraAgent.stopSpeaking();
+    stopMicRecording();
     setSubmitting(true);
 
-    let currentText = (candidateAnswerRef.current || candidateAnswer || '').trim();
-
-    // SERVER-SIDE WHISPER / DEMO FALLBACK: If candidate spoke into mic but STT produced no text
-    if (!currentText && audioChunksRef.current.length > 0) {
-      currentText = await processRecordedAudioTranscription();
-    }
-
-    stopMicRecording();
-
+    const currentText = (candidateAnswerRef.current || candidateAnswer || '').trim();
     const isAnswered = currentText.length > 0 && currentText !== "Not answered";
     const finalCandidateAnswer = isAnswered ? currentText : "Not answered";
 
     candidateAnswerRef.current = '';
     finalTranscriptRef.current = '';
     setCandidateAnswer('');
-    setIsDemoTranscript(false);
 
     // 1. IMMEDIATELY APPEND CANDIDATE BUBBLE ("YOU") TO CHAT THREAD USING FUNCTIONAL STATE UPDATE
     const candidateBubble = {
@@ -697,8 +602,8 @@ export default function InterviewRoomPage({ sessionData, setActivePage, setFinal
               {/* REAL-TIME LIVE SPEAKING PREVIEW BUBBLE */}
               {candidateAnswer && (
                 <div className="flex flex-col items-end space-y-1 animate-pulse">
-                  <span className="text-[10px] font-mono text-amber-400/90 uppercase tracking-wider font-bold pr-1 flex items-center gap-1">
-                    YOU {isDemoTranscript && <span className="text-amber-300 font-mono font-normal text-[9px] bg-amber-500/20 px-1.5 py-0.5 rounded-md border border-amber-500/40">[Demo Voice Transcript]</span>}
+                  <span className="text-[10px] font-mono text-amber-400/90 uppercase tracking-wider font-bold pr-1">
+                    YOU (SPEAKING LIVE...)
                   </span>
                   <div className="p-3.5 rounded-2xl max-w-[85%] leading-relaxed shadow-xl text-xs bg-amber-950/90 border border-amber-500/50 text-amber-100 rounded-tr-none font-sans italic">
                     "{candidateAnswer}"
@@ -774,14 +679,6 @@ export default function InterviewRoomPage({ sessionData, setActivePage, setFinal
           </span>
         </div>
 
-        {/* DEMO TRANSCRIPT NOTICE BANNER */}
-        {isDemoTranscript && (
-          <div className="text-[11px] font-mono text-amber-300 bg-amber-950/70 border border-amber-500/40 px-3 py-1.5 rounded-xl flex items-center gap-2">
-            <Sparkles className="w-3.5 h-3.5 text-amber-400 shrink-0" />
-            <span><strong>Demo Voice Transcript Loaded:</strong> You may review or edit this text below before clicking Submit.</span>
-          </div>
-        )}
-
         <textarea
           rows={2}
           value={candidateAnswer}
@@ -789,7 +686,6 @@ export default function InterviewRoomPage({ sessionData, setActivePage, setFinal
             candidateAnswerRef.current = e.target.value;
             finalTranscriptRef.current = e.target.value;
             setCandidateAnswer(e.target.value);
-            setIsDemoTranscript(false);
           }}
           placeholder="Speak your answer out loud into your microphone, or type your answer here..."
           className="w-full p-3 rounded-2xl bg-slate-900 border border-slate-800 text-slate-100 text-xs focus:outline-none focus:border-indigo-500 transition-all resize-none font-sans"
@@ -812,23 +708,6 @@ export default function InterviewRoomPage({ sessionData, setActivePage, setFinal
               <Mic className="w-4 h-4 text-cyan-400" /> {isRecording ? "Mute Mic" : "Unmute Mic / Speak"}
             </button>
 
-            <button
-              onClick={processRecordedAudioTranscription}
-              disabled={transcribingAudio}
-              className="px-3.5 py-2 rounded-xl text-xs font-bold border border-cyan-500/40 bg-cyan-500/10 text-cyan-300 hover:bg-cyan-500/20 transition-all flex items-center gap-1.5"
-            >
-              {transcribingAudio ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <RefreshCw className="w-3.5 h-3.5" />}
-              {transcribingAudio ? "Transcribing Voice..." : "Transcribe Voice Audio"}
-            </button>
-
-            <button
-              onClick={loadDemoTranscript}
-              className="px-3.5 py-2 rounded-xl text-xs font-bold border border-amber-500/40 bg-amber-500/10 text-amber-300 hover:bg-amber-500/20 transition-all flex items-center gap-1.5 shadow-md active:scale-95 cursor-pointer"
-              title="Insert temporary presentation demo voice transcript"
-            >
-              <Sparkles className="w-3.5 h-3.5 text-amber-400" /> Demo Voice Transcript
-            </button>
-            
             <span className="text-xs text-slate-400 font-mono ml-1">
               Camera: <span className={cameraMetrics.streamActive ? "text-emerald-400 font-bold" : "text-amber-400"}>
                 {cameraMetrics.streamActive ? "Active" : "Off"}
@@ -839,7 +718,7 @@ export default function InterviewRoomPage({ sessionData, setActivePage, setFinal
           <div className="flex items-center gap-3">
             <button
               onClick={handleNextQuestion}
-              disabled={submitting || transcribingAudio}
+              disabled={submitting}
               className="px-6 py-2.5 rounded-xl font-bold text-xs bg-indigo-600 hover:bg-indigo-500 text-white shadow-lg transition-all flex items-center gap-2"
             >
               {submitting ? "Mira Processing..." : (
