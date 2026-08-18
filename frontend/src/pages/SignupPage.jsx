@@ -1,28 +1,34 @@
 import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { Cpu, Mail, Lock, User, Briefcase, ArrowRight } from 'lucide-react';
+import { Cpu, Mail, Lock, User, Briefcase, ArrowRight, UserCheck } from 'lucide-react';
 import { useApp } from '../context/AppContext';
+import { getAvatarForUser } from '../utils/avatarUtils';
 
 export const SignupPage = () => {
   const navigate = useNavigate();
-  const { setUser } = useApp();
+  const { setUser, setCandidate } = useApp();
   const [fullName, setFullName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [gender, setGender] = useState('male');
   const [targetRole, setTargetRole] = useState('Senior Full-Stack AI Engineer');
   const [experience, setExperience] = useState('Senior Level (5+ Yrs)');
 
   const handleSignup = (e) => {
     e.preventDefault();
-    setUser({
+    const resolvedName = fullName || 'Dileep Kumar';
+    const profile = {
       id: Date.now(),
-      name: fullName || 'Alex Vance',
-      email: email || 'alex.vance@example.com',
+      name: resolvedName,
+      email: email || 'dileep@smarthire.ai',
+      gender: gender,
       targetRole: targetRole,
       experienceLevel: experience,
-      avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=250&q=80',
+      avatar: getAvatarForUser(gender, resolvedName),
       isLoggedIn: true
-    });
+    };
+    if (typeof setUser === 'function') setUser(profile);
+    if (typeof setCandidate === 'function') setCandidate(profile);
     navigate('/dashboard');
   };
 
@@ -41,17 +47,32 @@ export const SignupPage = () => {
 
         <form onSubmit={handleSignup} className="space-y-3.5">
           <div>
-            <label className="text-xs font-semibold text-slate-300 block mb-1">Full Name</label>
+            <label className="text-xs font-semibold text-slate-300 block mb-1 font-mono">Full Name</label>
             <div className="relative">
               <User className="w-4 h-4 text-slate-500 absolute left-3 top-3" />
               <input
                 type="text"
                 value={fullName}
                 onChange={(e) => setFullName(e.target.value)}
-                placeholder="e.g. Alex Vance"
+                placeholder="e.g. Dileep Kumar"
                 required
                 className="w-full bg-slate-900 border border-slate-800 rounded-xl pl-9 pr-4 py-2 text-xs text-slate-100 focus:outline-none focus:border-purple-500"
               />
+            </div>
+          </div>
+
+          <div>
+            <label className="text-xs font-semibold text-slate-300 block mb-1 font-mono">Gender (Sets Profile Avatar)</label>
+            <div className="relative">
+              <UserCheck className="w-4 h-4 text-purple-400 absolute left-3 top-3" />
+              <select
+                value={gender}
+                onChange={(e) => setGender(e.target.value)}
+                className="w-full bg-slate-900 border border-slate-800 rounded-xl pl-9 pr-4 py-2 text-xs text-purple-300 font-bold focus:outline-none focus:border-purple-500 font-mono cursor-pointer"
+              >
+                <option value="male">Male (👨 Male Profile Avatar)</option>
+                <option value="female">Female (👩 Female Profile Avatar)</option>
+              </select>
             </div>
           </div>
 

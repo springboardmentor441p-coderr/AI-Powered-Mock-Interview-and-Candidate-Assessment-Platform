@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
+import { getAvatarForUser } from '../utils/avatarUtils';
 
 const AppContext = createContext();
 
@@ -6,10 +7,11 @@ export const AppProvider = ({ children }) => {
   // Candidate Profile (Single User Role)
   const [candidate, setCandidate] = useState({
     id: 1,
-    name: '',
-    email: '',
-    targetRole: '',
-    avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=250&q=80',
+    name: 'Dileep Kumar',
+    email: 'dileep@smarthire.ai',
+    targetRole: 'Senior Full-Stack AI Engineer',
+    gender: 'male',
+    avatar: getAvatarForUser('male', 'Dileep Kumar'),
     isLoggedIn: true
   });
 

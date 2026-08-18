@@ -1,12 +1,23 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { User, Mail, Briefcase, Upload, ShieldCheck, FileText, CheckCircle, LogOut } from 'lucide-react';
+import { User, Mail, Briefcase, Upload, ShieldCheck, FileText, CheckCircle, LogOut, UserCheck } from 'lucide-react';
 import { useApp } from '../context/AppContext';
+import { getAvatarForUser } from '../utils/avatarUtils';
 
 export const Profile = () => {
   const navigate = useNavigate();
   const { candidate: user, setCandidate: setUser, resumeData, setResumeData } = useApp();
   const [savedMessage, setSavedMessage] = useState(false);
+
+  const handleGenderChange = (newGender) => {
+    const newAvatar = getAvatarForUser(newGender, user.name);
+    setUser({ ...user, gender: newGender, avatar: newAvatar });
+  };
+
+  const handleNameChange = (newName) => {
+    const newAvatar = getAvatarForUser(user.gender || 'male', newName);
+    setUser({ ...user, name: newName, avatar: newAvatar });
+  };
 
   const handleSave = (e) => {
     e.preventDefault();
@@ -78,9 +89,21 @@ export const Profile = () => {
               <input
                 type="text"
                 value={user.name}
-                onChange={(e) => setUser({ ...user, name: e.target.value })}
+                onChange={(e) => handleNameChange(e.target.value)}
                 className="w-full bg-slate-900 border border-slate-800 rounded-xl px-4 py-2.5 text-xs text-slate-100 focus:outline-none focus:border-cyan-500"
               />
+            </div>
+
+            <div>
+              <label className="text-xs font-semibold text-slate-300 block mb-1">Gender (Determines Profile Avatar)</label>
+              <select
+                value={user.gender || 'male'}
+                onChange={(e) => handleGenderChange(e.target.value)}
+                className="w-full bg-slate-900 border border-slate-800 rounded-xl px-4 py-2.5 text-xs text-cyan-300 font-bold focus:outline-none focus:border-cyan-500 cursor-pointer font-mono"
+              >
+                <option value="male">Male (👨 Photorealistic Male Avatar)</option>
+                <option value="female">Female (👩 Photorealistic Female Avatar)</option>
+              </select>
             </div>
 
             <div>
