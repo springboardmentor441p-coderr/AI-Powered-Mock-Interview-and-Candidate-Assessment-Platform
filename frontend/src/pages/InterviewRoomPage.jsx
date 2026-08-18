@@ -156,23 +156,16 @@ export default function InterviewRoomPage({ sessionData, setActivePage, setFinal
     );
   };
 
-  // Speak opening question on mount
+  // Speak question automatically whenever current question changes
   useEffect(() => {
-    if (backendQuestions && backendQuestions.length > 0 && currentIdx === 0) {
-      const timeout = setTimeout(() => {
-        speakCurrentQuestion(backendQuestions[0].question_text || backendQuestions[0].q);
-      }, 500);
-      return () => clearTimeout(timeout);
-    }
-  }, []);
-
-  // Ensure speech recognition is reliably started when current question changes
-  useEffect(() => {
-    if (currentQ && !isSpeaking && !submitting) {
-      const timeout = setTimeout(() => {
-        startMicRecording();
-      }, 500);
-      return () => clearTimeout(timeout);
+    if (currentQ) {
+      const qText = currentQ.question_text || currentQ.q || "";
+      if (qText) {
+        const timeout = setTimeout(() => {
+          speakCurrentQuestion(qText);
+        }, 400);
+        return () => clearTimeout(timeout);
+      }
     }
   }, [currentIdx]);
 
@@ -483,7 +476,6 @@ export default function InterviewRoomPage({ sessionData, setActivePage, setFinal
 
         setChatThread(prev => [...prev, interviewerBubble]);
         setCurrentIdx(prev => prev + 1);
-        speakCurrentQuestion(nextInterviewerText);
         setSubmitting(false);
       } else {
         setSubmitting(false);
@@ -622,6 +614,19 @@ export default function InterviewRoomPage({ sessionData, setActivePage, setFinal
                 {isSpeaking ? "Mira is speaking question..." : isRecording ? "Mira is listening to your answer..." : "Mira is evaluating response..."}
               </p>
             </div>
+
+            {/* Replay Question Voice Button */}
+            <button
+              onClick={() => {
+                const currentQuestionText = currentQ?.question_text || currentQ?.q || "";
+                if (currentQuestionText) {
+                  speakCurrentQuestion(currentQuestionText);
+                }
+              }}
+              className="mt-2 px-3 py-1.5 rounded-xl bg-cyan-500/10 hover:bg-cyan-500/20 border border-cyan-500/30 text-cyan-300 text-xs font-mono flex items-center gap-1.5 transition-all shadow-md"
+            >
+              <Volume2 className="w-3.5 h-3.5" /> Replay Question Voice
+            </button>
           </div>
 
           {/* SCROLLABLE REAL-TIME CONVERSATION CHAT THREAD */}

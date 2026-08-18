@@ -14,25 +14,82 @@ class MiraAgent {
    */
   speak(text, onStartCallback, onEndCallback) {
     try {
-      if ('speechSynthesis' in window) {
-        window.speechSynthesis.cancel();
+      if (!('speechSynthesis' in window)) {
+        console.warn(`[${this.name}] Speech synthesis (window.speechSynthesis) is not supported in this browser.`);
+        if (onEndCallback) onEndCallback();
+        return;
+      }
+
+      if (window.speechSynthesis.paused) {
         window.speechSynthesis.resume();
+      }
 
-        const utterance = new SpeechSynthesisUtterance(text);
-        utterance.rate = 0.95;
-        utterance.pitch = 1.05;
-        utterance.lang = 'en-US';
+      window.speechSynthesis.cancel(); // Clear any previous queued speech
 
-        if (onStartCallback) utterance.onstart = onStartCallback;
-        if (onEndCallback) utterance.onend = onEndCallback;
-        utterance.onerror = () => {
-          if (onEndCallback) onEndCallback();
+      const cleanText = (text || '').replace(/<[^>]*>?/gm, '').trim();
+      if (!cleanText) {
+        if (onEndCallback) onEndCallback();
+        return;
+      }
+
+      const utterance = new SpeechSynthesisUtterance(cleanText);
+      utterance.rate = 0.95;
+      utterance.pitch = 1.05;
+      utterance.lang = 'en-US';
+
+      const setVoiceAndSpeak = () => {
+        try {
+          const voices = window.speechSynthesis.getVoices();
+          if (voices && voices.length > 0) {
+            const femaleOrEnVoice = voices.find(v => 
+              (v.name.includes("Google") || v.name.includes("Natural") || v.name.includes("Zira") || v.name.includes("Samantha") || v.name.includes("Female") || v.name.includes("US English")) && 
+              v.lang.startsWith("en")
+            ) || voices.find(v => v.lang.startsWith("en"));
+
+            if (femaleOrEnVoice) {
+              utterance.voice = femaleOrEnVoice;
+            }
+          }
+
+          utterance.onstart = () => {
+            console.log(`[${this.name}] Started speaking question aloud: "${cleanText.substring(0, 40)}..."`);
+            if (onStartCallback) onStartCallback();
+          };
+
+          utterance.onend = () => {
+            console.log(`[${this.name}] Finished speaking question.`);
+            if (onEndCallback) onEndCallback();
+          };
+
+          utterance.onerror = (e) => {
+            console.warn(`[${this.name}] SpeechUtterance error:`, e);
+            if (onEndCallback) onEndCallback();
+          };
+
+          setTimeout(() => {
+            window.speechSynthesis.speak(utterance);
+          }, 50);
+        } catch (e) {
+          console.warn(`[${this.name}] Error setting voice:`, e);
+          window.speechSynthesis.speak(utterance);
+        }
+      };
+
+      const voices = window.speechSynthesis.getVoices();
+      if (voices && voices.length > 0) {
+        setVoiceAndSpeak();
+      } else {
+        window.speechSynthesis.onvoiceschanged = () => {
+          window.speechSynthesis.onvoiceschanged = null;
+          setVoiceAndSpeak();
         };
-
-        window.speechSynthesis.speak(utterance);
+        setTimeout(() => {
+          setVoiceAndSpeak();
+        }, 300);
       }
     } catch (err) {
       console.warn(`[${this.name}] Speech synthesis error:`, err);
+      if (onEndCallback) onEndCallback();
     }
   }
 
