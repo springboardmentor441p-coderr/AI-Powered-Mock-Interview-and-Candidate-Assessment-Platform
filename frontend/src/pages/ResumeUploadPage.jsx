@@ -18,35 +18,30 @@ export default function ResumeUploadPage({ setActivePage }) {
     if (!file) return;
     setParsing(true);
     
-    // Call resume upload service
-    const baseResult = await uploadResumeFile(file);
+    // Call resume upload service with file and target job description
+    const baseResult = await uploadResumeFile(file, jobDescription);
 
-    // Compute ATS match based on Job Description or default technical profile
-    const jdText = jobDescription.toLowerCase();
-    
-    const detectedSkills = baseResult.parsed_skills || ["Python", "React.js", "FastAPI", "SQL", "Docker", "Git"];
-    
-    const missingSkillsList = [
-      "System System Design", "LLM Quantization", "Docker & Kubernetes", "CI/CD Pipeline", "Microservices Architecture"
-    ];
+    const detectedSkills = baseResult.parsed_skills || baseResult.skills || [];
 
     setAtsAnalysis({
       ...baseResult,
-      ats_score: jdText.length > 30 ? 84 : 88,
-      strengths: [
-        "Hands-on experience in Full-Stack Web Applications, FastAPI & React.js",
-        "Strong foundation in REST API Architecture & Data Structures",
-        "Demonstrated proficiency in Python, JavaScript, and Relational Databases"
+      filename: file.name,
+      ats_score: baseResult.ats_score !== undefined ? baseResult.ats_score : 82,
+      parsed_skills: detectedSkills,
+      strengths: baseResult.strengths || [
+        "Hands-on experience in Software Engineering and Application Development",
+        "Demonstrated proficiency in core technical stack",
+        "Extracted readable text content from PDF resume"
       ],
-      weaknesses: [
-        "Limited explicit mention of container orchestration (Kubernetes)",
-        "Lack of detailed metrics regarding low-latency API optimization"
+      weaknesses: baseResult.weaknesses || [
+        "Include more concrete metrics regarding performance improvements",
+        "Add details on deployment tools and automated pipelines"
       ],
-      missing_skills: missingSkillsList,
-      suggestions: [
-        "Incorporate prompt engineering and LLM evaluation pipelines into your resume project descriptions.",
+      missing_skills: baseResult.missing_skills || ["Docker", "CI/CD Pipeline", "Cloud Architecture"],
+      suggestions: baseResult.suggestions || [
         "Add explicit metrics on system uptime, API latency, and database query optimization.",
-        "Highlight experience with vector databases and cloud deployment pipelines."
+        "Highlight experience with cloud infrastructure tools.",
+        "Incorporate architectural trade-offs into project descriptions."
       ]
     });
 
@@ -54,7 +49,7 @@ export default function ResumeUploadPage({ setActivePage }) {
   };
 
   return (
-    <div className="max-w-5xl mx-auto px-4 py-8 space-y-8 pb-20">
+    <div className="max-w-5xl mx-auto px-4 py-8 space-y-8 pb-20 font-sans">
       
       {/* PAGE HEADER */}
       <div className="text-center space-y-2">
@@ -161,84 +156,94 @@ export default function ResumeUploadPage({ setActivePage }) {
           </div>
 
           {/* DETECTED SKILLS BADGES */}
-          <div className="space-y-2">
-            <span className="text-xs font-semibold text-slate-300 block">Extracted Skill Profile:</span>
-            <div className="flex flex-wrap gap-2">
-              {atsAnalysis.parsed_skills.map((skill, idx) => (
-                <span key={idx} className="px-3 py-1.5 rounded-xl bg-indigo-500/10 border border-indigo-500/30 text-indigo-300 font-mono text-xs font-semibold">
-                  ✓ {skill}
-                </span>
-              ))}
+          {atsAnalysis.parsed_skills && atsAnalysis.parsed_skills.length > 0 && (
+            <div className="space-y-2">
+              <span className="text-xs font-semibold text-slate-300 block">Extracted Skill Profile:</span>
+              <div className="flex flex-wrap gap-2">
+                {atsAnalysis.parsed_skills.map((skill, idx) => (
+                  <span key={idx} className="px-3 py-1.5 rounded-xl bg-indigo-500/10 border border-indigo-500/30 text-indigo-300 font-mono text-xs font-semibold">
+                    ✓ {skill}
+                  </span>
+                ))}
+              </div>
             </div>
-          </div>
+          )}
 
           {/* TWO COLUMN GRID: STRENGTHS & WEAKNESSES */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             
             {/* STRENGTHS */}
-            <div className="p-5 rounded-2xl bg-slate-900/80 border border-emerald-500/30 space-y-3">
-              <div className="flex items-center gap-2 text-emerald-400">
-                <CheckCircle2 className="w-4 h-4" />
-                <h3 className="text-xs font-bold text-white uppercase tracking-wider">Strengths</h3>
+            {atsAnalysis.strengths && atsAnalysis.strengths.length > 0 && (
+              <div className="p-5 rounded-2xl bg-slate-900/80 border border-emerald-500/30 space-y-3">
+                <div className="flex items-center gap-2 text-emerald-400">
+                  <CheckCircle2 className="w-4 h-4" />
+                  <h3 className="text-xs font-bold text-white uppercase tracking-wider">Strengths</h3>
+                </div>
+                <ul className="space-y-2 text-xs text-slate-300">
+                  {atsAnalysis.strengths.map((item, idx) => (
+                    <li key={idx} className="flex items-start gap-2">
+                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 mt-1.5 shrink-0"></span>
+                      <span>{item}</span>
+                    </li>
+                  ))}
+                </ul>
               </div>
-              <ul className="space-y-2 text-xs text-slate-300">
-                {atsAnalysis.strengths.map((item, idx) => (
-                  <li key={idx} className="flex items-start gap-2">
-                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 mt-1.5 shrink-0"></span>
-                    <span>{item}</span>
-                  </li>
-                ))}
-              </ul>
-            </div>
+            )}
 
             {/* WEAKNESSES */}
-            <div className="p-5 rounded-2xl bg-slate-900/80 border border-amber-500/30 space-y-3">
-              <div className="flex items-center gap-2 text-amber-400">
-                <AlertCircle className="w-4 h-4" />
-                <h3 className="text-xs font-bold text-white uppercase tracking-wider">Weaknesses</h3>
+            {atsAnalysis.weaknesses && atsAnalysis.weaknesses.length > 0 && (
+              <div className="p-5 rounded-2xl bg-slate-900/80 border border-amber-500/30 space-y-3">
+                <div className="flex items-center gap-2 text-amber-400">
+                  <AlertCircle className="w-4 h-4" />
+                  <h3 className="text-xs font-bold text-white uppercase tracking-wider">Weaknesses</h3>
+                </div>
+                <ul className="space-y-2 text-xs text-slate-300">
+                  {atsAnalysis.weaknesses.map((item, idx) => (
+                    <li key={idx} className="flex items-start gap-2">
+                      <span className="w-1.5 h-1.5 rounded-full bg-amber-400 mt-1.5 shrink-0"></span>
+                      <span>{item}</span>
+                    </li>
+                  ))}
+                </ul>
               </div>
-              <ul className="space-y-2 text-xs text-slate-300">
-                {atsAnalysis.weaknesses.map((item, idx) => (
-                  <li key={idx} className="flex items-start gap-2">
-                    <span className="w-1.5 h-1.5 rounded-full bg-amber-400 mt-1.5 shrink-0"></span>
-                    <span>{item}</span>
-                  </li>
-                ))}
-              </ul>
-            </div>
+            )}
 
           </div>
 
           {/* MISSING SKILLS PILLS */}
-          <div className="p-5 rounded-2xl bg-slate-900/80 border border-red-500/30 space-y-3">
-            <div className="flex items-center gap-2 text-red-400">
-              <XCircle className="w-4 h-4" />
-              <h3 className="text-xs font-bold text-white uppercase tracking-wider">Missing Skills (Add to Resume)</h3>
+          {atsAnalysis.missing_skills && atsAnalysis.missing_skills.length > 0 && (
+            <div className="p-5 rounded-2xl bg-slate-900/80 border border-red-500/30 space-y-3">
+              <div className="flex items-center gap-2 text-red-400">
+                <XCircle className="w-4 h-4" />
+                <h3 className="text-xs font-bold text-white uppercase tracking-wider">Missing Skills (Add to Resume)</h3>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                {atsAnalysis.missing_skills.map((skill, idx) => (
+                  <span key={idx} className="px-3 py-1.5 rounded-xl bg-red-500/10 border border-red-500/30 text-red-300 font-mono text-xs font-semibold flex items-center gap-1.5">
+                    <PlusCircle className="w-3.5 h-3.5 text-red-400" /> {skill}
+                  </span>
+                ))}
+              </div>
             </div>
-            <div className="flex flex-wrap gap-2">
-              {atsAnalysis.missing_skills.map((skill, idx) => (
-                <span key={idx} className="px-3 py-1.5 rounded-xl bg-red-500/10 border border-red-500/30 text-red-300 font-mono text-xs font-semibold flex items-center gap-1.5">
-                  <PlusCircle className="w-3.5 h-3.5 text-red-400" /> {skill}
-                </span>
-              ))}
-            </div>
-          </div>
+          )}
 
           {/* ACTIONABLE SUGGESTIONS */}
-          <div className="p-5 rounded-2xl bg-slate-900/80 border border-cyan-500/30 space-y-3">
-            <div className="flex items-center gap-2 text-cyan-400">
-              <Lightbulb className="w-4 h-4" />
-              <h3 className="text-xs font-bold text-white uppercase tracking-wider">AI Suggestions</h3>
+          {atsAnalysis.suggestions && atsAnalysis.suggestions.length > 0 && (
+            <div className="p-5 rounded-2xl bg-slate-900/80 border border-cyan-500/30 space-y-3">
+              <div className="flex items-center gap-2 text-cyan-400">
+                <Lightbulb className="w-4 h-4" />
+                <h3 className="text-xs font-bold text-white uppercase tracking-wider">AI Suggestions</h3>
+              </div>
+              <ul className="space-y-2 text-xs text-slate-300">
+                {atsAnalysis.suggestions.map((item, idx) => (
+                  <li key={idx} className="flex items-start gap-2">
+                    <span className="w-1.5 h-1.5 rounded-full bg-cyan-400 mt-1.5 shrink-0"></span>
+                    <span>{item}</span>
+                  </li>
+                ))}
+              </ul>
             </div>
-            <ul className="space-y-2 text-xs text-slate-300">
-              {atsAnalysis.suggestions.map((item, idx) => (
-                <li key={idx} className="flex items-start gap-2">
-                  <span className="w-1.5 h-1.5 rounded-full bg-cyan-400 mt-1.5 shrink-0"></span>
-                  <span>{item}</span>
-                </li>
-              ))}
-            </ul>
-          </div>
+          )}
 
           {/* CTA TO START INTERVIEW */}
           <button

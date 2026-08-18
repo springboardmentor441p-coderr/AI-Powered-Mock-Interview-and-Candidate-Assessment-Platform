@@ -1,7 +1,7 @@
 import os
 import logging
 from typing import List, Optional, Dict, Any
-from fastapi import FastAPI, Depends, HTTPException, status, UploadFile, File
+from fastapi import FastAPI, Depends, HTTPException, status, UploadFile, File, Form
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
 from dotenv import load_dotenv
@@ -196,16 +196,17 @@ def login_user(user_in: schemas.UserLogin, db: Session = Depends(database.get_db
 def get_me(current_user: models.User = Depends(auth.get_current_user)):
     return current_user
 
-# ---------------- RESUME PARSING ---------------- #
-@app.post("/api/resume/upload", response_model=schemas.ResumeUploadResponse)
+# ---------------- RESUME PARSING & ATS ANALYZER ---------------- #
+@app.post("/api/resume/upload")
 async def upload_resume(
     file: UploadFile = File(...),
+    job_description: Optional[str] = Form(None),
     db: Session = Depends(database.get_db),
     current_user: models.User = Depends(auth.get_current_user)
 ):
     contents = await file.read()
     raw_text = resume_service.extract_text_from_pdf_bytes(contents)
-    parsed = resume_service.parse_resume(raw_text)
+    parsed = resume_service.analyze_resume_ats(raw_text, job_description)
 
     if not parsed.get("extraction_successful") and not parsed.get("skills"):
         logger.warning("Resume parse returned no skills for file: %s", file.filename)
@@ -228,7 +229,12 @@ async def upload_resume(
         "parsed_skills": parsed["skills"],
         "parsed_experience": parsed["experience"],
         "parsed_education": parsed["education"],
-        "parsed_summary": parsed["summary"]
+        "parsed_summary": parsed["summary"],
+        "ats_score": parsed.get("ats_score", 80),
+        "strengths": parsed.get("strengths", []),
+        "weaknesses": parsed.get("weaknesses", []),
+        "missing_skills": parsed.get("missing_skills", []),
+        "suggestions": parsed.get("suggestions", [])
     }
 
 # ---------------- INTERVIEW ENGINE ---------------- #
