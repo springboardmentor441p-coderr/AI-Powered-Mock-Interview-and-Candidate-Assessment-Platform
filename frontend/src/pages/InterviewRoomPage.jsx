@@ -20,6 +20,7 @@ export default function InterviewRoomPage({ sessionData, setActivePage, setFinal
   const chatScrollRef = useRef(null);
   const recognitionRef = useRef(null);
   const isRecordingRef = useRef(true);
+  const isStartingRef = useRef(false);
   const hasNetworkErrorRef = useRef(false);
 
   // Sync ref with state to prevent stale closures in speech event listeners
@@ -145,7 +146,7 @@ export default function InterviewRoomPage({ sessionData, setActivePage, setFinal
     );
   };
 
-  // Speak opening question on mount
+  // Speak opening question on mount and auto-start mic recording for candidate turn
   useEffect(() => {
     if (backendQuestions && backendQuestions.length > 0 && currentIdx === 0) {
       const timeout = setTimeout(() => {
@@ -155,8 +156,21 @@ export default function InterviewRoomPage({ sessionData, setActivePage, setFinal
     }
   }, []);
 
-  // ROBUST BROWSER SPEECH RECOGNITION HANDLING (WITHOUT INFINITE NETWORK ERROR LOOPS)
+  // Ensure speech recognition is reliably started when current question changes
+  useEffect(() => {
+    if (currentQ && !isSpeaking && !submitting) {
+      const timeout = setTimeout(() => {
+        startMicRecording();
+      }, 600);
+      return () => clearTimeout(timeout);
+    }
+  }, [currentIdx]);
+
+  // ROBUST BROWSER SPEECH RECOGNITION HANDLING (SINGLETON GUARD & NON-BLOCKING FALLBACKS)
   const startMicRecording = async () => {
+    if (isStartingRef.current) return;
+    isStartingRef.current = true;
+
     try {
       setSpeechError(null);
       hasNetworkErrorRef.current = false;
@@ -164,12 +178,13 @@ export default function InterviewRoomPage({ sessionData, setActivePage, setFinal
 
       const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
       if (!SpeechRecognition) {
-        setSpeechError("Browser live speech recognition is not supported in this browser environment. You can type or edit your answer in the box below.");
+        setSpeechError("Live speech recognition is not supported in this browser. You can speak into your microphone or type/edit your response below.");
+        isStartingRef.current = false;
         return;
       }
 
       if (recognitionRef.current) {
-        try { recognitionRef.current.stop(); } catch (e) {}
+        try { recognitionRef.current.abort(); } catch (e) {}
       }
 
       const recognition = new SpeechRecognition();
@@ -180,34 +195,45 @@ export default function InterviewRoomPage({ sessionData, setActivePage, setFinal
       recognition.onstart = () => {
         setIsRecording(true);
         isRecordingRef.current = true;
+        isStartingRef.current = false;
+        setSpeechError(null);
       };
 
       recognition.onresult = (event) => {
-        let cleanText = '';
+        let fullTranscript = '';
         for (let i = 0; i < event.results.length; i++) {
-          cleanText += event.results[i][0].transcript + ' ';
+          fullTranscript += event.results[i][0].transcript + ' ';
         }
-        if (cleanText.trim().length > 0) {
-          setCandidateAnswer(cleanText.trim());
-          setSpeechError(null);
+        const cleanText = fullTranscript.trim();
+        if (cleanText) {
+          setCandidateAnswer(cleanText);
         }
       };
 
       recognition.onerror = (event) => {
-        console.warn("Speech recognition error:", event.error);
+        console.warn("Speech recognition notice:", event.error);
+
+        if (event.error === 'no-speech' || event.error === 'aborted') {
+          // Soft notices: non-fatal, do not break recognition state
+          isStartingRef.current = false;
+          return;
+        }
+
         if (event.error === 'network') {
           hasNetworkErrorRef.current = true;
-          setSpeechError("Speech recognition cloud connection unavailable. You can speak into your microphone or type/edit your answer in the response box below.");
+          setSpeechError("Speech cloud service temporarily unreachable. You can speak into your microphone or type/edit your response below.");
         } else if (event.error === 'not-allowed' || event.error === 'permission-denied') {
           hasNetworkErrorRef.current = true;
-          setSpeechError("Microphone access permission denied. Please allow microphone access or type your response below.");
-        } else if (event.error !== 'no-speech') {
+          setSpeechError("Microphone permission required. Please allow microphone access or type your response below.");
+        } else {
           setSpeechError(`Speech Notice: ${event.error}`);
         }
+        isStartingRef.current = false;
       };
 
       recognition.onend = () => {
-        // Prevent infinite network error loops: restart ONLY if recording is active AND no network/permission error occurred
+        isStartingRef.current = false;
+        // Prevent infinite error loops: restart ONLY if recording is active and no fatal network/permission error occurred
         if (isRecordingRef.current && !hasNetworkErrorRef.current) {
           try {
             recognitionRef.current?.start();
@@ -216,16 +242,22 @@ export default function InterviewRoomPage({ sessionData, setActivePage, setFinal
       };
 
       recognitionRef.current = recognition;
-      recognition.start();
+      try {
+        recognition.start();
+      } catch (err) {
+        isStartingRef.current = false;
+      }
     } catch (err) {
       console.warn("Microphone access error:", err);
-      setSpeechError("Microphone access permission denied or disconnected. You can type your answer in the response box below.");
+      setSpeechError("Microphone access permission denied or disconnected. You can type your response in the box below.");
+      isStartingRef.current = false;
     }
   };
 
   const stopMicRecording = () => {
     setIsRecording(false);
     isRecordingRef.current = false;
+    isStartingRef.current = false;
     if (recognitionRef.current) {
       try { recognitionRef.current.stop(); } catch (e) {}
     }
