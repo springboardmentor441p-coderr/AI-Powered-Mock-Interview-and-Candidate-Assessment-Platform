@@ -168,7 +168,7 @@ export default function InterviewRoomPage({ sessionData, setActivePage, setFinal
     }
   }, [currentIdx]);
 
-  // ROBUST BROWSER SPEECH RECOGNITION HANDLING
+  // DIRECT BROWSER NATIVE WEB SPEECH RECOGNITION (WITHOUT STREAM LOCKS)
   const startMicRecording = async () => {
     if (isStartingRef.current) return;
     isStartingRef.current = true;
@@ -176,23 +176,9 @@ export default function InterviewRoomPage({ sessionData, setActivePage, setFinal
     try {
       setSpeechError(null);
 
-      // Verify microphone hardware permission without locking the audio stream
-      try {
-        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-        stream.getTracks().forEach(track => track.stop()); // Release track so SpeechRecognition can bind cleanly
-        setMicPermissionGranted(true);
-      } catch (err) {
-        console.warn("Microphone access denied:", err);
-        setMicPermissionGranted(false);
-        setSpeechEngineStatus("Microphone Permission Required");
-        setSpeechError("Microphone permission denied. Please allow microphone access or type your response below.");
-        setIsRecording(false);
-        isStartingRef.current = false;
-        return;
-      }
-
       const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
       if (!SpeechRecognition) {
+        console.warn("[SpeechRecognition] Web Speech API not supported in browser environment.");
         setSpeechEngineStatus("Browser Web Speech API Unavailable");
         setSpeechError("Live browser speech recognition is not supported in this browser. You can speak into your microphone or type/edit your response below.");
         isStartingRef.current = false;
@@ -209,11 +195,26 @@ export default function InterviewRoomPage({ sessionData, setActivePage, setFinal
       recognition.lang = 'en-US';
 
       recognition.onstart = () => {
+        console.log("[SpeechRecognition] Engine started listening for audio.");
         setIsRecording(true);
         isRecordingRef.current = true;
         isStartingRef.current = false;
+        setMicPermissionGranted(true);
         setSpeechEngineStatus("Listening for Speech...");
         setSpeechError(null);
+      };
+
+      recognition.onaudiostart = () => {
+        console.log("[SpeechRecognition] Audio capture stream opened.");
+      };
+
+      recognition.onsoundstart = () => {
+        console.log("[SpeechRecognition] Sound detected on audio stream.");
+      };
+
+      recognition.onspeechstart = () => {
+        console.log("[SpeechRecognition] Human speech detected!");
+        setSpeechEngineStatus("Human Speech Detected...");
       };
 
       recognition.onresult = (event) => {
@@ -223,6 +224,7 @@ export default function InterviewRoomPage({ sessionData, setActivePage, setFinal
         }
         const cleanText = fullTranscript.trim();
         if (cleanText) {
+          console.log("[SpeechRecognition] Real-time transcript:", cleanText);
           candidateAnswerRef.current = cleanText;
           setCandidateAnswer(cleanText);
           setSpeechEngineStatus("Transcribing Spoken Response...");
@@ -230,31 +232,39 @@ export default function InterviewRoomPage({ sessionData, setActivePage, setFinal
         }
       };
 
+      recognition.onspeechend = () => {
+        console.log("[SpeechRecognition] Speech segment completed.");
+      };
+
       recognition.onerror = (event) => {
-        console.warn("SpeechRecognition notice:", event.error);
+        console.warn("[SpeechRecognition] Notice event:", event.error);
         isStartingRef.current = false;
 
         if (event.error === 'no-speech' || event.error === 'aborted') {
           return;
         }
 
-        if (event.error === 'network') {
-          setSpeechEngineStatus("Speech recognition connecting...");
-          setSpeechError("Speech cloud service temporarily unreachable. You can speak into your microphone or type/edit your response below.");
-        } else if (event.error === 'not-allowed' || event.error === 'permission-denied') {
+        if (event.error === 'not-allowed' || event.error === 'permission-denied') {
+          setMicPermissionGranted(false);
           setSpeechEngineStatus("Microphone Permission Required");
-          setSpeechError("Microphone permission required. Please allow microphone access or type your response below.");
+          setSpeechError("Microphone permission required. Please allow microphone access in your browser.");
+        } else if (event.error === 'network') {
+          setSpeechEngineStatus("Speech Service Connecting...");
+          setSpeechError("Speech service connecting... Speak into your microphone or type your answer in the box below.");
         } else {
-          setSpeechEngineStatus(`Speech Notice: ${event.error}`);
+          setSpeechEngineStatus(`Speech Engine Notice: ${event.error}`);
         }
       };
 
       recognition.onend = () => {
+        console.log("[SpeechRecognition] Engine ended. Active state:", isRecordingRef.current);
         isStartingRef.current = false;
         if (isRecordingRef.current) {
           try {
             recognitionRef.current?.start();
           } catch (e) {}
+        } else {
+          setSpeechEngineStatus("Speech Engine Idle");
         }
       };
 
@@ -262,12 +272,13 @@ export default function InterviewRoomPage({ sessionData, setActivePage, setFinal
       try {
         recognition.start();
       } catch (err) {
+        console.warn("[SpeechRecognition] Start error:", err);
         isStartingRef.current = false;
       }
     } catch (err) {
-      console.warn("Speech initialization error:", err);
-      setSpeechEngineStatus("Microphone Device Error");
-      setSpeechError("Microphone access permission denied or disconnected. You can type your response in the box below.");
+      console.warn("[SpeechRecognition] Exception:", err);
+      setSpeechEngineStatus("Speech Initialization Error");
+      setSpeechError("Microphone or speech initialization error. You can type your response in the box below.");
       isStartingRef.current = false;
     }
   };
@@ -279,6 +290,7 @@ export default function InterviewRoomPage({ sessionData, setActivePage, setFinal
     if (recognitionRef.current) {
       try { recognitionRef.current.stop(); } catch (e) {}
     }
+    setSpeechEngineStatus("Speech Engine Idle");
   };
 
   const formatTimer = (secs) => {
@@ -613,9 +625,9 @@ export default function InterviewRoomPage({ sessionData, setActivePage, setFinal
               </div>
 
               <div className="flex justify-between p-2.5 rounded-xl bg-slate-900 border border-slate-800">
-                <span className="text-slate-400">Microphone Permission:</span>
+                <span className="text-slate-400">Microphone Status:</span>
                 <span className={micPermissionGranted ? "text-emerald-400 font-bold" : "text-amber-400"}>
-                  {micPermissionGranted ? "Permission Granted" : "Permission Required"}
+                  {micPermissionGranted ? "Microphone Stream Active" : "Permission Required"}
                 </span>
               </div>
 
