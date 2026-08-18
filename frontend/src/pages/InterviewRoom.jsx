@@ -1142,16 +1142,8 @@ export const InterviewRoom = () => {
       performanceLevel: 'Disqualified / Terminated',
       technicalSkills: { Python: '0/10', React: '0/10', SQL: '0/10' },
       behavioralSkills: { Leadership: '0/10', Communication: '0/10', Confidence: '0/10' },
-      resumeValidation: [
-        {
-          resumeSkill: 'Security Rules',
-          status: 'Failed - Violation',
-          details: reason
-        }
-      ],
-      jdCoverage: [
-        { skill: 'Proctoring Compliance', score: '0/10', status: 'Terminated' }
-      ],
+      resumeValidation: [],
+      jdCoverage: [],
       strengths: ['None - Interview Terminated due to Security Compliance Violation'],
       areasForImprovement: [reason],
       questionPerformance: [],

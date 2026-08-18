@@ -26,12 +26,17 @@ export const InterviewResult = () => {
   const skillsDemonstrated = Array.isArray(report.skillsDemonstrated) ? report.skillsDemonstrated : ['Python', 'React', 'FastAPI', 'REST API', 'JWT', 'Problem Solving'];
   const needsImprovement = Array.isArray(report.needsImprovement) ? report.needsImprovement : ['Advanced SQL', 'System Design', 'Communication structure'];
 
-  const resumeValidation = Array.isArray(report.resumeValidation) ? report.resumeValidation : [
+  const rawResumeValidation = Array.isArray(report.resumeValidation) ? report.resumeValidation : [
     { claim: 'Built REST APIs using FastAPI', status: 'Demonstrated strongly', evidence: 'Demonstrated clear, detailed knowledge of JWT auth & async routes in FastAPI.' },
     { claim: 'Database design & SQL optimization', status: 'Partially demonstrated', evidence: 'Understood basic queries but lacked depth on indexing & JOIN types.' }
   ];
+  const resumeValidation = rawResumeValidation.filter(item => {
+    const title = (item.claim || item.resume_skill || item.resumeSkill || '').toLowerCase();
+    const status = (item.status || '').toLowerCase();
+    return !title.includes('security rules') && !title.includes('proctoring') && !status.includes('violation');
+  });
 
-  const jdCapabilities = Array.isArray(report.jdCoverage) ? report.jdCoverage : (Array.isArray(report.jdCapabilities) ? report.jdCapabilities : [
+  const rawJdCapabilities = Array.isArray(report.jdCoverage) ? report.jdCoverage : (Array.isArray(report.jdCapabilities) ? report.jdCapabilities : [
     { skill: 'Python', status: 'Strong', score: '8.5/10' },
     { skill: 'SQL', status: 'Good', score: '7.0/10' },
     { skill: 'FastAPI', status: 'Strong', score: '8.0/10' },
@@ -39,6 +44,11 @@ export const InterviewResult = () => {
     { skill: 'Problem Solving', status: 'Good', score: '8.0/10' },
     { skill: 'Communication', status: 'Good', score: '7.8/10' }
   ]);
+  const jdCapabilities = rawJdCapabilities.filter(item => {
+    const skill = (item.skill || '').toLowerCase();
+    const status = (item.status || '').toLowerCase();
+    return !skill.includes('proctoring') && !skill.includes('security rules') && !status.includes('terminated');
+  });
 
   const integrityMetrics = report.interviewIntegrity || report.scores?.proctoring_metrics || {
     face_presence_pct: 98,
