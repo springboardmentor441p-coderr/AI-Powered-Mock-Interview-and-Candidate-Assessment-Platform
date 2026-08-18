@@ -1,6 +1,6 @@
 import os
 import logging
-from typing import List, Optional
+from typing import List, Optional, Dict, Any
 from fastapi import FastAPI, Depends, HTTPException, status, UploadFile, File
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
@@ -31,7 +31,7 @@ logger = logging.getLogger("smarthire")
 app = FastAPI(
     title="SmartHire AI Backend API",
     description="Backend services powered by Groq LLM (openai/gpt-oss-120b) & Mira AI Interviewer Engine for SmartHire-AI",
-    version="3.0.0"
+    version="3.1.0"
 )
 
 # CORS setup
@@ -54,6 +54,33 @@ def read_root():
         "llm_available": llm_service.is_llm_available()
     }
 
+# ---------------- TRUTHFUL SYSTEM READINESS CHECK ---------------- #
+@app.get("/api/system/check")
+def system_check_endpoint(db: Session = Depends(database.get_db)):
+    """
+    Truthful System Diagnostic Endpoint.
+    Verifies database connectivity, Groq LLM status, and model availability.
+    Does NOT expose API keys.
+    """
+    db_status = "Connected"
+    try:
+        db.execute(models.User.__table__.select().limit(1))
+    except Exception as e:
+        db_status = f"Database Error: {str(e)}"
+
+    llm_configured = llm_service.is_llm_available()
+    llm_model = os.getenv("GROQ_MODEL", "openai/gpt-oss-120b")
+
+    return {
+        "backend_status": "Online",
+        "database_status": db_status,
+        "llm_provider": "Groq",
+        "llm_model": llm_model,
+        "llm_configured": llm_configured,
+        "resume_parsing_available": True,
+        "interviewer": "Mira"
+    }
+
 # ---------------- LLM GENERATIVE ENGINE ENDPOINTS ---------------- #
 @app.post("/api/llm/generate")
 def generate_llm_questions_endpoint(
@@ -61,18 +88,18 @@ def generate_llm_questions_endpoint(
     difficulty: str = "Medium",
     num_questions: int = 5,
     skills: Optional[List[str]] = None,
-    previous_question: str = "",
-    candidate_answer: str = "",
+    previous_questions: Optional[List[str]] = None,
+    previous_candidate_answer: str = "",
     resume_text: str = ""
 ):
-    """Dynamically generate interview questions using Groq LLM (openai/gpt-oss-120b)."""
+    """Dynamically generate unique interview questions using Groq LLM (openai/gpt-oss-120b)."""
     questions = llm_service.generate_llm_questions(
         domain=domain,
         difficulty=difficulty,
         num_questions=num_questions,
         skills=skills,
-        previous_question=previous_question,
-        candidate_answer=candidate_answer,
+        previous_questions=previous_questions or [],
+        previous_candidate_answer=previous_candidate_answer,
         resume_text=resume_text
     )
     if questions:
@@ -83,6 +110,36 @@ def generate_llm_questions_endpoint(
         detail="Groq LLM question generation is currently unavailable. Please verify GROQ_API_KEY environment variable."
     )
 
+@app.post("/api/llm/next-question")
+def generate_next_question_endpoint(payload: Dict[str, Any]):
+    """
+    Generates 1 adaptive follow-up question based on candidate's previous answer and session history.
+    Guarantees no repetition against previous questions.
+    """
+    domain = payload.get("domain", "Python Developer")
+    difficulty = payload.get("difficulty", "Medium")
+    skills = payload.get("skills", [])
+    previous_questions = payload.get("previous_questions", [])
+    candidate_answer = payload.get("candidate_answer", "")
+    resume_text = payload.get("resume_text", "")
+
+    next_q = llm_service.generate_single_adaptive_question(
+        domain=domain,
+        difficulty=difficulty,
+        skills=skills,
+        previous_questions=previous_questions,
+        candidate_answer=candidate_answer,
+        resume_text=resume_text
+    )
+
+    if next_q:
+        return {"source": "GROQ_LLM", "model": llm_service.GROQ_MODEL, "question": next_q}
+
+    raise HTTPException(
+        status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+        detail="Unable to generate adaptive next question via Groq LLM."
+    )
+
 @app.post("/api/llm/evaluate")
 def evaluate_llm_answer_endpoint(
     question_text: str,
@@ -90,16 +147,24 @@ def evaluate_llm_answer_endpoint(
     sample_answer: str = ""
 ):
     """Evaluate candidate answer using Groq LLM (openai/gpt-oss-120b)."""
-    if not candidate_answer or not candidate_answer.strip():
+    # Explicit unanswered question handling
+    if not candidate_answer or candidate_answer.strip() in ["", "Not answered", "[Candidate skipped question without speaking]"]:
         return {
+            "evaluation_status": "Unanswered",
+            "is_answered": False,
             "technical_score": 0.0,
             "clarity_score": 0.0,
-            "feedback": "No candidate answer was provided to evaluate.",
+            "relevance_score": 0.0,
+            "completeness_score": 0.0,
+            "feedback": "Question was skipped without a spoken or written response.",
             "strengths": [],
-            "weaknesses": ["Answer skipped or empty transcript."]
+            "weaknesses": ["Question skipped without an answer."]
         }
 
-    return llm_service.evaluate_llm_answer(question_text, candidate_answer, sample_answer)
+    eval_res = llm_service.evaluate_llm_answer(question_text, candidate_answer, sample_answer)
+    eval_res["evaluation_status"] = "Answered"
+    eval_res["is_answered"] = True
+    return eval_res
 
 # ---------------- USER AUTHENTICATION ---------------- #
 @app.post("/api/auth/register", response_model=schemas.UserResponse)
@@ -225,26 +290,46 @@ def submit_answer(
     db: Session = Depends(database.get_db),
     current_user: models.User = Depends(auth.get_current_user)
 ):
-    speech_metrics = speech_service.analyze_speech_communication(req.transcript or req.candidate_answer)
-    vision_metrics = vision_service.process_vision_metrics(req.eye_contact_ratio or 0.85)
+    is_answered = bool(req.candidate_answer and req.candidate_answer.strip() and req.candidate_answer.strip() not in ["Not answered", "[Candidate skipped question without speaking]"])
+    final_text = req.candidate_answer.strip() if is_answered else "Not answered"
 
-    # Call LLM answer evaluation if available
-    llm_eval = llm_service.evaluate_llm_answer(
-        question_text=req.question_text,
-        candidate_answer=req.candidate_answer or req.transcript,
-        sample_answer=""
-    )
+    speech_metrics = speech_service.analyze_speech_communication(req.transcript or final_text)
+    vision_metrics = vision_service.process_vision_metrics(req.eye_contact_ratio or 0.0)
 
-    tech_score = llm_eval.get("technical_score", 0.0)
+    # Evaluate answer via Groq LLM
+    if is_answered:
+        llm_eval = llm_service.evaluate_llm_answer(
+            question_text=req.question_text,
+            candidate_answer=final_text,
+            sample_answer=""
+        )
+        llm_eval["is_answered"] = True
+        llm_eval["evaluation_status"] = "Answered"
+        tech_score = float(llm_eval.get("technical_score", 0.0))
+        clarity_score = float(llm_eval.get("clarity_score", 0.0))
+    else:
+        llm_eval = {
+            "evaluation_status": "Unanswered",
+            "is_answered": False,
+            "technical_score": 0.0,
+            "clarity_score": 0.0,
+            "relevance_score": 0.0,
+            "completeness_score": 0.0,
+            "feedback": "Question was skipped without a spoken answer.",
+            "strengths": [],
+            "weaknesses": ["Question skipped without an answer."]
+        }
+        tech_score = 0.0
+        clarity_score = 0.0
 
     qa_record = models.QuestionAnswer(
         session_id=req.session_id,
         question_text=req.question_text,
-        candidate_answer=req.candidate_answer,
-        transcript=req.transcript or req.candidate_answer,
+        candidate_answer=final_text,
+        transcript=final_text,
         filler_words_detected=speech_metrics["detected_fillers"],
-        grammar_score=speech_metrics["grammar_score"],
-        relevance_score=float(tech_score),
+        grammar_score=speech_metrics["grammar_score"] if is_answered else 0.0,
+        relevance_score=tech_score,
         eye_contact_percentage=vision_metrics["eye_contact_percentage"],
         feedback_notes=llm_eval.get("feedback", "Evaluation recorded.")
     )
@@ -254,6 +339,8 @@ def submit_answer(
     return {
         "status": "recorded",
         "question_index": req.question_index,
+        "is_answered": is_answered,
+        "candidate_answer": final_text,
         "speech_metrics": speech_metrics,
         "vision_metrics": vision_metrics,
         "llm_evaluation": llm_eval
@@ -271,21 +358,24 @@ def finish_interview(
 
     answers = db.query(models.QuestionAnswer).filter(models.QuestionAnswer.session_id == session_id).all()
     
-    if answers:
-        avg_grammar = sum(a.grammar_score for a in answers) / len(answers)
-        avg_relevance = sum(a.relevance_score for a in answers) / len(answers)
-        avg_eye_contact = sum(a.eye_contact_percentage for a in answers) / len(answers)
-        total_fillers = sum(sum(a.filler_words_detected.values()) for a in answers if a.filler_words_detected)
+    answered_list = [a for a in answers if a.candidate_answer and a.candidate_answer != "Not answered"]
+    unanswered_count = len(answers) - len(answered_list)
+
+    if answered_list:
+        avg_grammar = sum(a.grammar_score for a in answered_list) / len(answered_list)
+        avg_relevance = sum(a.relevance_score for a in answered_list) / len(answered_list)
+        avg_eye_contact = sum(a.eye_contact_percentage for a in answered_list) / len(answered_list)
+        total_fillers = sum(sum(a.filler_words_detected.values()) for a in answered_list if a.filler_words_detected)
     else:
         avg_grammar = 0.0
         avg_relevance = 0.0
         avg_eye_contact = 0.0
         total_fillers = 0
 
-    comm_score = min(avg_grammar + 5.0, 100.0) if answers else 0.0
-    conf_score = min(avg_eye_contact + 4.0, 100.0) if answers else 0.0
-    tech_score = avg_relevance if answers else 0.0
-    prof_score = 85.0 if answers else 0.0
+    comm_score = min(avg_grammar + 5.0, 100.0) if answered_list else 0.0
+    conf_score = min(avg_eye_contact + 4.0, 100.0) if answered_list else 0.0
+    tech_score = avg_relevance if answered_list else 0.0
+    prof_score = 85.0 if answered_list else 0.0
 
     eval_result = scoring_service.calculate_overall_assessment(
         communication_score=comm_score,
@@ -293,9 +383,13 @@ def finish_interview(
         technical_score=tech_score,
         professionalism_score=prof_score,
         filler_word_count=total_fillers,
-        words_per_minute=135.0,
+        words_per_minute=135.0 if answered_list else 0.0,
         eye_contact_ratio=avg_eye_contact / 100.0 if avg_eye_contact > 0 else 0.0
     )
+
+    eval_result["answered_questions_count"] = len(answered_list)
+    eval_result["unanswered_questions_count"] = unanswered_count
+    eval_result["total_questions_count"] = len(answers)
 
     session.communication_score = eval_result["communication_score"]
     session.confidence_score = eval_result["confidence_score"]
@@ -304,7 +398,7 @@ def finish_interview(
     session.overall_score = eval_result["overall_score"]
     session.performance_rating = eval_result["performance_rating"]
     session.filler_word_count = total_fillers
-    session.words_per_minute = 135.0
+    session.words_per_minute = 135.0 if answered_list else 0.0
     session.eye_contact_ratio = avg_eye_contact / 100.0 if avg_eye_contact > 0 else 0.0
     session.strengths = eval_result["strengths"]
     session.weaknesses = eval_result["weaknesses"]
@@ -399,5 +493,5 @@ def admin_metrics(
         "total_sessions": sessions_count,
         "total_resumes_parsed": resumes_count,
         "system_status": "Healthy / Operational",
-        "ai_engine_version": "SmartHire v3.0 (Groq LLM openai/gpt-oss-120b + Mira Active)"
+        "ai_engine_version": "SmartHire v3.1 (Groq LLM openai/gpt-oss-120b + Mira Active)"
     }

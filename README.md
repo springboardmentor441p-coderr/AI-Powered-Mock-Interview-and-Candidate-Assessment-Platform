@@ -1,18 +1,18 @@
 # SmartHire-AI: AI-Powered Mock Interview & Candidate Assessment Platform
 
-SmartHire-AI is a full-stack, AI-powered mock interview platform featuring **Mira**, an autonomous AI Technical Interviewer driven by **Groq Large Language Models (LLM)** model `openai/gpt-oss-120b`. The platform provides adaptive Q&A generation, resume skill extraction, live speech-to-text transcript processing, camera stream tracking, multi-dimensional scoring rubrics, and downloadable PDF performance report cards.
+SmartHire-AI is a full-stack, AI-powered mock interview platform featuring **Mira**, an autonomous AI Technical Interviewer driven by **Groq Large Language Models (LLM)** model `openai/gpt-oss-120b`. The platform provides dynamic question generation, adaptive follow-ups, resume skill extraction, live speech-to-text transcript processing, camera stream tracking, truthful system diagnostics, multi-dimensional scoring rubrics, and downloadable PDF performance report cards.
 
 ---
 
 ## 🤖 Groq LLM Integration Architecture
 
-The platform uses **Groq LLM (`openai/gpt-oss-120b`)** for dynamic, non-hardcoded interview generation and evaluation:
+The platform uses **Groq LLM (`openai/gpt-oss-120b`)** for dynamic, non-hardcoded interview question generation and answer evaluation:
 
 ```
 ┌────────────────────────────────────────────────────────┐
 │ 1. Resume Parsing & Skill Extraction                    │
-│    - Scans PDF text, identifies technical skills       │
-│    - Extracts genuine candidate competencies           │
+│    - Extracts text from candidate resumes               │
+│    - Identifies technical skills, experience & keywords  │
 └───────────────────────────┬────────────────────────────┘
                             │
                             ▼
@@ -20,7 +20,8 @@ The platform uses **Groq LLM (`openai/gpt-oss-120b`)** for dynamic, non-hardcode
 │ 2. Dynamic Groq LLM Question Generator                  │
 │    - Model: openai/gpt-oss-120b                        │
 │    - Generates target domain & difficulty questions     │
-│    - Adapts to candidate skills & previous answers     │
+│    - Repetition Filter: Rejects questions >50% similar  │
+│      to previously asked session questions             │
 └───────────────────────────┬────────────────────────────┘
                             │
                             ▼
@@ -29,13 +30,16 @@ The platform uses **Groq LLM (`openai/gpt-oss-120b`)** for dynamic, non-hardcode
 │    - Conducts Q&A interview dialogue                   │
 │    - Speaks prompts via Web Speech Synthesis           │
 │    - Captures candidate responses via Speech-to-Text    │
+│    - Adaptive Follow-Ups: Asks relevant follow-ups     │
+│      based on candidate's previous answer              │
 └───────────────────────────┬────────────────────────────┘
                             │
                             ▼
 ┌────────────────────────────────────────────────────────┐
 │ 4. Groq LLM Answer Evaluation Engine                    │
 │    - Evaluates technical accuracy, depth & clarity     │
-│    - Generates strengths, weaknesses & feedback tips    │
+│    - Logs unanswered questions as "Unanswered" (0 score)│
+│    - Generates per-question breakdown & summary report │
 └────────────────────────────────────────────────────────┘
 ```
 
@@ -45,11 +49,11 @@ The platform uses **Groq LLM (`openai/gpt-oss-120b`)** for dynamic, non-hardcode
 
 1. **Mira AI Interviewer**: Professional AI hiring manager conducting dynamic, conversational technical interviews.
 2. **Groq LLM Engine**: Uses Groq model `openai/gpt-oss-120b` for dynamic structured JSON question generation and candidate answer scoring.
-3. **Adaptive Interview Flow**: Questions adapt dynamically based on domain, difficulty, candidate skills, and previous candidate answers.
-4. **Resume Skill Processing**: Extracts genuine candidate skills from PDF resumes without inventing fake fallbacks.
-5. **Speech & Microphone Integration**: Web Speech API for voice synthesization and live Speech-to-Text (STT) transcription.
-6. **Proctored Camera Stream**: Live webcam video monitor with face presence detection and tab-switch violation tracking.
-7. **Comprehensive PDF Assessment**: Generates official evaluation reports with technical scoring, answer history logs, strengths, and actionable improvement recommendations.
+3. **Dynamic Question Generation (No Hardcoded Bank)**: Every interview generates unique questions based on domain, difficulty, candidate skills, and previous questions (with similarity filtering).
+4. **Adaptive Follow-Up Questions**: After a candidate answer, Mira generates a relevant follow-up question adaptively.
+5. **Explicit Unanswered Question Handling**: Unanswered or skipped questions are explicitly stored as `Unanswered` with 0 score without hallucinating fake answers.
+6. **Truthful System Readiness Check**: Hardware and API readiness tests check camera, microphone, SpeechRecognition, FastAPI backend, and Groq LLM connectivity.
+7. **Comprehensive PDF Assessment**: Generates official evaluation reports with per-question breakdowns (Question, Answer, Status, Technical/Clarity scores, Feedback, Strengths, Weaknesses).
 
 ---
 

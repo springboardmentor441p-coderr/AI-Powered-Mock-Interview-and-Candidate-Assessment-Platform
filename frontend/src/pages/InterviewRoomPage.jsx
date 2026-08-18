@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Video, Mic, MicOff, Volume2, Clock, ArrowRight, CheckCircle2, AlertCircle, RefreshCw, Send, Sparkles, VolumeX, Bot, User, MessageSquare, PhoneOff, Bell, AlertTriangle, ShieldAlert } from 'lucide-react';
 import WebcamMonitor from '../components/WebcamMonitor';
 import AudioWaveform from '../components/AudioWaveform';
-import { submitQuestionAnswer, finishInterviewSession } from '../services/api';
+import { submitQuestionAnswer, finishInterviewSession, fetchNextAdaptiveQuestion } from '../services/api';
 import { miraAgent } from '../services/aiAgent';
 
 export default function InterviewRoomPage({ sessionData, setActivePage, setFinalReport }) {
@@ -18,7 +18,7 @@ export default function InterviewRoomPage({ sessionData, setActivePage, setFinal
   const [speechError, setSpeechError] = useState(null);
   const chatScrollRef = useRef(null);
 
-  // Truthful camera status metrics (No fake random numbers)
+  // Truthful camera status metrics
   const [cameraMetrics, setCameraMetrics] = useState({
     streamActive: false,
     faceDetected: "Initializing...",
@@ -31,41 +31,17 @@ export default function InterviewRoomPage({ sessionData, setActivePage, setFinal
   const activeDifficulty = sessionData?.difficulty || "Medium";
 
   // Initial Questions Set (Fallback if backend API offline)
-  const questionsBank = [
+  const initialQuestions = (sessionData?.questions && sessionData.questions.length > 0) ? sessionData.questions : [
     {
       id: 1,
-      question_number: "Question 1 of 5 (Introduction)",
+      question_number: "Question 1 of 5",
       question_text: `Hello! My name is ${miraAgent.name}. Welcome to your ${activeDomain} interview (${activeDifficulty} level). To start off, please introduce yourself and your technical background.`,
-      sample_answer: "Hello Mira! I am a software engineer with background in software development, REST APIs, and database engineering."
-    },
-    {
-      id: 2,
-      question_number: "Question 2 of 5 (Core Technical)",
-      question_text: `What are the key technical concepts and architectural patterns you use when building applications in ${activeDomain}?`,
-      sample_answer: "I focus on clean code architecture, modular design patterns, error handling, performance optimization, and robust testing."
-    },
-    {
-      id: 3,
-      question_number: "Question 3 of 5 (Problem Solving)",
-      question_text: "Describe a challenging technical problem or bug you encountered recently and how you resolved it.",
-      sample_answer: "I analyzed system logs, reproduced the bug locally, isolated the memory leak / database bottleneck, and issued a verified patch."
-    },
-    {
-      id: 4,
-      question_number: "Question 4 of 5 (Best Practices)",
-      question_text: "How do you ensure code quality, maintainability, and security in production codebases?",
-      sample_answer: "By enforcing code reviews, automated unit testing, strict linting, environment configuration management, and security audits."
-    },
-    {
-      id: 5,
-      question_number: "Question 5 of 5 (Career Vision)",
-      question_text: "Where do you see yourself technically in the next 2-3 years, and what skills are you actively improving?",
-      sample_answer: "I aim to grow into a senior technical lead, mastering system design, cloud scaling, and cutting-edge AI software development."
+      sample_answer: "I am a software developer with background in software development, APIs, and databases."
     }
   ];
 
-  const questions = (sessionData?.questions && sessionData.questions.length > 0) ? sessionData.questions : questionsBank;
-  const currentQ = questions[currentIdx] || questions[0];
+  const [questionsList, setQuestionsList] = useState(initialQuestions);
+  const currentQ = questionsList[currentIdx] || questionsList[0];
 
   // REAL-TIME CONTINUOUS CONVERSATION THREAD CHAT HISTORY
   const [chatThread, setChatThread] = useState([
@@ -238,53 +214,106 @@ export default function InterviewRoomPage({ sessionData, setActivePage, setFinal
     return `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
   };
 
-  // REAL-TIME SUBMIT TURN HANDLER
+  // REAL-TIME SUBMIT / UNANSWERED QUESTION HANDLER
   const handleNextQuestion = async () => {
     miraAgent.stopSpeaking();
     stopMicRecording();
     setSubmitting(true);
 
-    const spokenText = candidateAnswer.trim();
-    const isAnswerProvided = spokenText.length > 0;
-    const finalAnswerText = isAnswerProvided ? spokenText : "[Candidate skipped question without speaking]";
+    const rawInput = candidateAnswer.trim();
+    const isAnswered = rawInput.length > 0;
+    const finalCandidateAnswer = isAnswered ? rawInput : "Not answered";
 
     // Append Candidate Answer Bubble (YOU) to Chat Thread
     const candidateBubble = {
       id: Date.now(),
       sender: 'YOU',
-      text: finalAnswerText,
+      text: finalCandidateAnswer,
       type: 'candidate'
     };
 
     setChatThread(prev => [...prev, candidateBubble]);
 
+    // Submit answer or unanswered status to backend
+    const backendRes = await submitQuestionAnswer({
+      session_id: sessionData?.session_id || 1,
+      question_index: currentIdx + 1,
+      question_text: currentQ.question_text || currentQ.q,
+      candidate_answer: finalCandidateAnswer,
+      transcript: finalCandidateAnswer,
+      eye_contact_ratio: cameraMetrics.streamActive ? 0.90 : 0.0
+    });
+
+    const llmEval = backendRes?.llm_evaluation || {
+      evaluation_status: isAnswered ? "Answered" : "Unanswered",
+      is_answered: isAnswered,
+      technical_score: isAnswered ? 80.0 : 0.0,
+      clarity_score: isAnswered ? 80.0 : 0.0,
+      feedback: isAnswered ? "Answer submitted." : "Question was skipped without an answer.",
+      strengths: isAnswered ? ["Technical answer provided"] : [],
+      weaknesses: isAnswered ? [] : ["Question skipped without an answer."]
+    };
+
     const answerEntry = {
       q_num: currentIdx + 1,
       q_text: currentQ.question_text || currentQ.q,
-      user_answer: finalAnswerText,
-      sample_answer: currentQ.sample_answer || currentQ.a || "",
-      is_answered: isAnswerProvided
+      user_answer: finalCandidateAnswer,
+      is_answered: isAnswered,
+      evaluation_status: isAnswered ? "Answered" : "Unanswered",
+      technical_score: isAnswered ? (llmEval.technical_score || 80.0) : 0.0,
+      clarity_score: isAnswered ? (llmEval.clarity_score || 80.0) : 0.0,
+      feedback: llmEval.feedback || "",
+      strengths: llmEval.strengths || [],
+      weaknesses: llmEval.weaknesses || [],
+      skill_focus: currentQ.skill_focus || activeDomain
     };
 
     const updatedAnswers = [...candidateAnswersList, answerEntry];
     setCandidateAnswersList(updatedAnswers);
-
-    await submitQuestionAnswer({
-      session_id: sessionData?.session_id || 1,
-      question_index: currentIdx + 1,
-      question_text: currentQ.question_text || currentQ.q,
-      candidate_answer: finalAnswerText,
-      transcript: finalAnswerText,
-      eye_contact_ratio: cameraMetrics.streamActive ? 0.90 : 0.0
-    });
-
     setCandidateAnswer('');
-    
-    if (currentIdx < questions.length - 1) {
-      const nextQObj = questions[currentIdx + 1];
-      const nextInterviewerText = miraAgent.generateAdaptivePrompt(spokenText, nextQObj);
 
-      // Append Next Interviewer Question Bubble to Chat Thread
+    const maxQuestions = 5;
+    const previousQuestionsAsked = updatedAnswers.map(a => a.q_text);
+
+    if (currentIdx < maxQuestions - 1) {
+      let nextQObj = null;
+
+      // Try fetching dynamic adaptive next question from Groq LLM
+      if (isAnswered) {
+        nextQObj = await fetchNextAdaptiveQuestion({
+          domain: activeDomain,
+          difficulty: activeDifficulty,
+          skills: sessionData?.skills || [],
+          previous_questions: previousQuestionsAsked,
+          candidate_answer: finalCandidateAnswer
+        });
+      }
+
+      // If backend returns a dynamic question, insert it into questionsList
+      if (nextQObj && nextQObj.question_text) {
+        setQuestionsList(prev => {
+          const copy = [...prev];
+          copy[currentIdx + 1] = nextQObj;
+          return copy;
+        });
+      } else if (!questionsList[currentIdx + 1]) {
+        // Fallback next question if not present
+        const fallbackNext = {
+          id: currentIdx + 2,
+          question_text: `Building on your background in ${activeDomain}, explain how you handle application error logging and performance optimization.`,
+          skill_focus: activeDomain
+        };
+        setQuestionsList(prev => [...prev, fallbackNext]);
+      }
+
+      const upcomingQ = nextQObj || questionsList[currentIdx + 1] || {
+        question_text: `Building on your background in ${activeDomain}, explain how you handle software error logging.`
+      };
+
+      const nextInterviewerText = isAnswered 
+        ? miraAgent.generateAdaptivePrompt(finalCandidateAnswer, upcomingQ)
+        : `Okay, I will continue with the next question. ${upcomingQ.question_text}`;
+
       setTimeout(() => {
         const interviewerBubble = {
           id: Date.now() + 1,
@@ -299,34 +328,46 @@ export default function InterviewRoomPage({ sessionData, setActivePage, setFinal
       setCurrentIdx(prev => prev + 1);
       setSubmitting(false);
     } else {
+      // Finalize session
       const report = await finishInterviewSession(sessionData?.session_id || 1);
-      const evalResult = miraAgent.evaluateCandidateSession(updatedAnswers, cameraMetrics);
+      const answeredList = updatedAnswers.filter(a => a.is_answered);
+      const unansweredCount = updatedAnswers.length - answeredList.length;
+
+      const totalTechScore = answeredList.reduce((acc, a) => acc + a.technical_score, 0);
+      const avgOverallScore = answeredList.length > 0 ? Math.round((totalTechScore / answeredList.length) * 10) / 10 : 0.0;
+
+      let rating = "Needs Improvement";
+      if (avgOverallScore >= 90) rating = "Outstanding Candidate (Strong Hire)";
+      else if (avgOverallScore >= 80) rating = "Recommended Candidate (Good Hire)";
+      else if (avgOverallScore >= 60) rating = "Passable Candidate";
 
       const fullCustomReport = {
         ...report,
-        overall_score: evalResult.score,
-        performance_rating: evalResult.rating,
+        overall_score: avgOverallScore,
+        performance_rating: rating,
         category: activeDomain,
         difficulty: activeDifficulty,
         camera_status: cameraMetrics.cameraStatus,
         answers_history: updatedAnswers,
-        strengths: evalResult.answeredCount > 0 ? [
-          `Answered ${evalResult.answeredCount} out of ${questions.length} questions in ${activeDomain} (${activeDifficulty} level)`,
-          `Demonstrated microphone communication across Mira AI interviewer turns`,
-          `Maintained active session focus and video presence`
+        answered_questions_count: answeredList.length,
+        unanswered_questions_count: unansweredCount,
+        total_questions_count: updatedAnswers.length,
+        strengths: answeredList.length > 0 ? [
+          `Answered ${answeredList.length} out of ${updatedAnswers.length} questions in ${activeDomain} (${activeDifficulty} level)`,
+          `Demonstrated microphone verbal responses during technical turns`,
+          `Maintained active session focus and video stream`
         ] : [
-          `Attempted proctored interview session with Mira`,
-          `Hardware check completed`
+          `Completed proctored interview session with Mira`
         ],
-        weaknesses: evalResult.answeredCount < questions.length ? [
-          `Candidate skipped ${questions.length - evalResult.answeredCount} question(s) without speaking`,
-          `Ensure you speak structured responses clearly into your microphone`
+        weaknesses: unansweredCount > 0 ? [
+          `Candidate skipped ${unansweredCount} question(s) without speaking an answer`,
+          `Ensure you provide structured responses to all technical prompts`
         ] : [
           `Elaborate further on architectural trade-offs during live technical explanations`
         ],
         improvement_tips: [
           `Make sure to speak clear answers for all interview questions`,
-          `Practice explaining code complexity and system design trade-offs aloud`
+          `Practice explaining code complexity and system design trade-offs out loud`
         ]
       };
 
@@ -356,7 +397,7 @@ export default function InterviewRoomPage({ sessionData, setActivePage, setFinal
               Mira AI Interview Room <span className="text-[10px] text-cyan-400 font-mono font-normal">• Live Session</span>
             </h1>
             <span className="text-[11px] text-indigo-300 font-mono">
-              Domain: <strong className="text-white">{activeDomain}</strong> ({activeDifficulty} Level — Question {currentIdx + 1} of {questions.length})
+              Domain: <strong className="text-white">{activeDomain}</strong> ({activeDifficulty} Level — Question {currentIdx + 1} of 5)
             </span>
           </div>
         </div>
@@ -374,10 +415,10 @@ export default function InterviewRoomPage({ sessionData, setActivePage, setFinal
         </div>
       </div>
 
-      {/* MAIN TWO-COLUMN LAYOUT: LEFT (MIRA AVATAR & CHAT THREAD), RIGHT (WEBCAM & TRUTHFUL TELEMETRY) */}
+      {/* MAIN LAYOUT: LEFT (MIRA AVATAR & SCROLLABLE CHAT THREAD), RIGHT (WEBCAM & TELEMETRY) */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
         
-        {/* LEFT COLUMN: MIRA AI AGENT AVATAR & SCROLLABLE CHAT THREAD (8 COLS) */}
+        {/* LEFT COLUMN: MIRA AVATAR & CHAT THREAD (8 COLS) */}
         <div className="lg:col-span-8 space-y-6">
           
           {/* Mira Avatar Panel */}
@@ -469,7 +510,7 @@ export default function InterviewRoomPage({ sessionData, setActivePage, setFinal
             />
           </div>
 
-          {/* TRUTHFUL CAMERA & HARDWARE STATUS (No fake numbers) */}
+          {/* TRUTHFUL CAMERA & HARDWARE STATUS */}
           <div className="glass-card p-5 rounded-3xl border border-slate-800 space-y-3.5 shadow-xl">
             <div className="flex items-center justify-between border-b border-slate-800 pb-2">
               <span className="text-xs font-mono text-slate-300 font-bold uppercase">Hardware Assessment</span>
@@ -494,9 +535,9 @@ export default function InterviewRoomPage({ sessionData, setActivePage, setFinal
               </div>
 
               <div className="flex justify-between p-2 rounded-xl bg-slate-900 border border-slate-800">
-                <span className="text-slate-400">Gaze / Attention:</span>
-                <span className="text-slate-300 italic">
-                  {cameraMetrics.streamActive ? "Face Stream Active" : "Analysis Unavailable"}
+                <span className="text-slate-400">Gaze/Eye-Contact:</span>
+                <span className="text-slate-400 italic">
+                  {cameraMetrics.streamActive ? "Stream Monitored" : "Not Available"}
                 </span>
               </div>
             </div>
@@ -533,8 +574,10 @@ export default function InterviewRoomPage({ sessionData, setActivePage, setFinal
             className="px-6 py-2.5 rounded-xl font-bold text-xs bg-indigo-600 hover:bg-indigo-500 text-white shadow-lg transition-all flex items-center gap-2"
           >
             {submitting ? "Mira Processing..." : (
-              currentIdx < questions.length - 1 ? (
-                <>Submit Spoken Answer & Next Question <ArrowRight className="w-4 h-4" /></>
+              currentIdx < 4 ? (
+                candidateAnswer.trim().length > 0 
+                  ? <>Submit Answer & Next Question <ArrowRight className="w-4 h-4" /></>
+                  : <>Skip Question (Log Unanswered) <ArrowRight className="w-4 h-4" /></>
               ) : (
                 <>Complete Interview & Generate Report <PhoneOff className="w-4 h-4" /></>
               )

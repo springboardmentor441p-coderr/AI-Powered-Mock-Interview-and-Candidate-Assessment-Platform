@@ -1,5 +1,5 @@
 import React from 'react';
-import { Award, CheckCircle2, XCircle, AlertTriangle, Download, ArrowLeft, BarChart3, Eye, ShieldCheck, Sparkles, FileText, Check } from 'lucide-react';
+import { Award, CheckCircle2, XCircle, AlertTriangle, Download, ArrowLeft, BarChart3, Eye, ShieldCheck, Sparkles, FileText, Check, HelpCircle } from 'lucide-react';
 import jsPDF from 'jspdf';
 
 export default function InterviewReportPage({ reportData, finalReport, setActivePage }) {
@@ -20,8 +20,12 @@ export default function InterviewReportPage({ reportData, finalReport, setActive
     );
   }
 
+  const history = activeReport.answers_history || [];
+  const answeredCount = activeReport.answered_questions_count !== undefined ? activeReport.answered_questions_count : history.filter(a => a.is_answered || (a.user_answer && a.user_answer !== "Not answered")).length;
+  const unansweredCount = activeReport.unanswered_questions_count !== undefined ? activeReport.unanswered_questions_count : (history.length - answeredCount);
+
   const overallScore = activeReport.overall_score !== undefined ? activeReport.overall_score : 0.0;
-  const rating = activeReport.performance_rating || (overallScore >= 80 ? "Strong Hire" : (overallScore >= 60 ? "Passable" : "Needs Improvement"));
+  const rating = activeReport.performance_rating || (overallScore >= 80 ? "Strong Hire" : (overallScore >= 60 ? "Passable Candidate" : "Needs Improvement"));
   const isMalpractice = activeReport.malpractice_flag || false;
 
   const handleDownloadPDF = () => {
@@ -37,34 +41,28 @@ export default function InterviewReportPage({ reportData, finalReport, setActive
     doc.text(`Target Domain: ${activeReport.category || "Software Engineering"} (${activeReport.difficulty || "Medium"} Level)`, 14, 37);
     doc.text(`Overall Score: ${overallScore}%`, 14, 44);
     doc.text(`Performance Rating: ${rating}`, 14, 51);
-    doc.text(`Proctoring Status: ${isMalpractice ? "MALPRACTICE DISQUALIFIED" : "SESSION COMPLETED"}`, 14, 58);
+    doc.text(`Questions Answered: ${answeredCount} | Unanswered: ${unansweredCount}`, 14, 58);
+    doc.text(`Proctoring Status: ${isMalpractice ? "MALPRACTICE DISQUALIFIED" : "SESSION COMPLETED"}`, 14, 65);
 
     doc.setFont("helvetica", "bold");
-    doc.text("Evaluation Summary:", 14, 70);
-    doc.setFont("helvetica", "normal");
-    doc.text(`• Technical Answer Score: ${activeReport.technical_score || overallScore}%`, 20, 78);
-    doc.text(`• Communication Score: ${activeReport.communication_score || overallScore}%`, 20, 85);
-    doc.text(`• Camera Presence: ${activeReport.camera_status || "Camera Stream Monitored"}`, 20, 92);
-
-    if (activeReport.answers_history && activeReport.answers_history.length > 0) {
+    doc.text("Question-by-Question Detailed Assessment:", 14, 78);
+    
+    let yPos = 86;
+    history.forEach((item, index) => {
+      if (yPos > 260) {
+        doc.addPage();
+        yPos = 20;
+      }
       doc.setFont("helvetica", "bold");
-      doc.text("Interview Questions & Candidate Answers:", 14, 105);
-      
-      let yPos = 113;
-      activeReport.answers_history.forEach((item, index) => {
-        if (yPos > 270) {
-          doc.addPage();
-          yPos = 20;
-        }
-        doc.setFont("helvetica", "bold");
-        doc.text(`Q${index + 1}: ${item.q_text.substring(0, 75)}...`, 14, yPos);
-        yPos += 7;
-        doc.setFont("helvetica", "normal");
-        const lines = doc.splitTextToSize(`Spoken Answer: ${item.user_answer}`, 180);
-        doc.text(lines, 14, yPos);
-        yPos += (lines.length * 5) + 6;
-      });
-    }
+      doc.text(`Q${index + 1}: ${item.q_text ? item.q_text.substring(0, 75) : ""}...`, 14, yPos);
+      yPos += 6;
+      doc.setFont("helvetica", "normal");
+      doc.text(`Status: ${item.is_answered ? "Answered" : "Unanswered"} | Technical Score: ${item.technical_score || 0}%`, 14, yPos);
+      yPos += 6;
+      const lines = doc.splitTextToSize(`Candidate Answer: ${item.user_answer || "Not answered"}`, 180);
+      doc.text(lines, 14, yPos);
+      yPos += (lines.length * 5) + 6;
+    });
 
     doc.save(`SmartHire_AI_Report_${activeReport.category || "Candidate"}.pdf`);
   };
@@ -101,7 +99,7 @@ export default function InterviewReportPage({ reportData, finalReport, setActive
         </div>
       </div>
 
-      {/* OVERALL SCORE CARD */}
+      {/* OVERALL SCORE & SUMMARY CARDS */}
       <div className="grid grid-cols-1 md:grid-cols-12 gap-6">
         
         {/* OVERALL SCORE GAUGES (4 COLS) */}
@@ -123,7 +121,7 @@ export default function InterviewReportPage({ reportData, finalReport, setActive
             </svg>
             <div className="absolute text-center">
               <span className="text-3xl font-extrabold text-white font-mono">{overallScore}%</span>
-              <span className="block text-[10px] text-slate-400 uppercase font-mono">Overall Rating</span>
+              <span className="block text-[10px] text-slate-400 uppercase font-mono">Overall Score</span>
             </div>
           </div>
 
@@ -132,7 +130,7 @@ export default function InterviewReportPage({ reportData, finalReport, setActive
               {rating}
             </h3>
             <p className="text-xs text-slate-400 mt-1 font-mono">
-              Proctoring Status: <strong className={isMalpractice ? 'text-red-400' : 'text-emerald-400'}>{isMalpractice ? "MALPRACTICE DISQUALIFIED" : "VERIFIED & COMPLETED"}</strong>
+              Answered: <strong className="text-emerald-400">{answeredCount}</strong> | Unanswered: <strong className="text-amber-400">{unansweredCount}</strong>
             </p>
           </div>
         </div>
@@ -140,14 +138,14 @@ export default function InterviewReportPage({ reportData, finalReport, setActive
         {/* FACTOR RUBRIC BREAKDOWN (8 COLS) */}
         <div className="md:col-span-8 glass-card p-6 rounded-3xl border border-slate-800 space-y-4">
           <h2 className="text-sm font-bold text-white uppercase font-mono tracking-wider flex items-center gap-2">
-            <BarChart3 className="w-4 h-4 text-cyan-400" /> Interview Evaluation Metrics
+            <BarChart3 className="w-4 h-4 text-cyan-400" /> Evaluation Summary
           </h2>
 
           <div className="grid grid-cols-2 gap-4">
-            {/* Technical */}
+            {/* Technical Score */}
             <div className="p-3.5 rounded-2xl bg-slate-900/80 border border-slate-800 space-y-1">
               <div className="flex justify-between text-xs font-mono">
-                <span className="text-slate-400">Technical Accuracy</span>
+                <span className="text-slate-400">Technical Performance</span>
                 <span className="text-cyan-400 font-bold">{activeReport.technical_score !== undefined ? activeReport.technical_score : overallScore}%</span>
               </div>
               <div className="w-full bg-slate-950 h-2 rounded-full overflow-hidden">
@@ -155,10 +153,10 @@ export default function InterviewReportPage({ reportData, finalReport, setActive
               </div>
             </div>
 
-            {/* Communication */}
+            {/* Communication Score */}
             <div className="p-3.5 rounded-2xl bg-slate-900/80 border border-slate-800 space-y-1">
               <div className="flex justify-between text-xs font-mono">
-                <span className="text-slate-400">Communication</span>
+                <span className="text-slate-400">Communication & Clarity</span>
                 <span className="text-indigo-400 font-bold">{activeReport.communication_score !== undefined ? activeReport.communication_score : overallScore}%</span>
               </div>
               <div className="w-full bg-slate-950 h-2 rounded-full overflow-hidden">
@@ -166,11 +164,25 @@ export default function InterviewReportPage({ reportData, finalReport, setActive
               </div>
             </div>
 
-            {/* Camera Status */}
-            <div className="p-3.5 rounded-2xl bg-slate-900/80 border border-slate-800 space-y-1 col-span-2">
+            {/* Questions Answered Stats */}
+            <div className="p-3.5 rounded-2xl bg-slate-900/80 border border-slate-800 space-y-1">
               <div className="flex justify-between text-xs font-mono">
-                <span className="text-slate-400">Camera / Vision Telemetry:</span>
-                <span className="text-emerald-400 font-bold">{activeReport.camera_status || "Webcam Monitored"}</span>
+                <span className="text-slate-400">Questions Answered</span>
+                <span className="text-emerald-400 font-bold">{answeredCount} of {history.length || 5}</span>
+              </div>
+              <div className="w-full bg-slate-950 h-2 rounded-full overflow-hidden">
+                <div className="bg-emerald-400 h-full rounded-full" style={{ width: `${(answeredCount / max(history.length, 1)) * 100}%` }} />
+              </div>
+            </div>
+
+            {/* Questions Unanswered Stats */}
+            <div className="p-3.5 rounded-2xl bg-slate-900/80 border border-slate-800 space-y-1">
+              <div className="flex justify-between text-xs font-mono">
+                <span className="text-slate-400">Questions Unanswered</span>
+                <span className="text-amber-400 font-bold">{unansweredCount} of {history.length || 5}</span>
+              </div>
+              <div className="w-full bg-slate-950 h-2 rounded-full overflow-hidden">
+                <div className="bg-amber-400 h-full rounded-full" style={{ width: `${(unansweredCount / max(history.length, 1)) * 100}%` }} />
               </div>
             </div>
           </div>
@@ -181,15 +193,14 @@ export default function InterviewReportPage({ reportData, finalReport, setActive
       {/* STRENGTHS & WEAKNESSES Breakdown */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         
-        {/* Key Strengths */}
+        {/* Strong Areas */}
         <div className="glass-card p-6 rounded-3xl border border-slate-800 space-y-3">
           <h3 className="text-xs font-bold font-mono text-emerald-400 uppercase tracking-wider flex items-center gap-2">
-            <CheckCircle2 className="w-4 h-4" /> Candidate Strengths
+            <CheckCircle2 className="w-4 h-4" /> Strong Areas
           </h3>
           <ul className="text-xs text-slate-300 space-y-2 font-sans">
             {(activeReport.strengths && activeReport.strengths.length > 0 ? activeReport.strengths : [
-              `Completed proctored interview session in ${activeReport.category || "Software Engineering"}`,
-              `Engaged in technical Q&A session with Mira`
+              `Completed proctored technical interview session in ${activeReport.category || "Software Engineering"}`
             ]).map((str, idx) => (
               <li key={idx} className="flex items-start gap-2">
                 <span className="text-emerald-400 font-bold">•</span>
@@ -199,14 +210,14 @@ export default function InterviewReportPage({ reportData, finalReport, setActive
           </ul>
         </div>
 
-        {/* Improvement Areas */}
+        {/* Areas Needing Improvement */}
         <div className="glass-card p-6 rounded-3xl border border-slate-800 space-y-3">
           <h3 className="text-xs font-bold font-mono text-amber-400 uppercase tracking-wider flex items-center gap-2">
-            <AlertTriangle className="w-4 h-4" /> Recommended Improvements
+            <AlertTriangle className="w-4 h-4" /> Areas Needing Improvement
           </h3>
           <ul className="text-xs text-slate-300 space-y-2 font-sans">
             {(activeReport.improvement_tips && activeReport.improvement_tips.length > 0 ? activeReport.improvement_tips : [
-              `Practice detailing architectural trade-offs and code examples aloud`,
+              `Practice detailing architectural trade-offs and code examples out loud`,
               `Ensure all interview questions receive full verbal responses`
             ]).map((tip, idx) => (
               <li key={idx} className="flex items-start gap-2">
@@ -219,30 +230,79 @@ export default function InterviewReportPage({ reportData, finalReport, setActive
 
       </div>
 
-      {/* QUESTION BY QUESTION CANDIDATE ANSWER HISTORY */}
-      {activeReport.answers_history && activeReport.answers_history.length > 0 && (
-        <div className="glass-card p-6 rounded-3xl border border-slate-800 space-y-4">
+      {/* QUESTION-BY-QUESTION EVALUATION BREAKDOWN (REQUIREMENT #4) */}
+      {history.length > 0 && (
+        <div className="glass-card p-6 rounded-3xl border border-slate-800 space-y-6">
           <h2 className="text-sm font-bold text-white uppercase font-mono tracking-wider flex items-center gap-2">
-            <FileText className="w-4 h-4 text-cyan-400" /> Question Answer Log & History
+            <FileText className="w-4 h-4 text-cyan-400" /> Question-by-Question Evaluation Breakdown
           </h2>
 
-          <div className="space-y-4">
-            {activeReport.answers_history.map((ans, idx) => (
-              <div key={idx} className="p-4 rounded-2xl bg-slate-900/80 border border-slate-800 space-y-2 text-xs">
-                <div className="flex items-center justify-between text-indigo-400 font-mono font-bold">
-                  <span>Question {idx + 1} of {activeReport.answers_history.length}</span>
-                  <span className="text-emerald-400">Recorded</span>
+          <div className="space-y-6">
+            {history.map((item, idx) => {
+              const isAns = item.is_answered || (item.user_answer && item.user_answer !== "Not answered");
+              return (
+                <div key={idx} className="p-5 rounded-2xl bg-slate-900/90 border border-slate-800 space-y-3 text-xs">
+                  
+                  {/* Top Bar: Question # & Status Badge */}
+                  <div className="flex items-center justify-between">
+                    <span className="font-mono text-indigo-400 font-bold text-xs">
+                      Question {idx + 1} of {history.length} • Skill Assessed: <span className="text-cyan-400">{item.skill_focus || activeReport.category || "Technical"}</span>
+                    </span>
+
+                    <span className={`px-3 py-1 rounded-full text-[10px] font-mono font-bold flex items-center gap-1 ${
+                      isAns 
+                        ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/40' 
+                        : 'bg-amber-500/20 text-amber-400 border border-amber-500/40'
+                    }`}>
+                      {isAns ? <CheckCircle2 className="w-3 h-3" /> : <HelpCircle className="w-3 h-3" />}
+                      Status: {isAns ? "Answered" : "Unanswered"}
+                    </span>
+                  </div>
+
+                  {/* Question Text */}
+                  <p className="text-white font-semibold text-xs leading-relaxed">
+                    {item.q_text}
+                  </p>
+
+                  {/* Candidate Answer */}
+                  <div className="p-3.5 rounded-xl bg-slate-950 border border-slate-800/80 text-slate-300 font-sans italic">
+                    <span className="text-amber-400 font-mono not-italic font-bold block text-[11px] mb-1">Candidate Spoken Answer:</span>
+                    "{item.user_answer || "Not answered"}"
+                  </div>
+
+                  {/* Scores & Feedback */}
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-3 pt-2 border-t border-slate-800/60 font-mono text-[11px]">
+                    <div className="p-2.5 rounded-xl bg-slate-950 border border-slate-800">
+                      <span className="text-slate-400">Technical Score:</span>{' '}
+                      <strong className={isAns ? "text-cyan-400" : "text-slate-500"}>
+                        {isAns ? `${item.technical_score || 80}%` : "0% (Unanswered)"}
+                      </strong>
+                    </div>
+
+                    <div className="p-2.5 rounded-xl bg-slate-950 border border-slate-800">
+                      <span className="text-slate-400">Clarity Score:</span>{' '}
+                      <strong className={isAns ? "text-indigo-400" : "text-slate-500"}>
+                        {isAns ? `${item.clarity_score || 80}%` : "0% (Unanswered)"}
+                      </strong>
+                    </div>
+
+                    <div className="p-2.5 rounded-xl bg-slate-950 border border-slate-800 md:col-span-1">
+                      <span className="text-slate-400">Evaluation:</span>{' '}
+                      <span className="text-slate-300 italic">{item.feedback || (isAns ? "Evaluated" : "Question skipped")}</span>
+                    </div>
+                  </div>
+
                 </div>
-                <p className="text-white font-semibold">{ans.q_text}</p>
-                <div className="p-3 rounded-xl bg-slate-950 border border-slate-800/80 text-slate-300 italic">
-                  <strong>Candidate Spoken Answer:</strong> "{ans.user_answer}"
-                </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </div>
       )}
 
     </div>
   );
+}
+
+function max(a, b) {
+  return a > b ? a : b;
 }
