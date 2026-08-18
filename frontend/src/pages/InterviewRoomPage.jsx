@@ -37,17 +37,20 @@ export default function InterviewRoomPage({ sessionData, setActivePage, setFinal
   const [questionsList, setQuestionsList] = useState(backendQuestions || []);
   const currentQ = questionsList[currentIdx] || null;
 
-  // REAL-TIME CONTINUOUS CONVERSATION THREAD CHAT HISTORY
-  const [chatThread, setChatThread] = useState(
-    currentQ ? [
-      {
-        id: 1,
-        sender: `Mira (AI Interviewer)`,
-        text: currentQ.question_text || currentQ.q,
-        type: 'interviewer'
-      }
-    ] : []
-  );
+  // REAL-TIME CONVERSATION CHAT THREAD HISTORY
+  const [chatThread, setChatThread] = useState(() => {
+    if (backendQuestions && backendQuestions.length > 0) {
+      return [
+        {
+          id: `q-1-${Date.now()}`,
+          sender: `Mira (AI Interviewer)`,
+          text: backendQuestions[0].question_text || backendQuestions[0].q,
+          type: 'interviewer'
+        }
+      ];
+    }
+    return [];
+  });
 
   // Session Timer
   useEffect(() => {
@@ -55,7 +58,7 @@ export default function InterviewRoomPage({ sessionData, setActivePage, setFinal
     return () => clearInterval(timer);
   }, []);
 
-  // Auto-scroll chat thread to bottom
+  // Auto-scroll chat thread to bottom whenever messages or typing change
   useEffect(() => {
     if (chatScrollRef.current) {
       chatScrollRef.current.scrollTop = chatScrollRef.current.scrollHeight;
@@ -135,14 +138,15 @@ export default function InterviewRoomPage({ sessionData, setActivePage, setFinal
     );
   };
 
+  // Speak opening question on mount
   useEffect(() => {
-    if (currentQ) {
+    if (backendQuestions && backendQuestions.length > 0 && currentIdx === 0) {
       const timeout = setTimeout(() => {
-        speakCurrentQuestion(currentQ.question_text || currentQ.q);
-      }, 400);
+        speakCurrentQuestion(backendQuestions[0].question_text || backendQuestions[0].q);
+      }, 500);
       return () => clearTimeout(timeout);
     }
-  }, [currentIdx]);
+  }, []);
 
   // Speech Recognition Handling
   const startMicRecording = async () => {
@@ -213,7 +217,7 @@ export default function InterviewRoomPage({ sessionData, setActivePage, setFinal
 
   // REAL-TIME SUBMIT / UNANSWERED QUESTION HANDLER
   const handleNextQuestion = async () => {
-    if (!currentQ) return;
+    if (!currentQ || submitting) return;
 
     miraAgent.stopSpeaking();
     stopMicRecording();
@@ -223,17 +227,18 @@ export default function InterviewRoomPage({ sessionData, setActivePage, setFinal
     const isAnswered = rawInput.length > 0;
     const finalCandidateAnswer = isAnswered ? rawInput : "Not answered";
 
-    // Append Candidate Answer Bubble (YOU) to Chat Thread
+    // 1. IMMEDIATELY APPEND CANDIDATE BUBBLE ("YOU") TO CHAT THREAD
     const candidateBubble = {
-      id: Date.now(),
+      id: `cand-${Date.now()}`,
       sender: 'YOU',
       text: finalCandidateAnswer,
       type: 'candidate'
     };
 
     setChatThread(prev => [...prev, candidateBubble]);
+    setCandidateAnswer('');
 
-    // Submit answer or unanswered status to backend
+    // 2. Submit answer or unanswered status to backend
     const backendRes = await submitQuestionAnswer({
       session_id: sessionData?.session_id || 1,
       question_index: currentIdx + 1,
@@ -269,16 +274,13 @@ export default function InterviewRoomPage({ sessionData, setActivePage, setFinal
 
     const updatedAnswers = [...candidateAnswersList, answerEntry];
     setCandidateAnswersList(updatedAnswers);
-    setCandidateAnswer('');
 
     const maxQuestions = 5;
     const previousQuestionsAsked = updatedAnswers.map(a => a.q_text);
 
     if (currentIdx < maxQuestions - 1) {
-      let nextQObj = null;
-
-      // Fetch dynamic adaptive next question from backend
-      nextQObj = await fetchNextAdaptiveQuestion({
+      // 3. FETCH DYNAMIC NEXT QUESTION FROM GROQ LLM BACKEND
+      const nextQObj = await fetchNextAdaptiveQuestion({
         domain: activeDomain,
         difficulty: activeDifficulty,
         skills: sessionData?.skills || [],
@@ -292,34 +294,29 @@ export default function InterviewRoomPage({ sessionData, setActivePage, setFinal
           copy[currentIdx + 1] = nextQObj;
           return copy;
         });
-      }
 
-      const upcomingQ = nextQObj || questionsList[currentIdx + 1];
-
-      if (upcomingQ) {
+        // 4. FORMULATE & APPEND MIRA'S NEXT QUESTION BUBBLE
         const nextInterviewerText = isAnswered 
-          ? miraAgent.generateAdaptivePrompt(finalCandidateAnswer, upcomingQ)
-          : `Okay, let's move on to the next question. ${upcomingQ.question_text}`;
+          ? miraAgent.generateAdaptivePrompt(finalCandidateAnswer, nextQObj)
+          : `Okay, let's move on to the next question. ${nextQObj.question_text}`;
 
-        setTimeout(() => {
-          const interviewerBubble = {
-            id: Date.now() + 1,
-            sender: `Mira (AI Interviewer)`,
-            text: nextInterviewerText,
-            type: 'interviewer'
-          };
-          setChatThread(prev => [...prev, interviewerBubble]);
-          speakCurrentQuestion(nextInterviewerText);
-        }, 400);
+        const interviewerBubble = {
+          id: `mira-${Date.now()}`,
+          sender: `Mira (AI Interviewer)`,
+          text: nextInterviewerText,
+          type: 'interviewer'
+        };
 
+        setChatThread(prev => [...prev, interviewerBubble]);
         setCurrentIdx(prev => prev + 1);
+        speakCurrentQuestion(nextInterviewerText);
         setSubmitting(false);
       } else {
         setSubmitting(false);
         alert("Unable to generate the next question. Please try again.");
       }
     } else {
-      // Finalize session
+      // Finalize session at question 5 completion
       const report = await finishInterviewSession(sessionData?.session_id || 1);
       const answeredList = updatedAnswers.filter(a => a.is_answered);
       const unansweredCount = updatedAnswers.length - answeredList.length;

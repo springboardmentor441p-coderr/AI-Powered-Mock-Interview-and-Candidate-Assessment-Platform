@@ -49,29 +49,31 @@ class MiraAgent {
    * Generate an adaptive follow-up prompt based on candidate's response.
    */
   generateAdaptivePrompt(spokenText, nextQuestionObj) {
-    if (!spokenText || spokenText.trim().length === 0) {
-      return `Okay, I will continue with the next question! ${nextQuestionObj.question_text}`;
+    const qText = nextQuestionObj?.question_text || nextQuestionObj?.q || "";
+
+    if (!spokenText || spokenText.trim().length === 0 || spokenText.trim() === "Not answered") {
+      return `Okay, let's move on to the next question. ${qText}`;
     }
 
     const lower = spokenText.toLowerCase();
 
     if (lower.includes("ai") || lower.includes("machine learning") || lower.includes("ml") || lower.includes("data science")) {
-      return `Great to hear about your experience in AI and Machine Learning! Building on what you just shared: ${nextQuestionObj.question_text}`;
+      return `Great to hear about your experience in AI and Machine Learning! Building on what you just shared: ${qText}`;
     }
     
     if (lower.includes("python") || lower.includes("script") || lower.includes("code")) {
-      return `Nice! Since you mentioned your background writing Python code, let's explore this next topic: ${nextQuestionObj.question_text}`;
+      return `Nice! Since you mentioned your background writing Python code, let's explore this next topic: ${qText}`;
     }
 
     if (lower.includes("web") || lower.includes("api") || lower.includes("backend") || lower.includes("fastapi")) {
-      return `Awesome! Given your experience building backend web applications and APIs: ${nextQuestionObj.question_text}`;
+      return `Awesome! Given your experience building backend web applications and APIs: ${qText}`;
     }
 
     if (lower.includes("list") || lower.includes("tuple") || lower.includes("dictionary") || lower.includes("array")) {
-      return `That's a very clear explanation of core concepts! Following up on what you just mentioned: ${nextQuestionObj.question_text}`;
+      return `That's a very clear explanation of core concepts! Following up on what you just mentioned: ${qText}`;
     }
 
-    return `Thank you for that response! Building on your answer: ${nextQuestionObj.question_text}`;
+    return `Thank you for that response! Building on your answer: ${qText}`;
   }
 
   /**
