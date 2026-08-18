@@ -827,7 +827,13 @@ export const InterviewRoom = () => {
     // 8. CANDIDATE VERBAL ANSWER (Record response silently without repeating candidate's answer or speaking filler)
     const wordCount = rawText.split(/\s+/).length;
     if (wordCount >= 3) {
-      setCandidateAnswers(prev => ({ ...prev, [qIndex]: rawText }));
+      setCandidateAnswers(prev => {
+        const nextAns = { ...prev, [qIndex]: rawText };
+        try {
+          localStorage.setItem('smarthire_session_qa', JSON.stringify({ questions, candidateAnswers: nextAns }));
+        } catch (e) {}
+        return nextAns;
+      });
     }
   };
 
