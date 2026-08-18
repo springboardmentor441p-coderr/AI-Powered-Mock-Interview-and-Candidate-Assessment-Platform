@@ -138,7 +138,11 @@ class InterviewQuestion(Base):
     session_id = Column(Integer, ForeignKey("interview_sessions.id"), nullable=False)
     question_order = Column(Integer, default=1)
     category = Column(String(50), default="Technical") # Resume Skills, Projects, Experience, JD Skills, Missing Skills
+    question_type = Column(String(50), default="Technical") # Introduction, Technical, Behavioral, Scenario
+    difficulty = Column(String(50), default="Medium") # Easy, Medium, Hard
+    topic = Column(String(255), default="General")
     question_text = Column(Text, nullable=False)
+    expected_skills = Column(JSON, default=list)
     expected_answer_keypoints = Column(JSON, default=list)
 
     session = relationship("InterviewSession", back_populates="questions")
@@ -154,6 +158,13 @@ class InterviewAnswer(Base):
     candidate_audio_transcript = Column(Text, nullable=False)
     ideal_response_suggestion = Column(Text, nullable=True)
     score = Column(Float, default=8.5)
+    technical_accuracy = Column(Float, default=8.0)
+    relevance = Column(Float, default=8.0)
+    clarity = Column(Float, default=8.0)
+    depth = Column(Float, default=8.0)
+    confidence = Column(Float, default=8.0)
+    answer_duration_seconds = Column(Integer, default=0)
+    structured_evidence = Column(JSON, default=dict)
     feedback = Column(Text, nullable=True)
 
     session = relationship("InterviewSession", back_populates="answers")
@@ -183,9 +194,13 @@ class Score(Base):
     confidence = Column(Float, default=86.0)
     professionalism = Column(Float, default=92.0)
     problem_solving = Column(Float, default=88.0)
+    resume_knowledge = Column(Float, default=85.0)
+    jd_capability = Column(Float, default=85.0)
+    behavioral_score = Column(Float, default=85.0)
     eye_contact = Column(Float, default=89.0)
     emotion_control = Column(Float, default=87.0)
     voice_quality = Column(Float, default=84.0)
+    proctoring_metrics = Column(JSON, default=dict)
 
     session = relationship("InterviewSession", back_populates="score")
 
@@ -201,6 +216,13 @@ class Report(Base):
     strengths = Column(JSON, default=list)
     weaknesses = Column(JSON, default=list)
     recommendations = Column(JSON, default=list)
+    technical_skills_assessment = Column(JSON, default=dict)
+    resume_validation = Column(JSON, default=list)
+    jd_capabilities_assessment = Column(JSON, default=list)
+    behavioral_assessment = Column(JSON, default=dict)
+    communication_assessment = Column(JSON, default=dict)
+    question_reviews = Column(JSON, default=list)
+    interview_integrity = Column(JSON, default=dict)
     generated_at = Column(DateTime, default=datetime.datetime.utcnow)
 
     user = relationship("User", back_populates="reports")

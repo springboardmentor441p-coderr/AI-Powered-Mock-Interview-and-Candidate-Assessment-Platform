@@ -1,12 +1,8 @@
 from app.database import engine, Base
-from sqlalchemy import text
+import app.models.models # ensure models are registered
 
-with engine.connect() as conn:
-    conn.execute(text("DELETE FROM interview_answers;"))
-    conn.execute(text("DELETE FROM interview_questions;"))
-    conn.execute(text("DELETE FROM transcripts;"))
-    conn.execute(text("DELETE FROM scores;"))
-    conn.execute(text("DELETE FROM reports;"))
-    conn.execute(text("DELETE FROM interview_sessions;"))
-    conn.commit()
-print("Database cleared cleanly!")
+print("Dropping all existing database tables...")
+Base.metadata.drop_all(bind=engine)
+print("Creating all database tables with latest models schema...")
+Base.metadata.create_all(bind=engine)
+print("Database schema successfully recreated!")

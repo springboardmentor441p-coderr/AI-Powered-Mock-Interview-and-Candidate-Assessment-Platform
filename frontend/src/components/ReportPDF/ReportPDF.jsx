@@ -16,7 +16,7 @@ export const ReportPDF = ({ data }) => {
       const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
 
       pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight);
-      pdf.save(`SmartHire_AI_Candidate_Report_${data.candidateName.replace(' ', '_')}.pdf`);
+      pdf.save(`SmartHire_AI_Candidate_Report_${(data.candidateName || 'Candidate').replace(/\s+/g, '_')}.pdf`);
     } catch (err) {
       console.error('PDF generation error', err);
     }
@@ -113,7 +113,7 @@ export const ReportPDF = ({ data }) => {
               <CheckCircle className="w-4 h-4" /> Top Strengths Highlighted
             </h3>
             <ul className="space-y-1.5 text-xs text-slate-300">
-              {(data.strengths || [
+              {(data.strengths && data.strengths.length > 0 ? data.strengths : [
                 'Extremely clear explanation of async state synchronization',
                 'Consistent front camera eye-contact (>87%)',
                 'Strong algorithmic foundation & O(N) array optimization'
@@ -130,7 +130,7 @@ export const ReportPDF = ({ data }) => {
               <Sparkles className="w-4 h-4" /> Recommended Skill Enhancements
             </h3>
             <ul className="space-y-1.5 text-xs text-slate-300">
-              {(data.suggestions || [
+              {(data.suggestions && data.suggestions.length > 0 ? data.suggestions : [
                 'Practice 5-second pause technique prior to delivering architecture responses',
                 'Review Kafka consumer group partition balancing for missing JD skill area'
               ]).map((s, i) => (
@@ -143,7 +143,7 @@ export const ReportPDF = ({ data }) => {
         </div>
 
         {/* Full Question-wise Transcript & Feedback Breakdown */}
-        {data.questionPerformance && data.questionPerformance.length > 0 && (
+        {Array.isArray(data.questionPerformance) && data.questionPerformance.length > 0 && (
           <div className="space-y-3">
             <h2 className="text-xs font-bold text-slate-300 uppercase tracking-wider font-mono">
               Complete Question & Verbal Response Transcript
@@ -152,25 +152,27 @@ export const ReportPDF = ({ data }) => {
               {data.questionPerformance.map((q, idx) => (
                 <div key={idx} className="bg-slate-900/80 p-3.5 rounded-xl border border-slate-800 text-xs space-y-2">
                   <div className="flex items-center justify-between font-mono pb-1 border-b border-slate-800">
-                    <span className="font-bold text-cyan-300">Q{q.qNum || idx + 1}: {q.topic || 'General Topic'}</span>
+                    <span className="font-bold text-cyan-300">Q{q.q_num || q.qNum || idx + 1}: {q.topic || 'General Topic'}</span>
                     <span className="text-emerald-400 font-bold">{q.score || '8/10'}</span>
                   </div>
-                  {q.questionText && (
+                  {(q.question_text || q.questionText) && (
                     <p className="text-slate-200 text-[11px]">
-                      <strong className="text-cyan-400">Question: </strong>{q.questionText}
+                      <strong className="text-cyan-400">Question: </strong>{q.question_text || q.questionText}
                     </p>
                   )}
                   <p className="text-slate-300 italic text-[11px]">
-                    <strong className="text-purple-400">Candidate Answer: </strong>"{q.answerText || 'No verbal response recorded.'}"
+                    <strong className="text-purple-400">Candidate Answer: </strong>"{q.candidate_answer || q.answerText || 'No verbal response recorded.'}"
                   </p>
-                  {q.expectedPoints && (
+                  {(q.expectedPoints || q.expected_points) && (
                     <p className="text-slate-400 text-[10px] font-mono">
-                      <strong className="text-amber-400">Key Criteria: </strong>{Array.isArray(q.expectedPoints) ? q.expectedPoints.join(', ') : q.expectedPoints}
+                      <strong className="text-amber-400">Key Criteria: </strong>{Array.isArray(q.expectedPoints || q.expected_points) ? (q.expectedPoints || q.expected_points).join(', ') : (q.expectedPoints || q.expected_points)}
                     </p>
                   )}
-                  <p className="text-slate-400 text-[11px]">
-                    <strong className="text-slate-300">AI Feedback: </strong>{q.feedback}
-                  </p>
+                  {q.feedback && (
+                    <p className="text-slate-400 text-[11px]">
+                      <strong className="text-slate-300">AI Feedback: </strong>{q.feedback}
+                    </p>
+                  )}
                 </div>
               ))}
             </div>

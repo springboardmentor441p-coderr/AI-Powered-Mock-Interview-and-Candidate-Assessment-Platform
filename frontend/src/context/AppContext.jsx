@@ -30,6 +30,7 @@ export const AppProvider = ({ children }) => {
     title: '',
     company: '',
     rawText: '',
+    skills: [],
     requiredSkills: [],
     responsibilities: [],
     experienceLevel: '',

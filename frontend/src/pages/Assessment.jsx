@@ -148,7 +148,7 @@ export const Assessment = () => {
                 <span>Extracted Skill Matrix:</span>
               </div>
               <div className="flex flex-wrap gap-1.5">
-                {jdData.skills.map((s, idx) => (
+                {(jdData?.skills || jdData?.requiredSkills || []).map((s, idx) => (
                   <span key={idx} className="bg-purple-950 text-purple-300 border border-purple-500/30 text-[10px] font-mono px-2.5 py-0.5 rounded-full">
                     {s}
                   </span>

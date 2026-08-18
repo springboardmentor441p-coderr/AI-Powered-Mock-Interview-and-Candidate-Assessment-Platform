@@ -109,6 +109,15 @@ class InterviewResultOut(BaseModel):
     weaknesses: List[str]
     suggestions: List[str]
 
+class EvaluateSingleAnswerRequest(BaseModel):
+    session_id: Optional[int] = None
+    question_text: str
+    expected_skills: Optional[List[str]] = []
+    question_type: Optional[str] = "Technical"
+    candidate_answer: str
+    resume_context: Optional[str] = ""
+    jd_context: Optional[str] = ""
+
 class SaveInterviewRequest(BaseModel):
     user_id: Optional[int] = 1
     title: str
@@ -119,4 +128,5 @@ class SaveInterviewRequest(BaseModel):
     answers: List[Dict[str, Any]]
     score: Dict[str, float]
     proctor_strikes: Optional[int] = 0
+    proctoring_metrics: Optional[Dict[str, Any]] = None
     termination_reason: Optional[str] = None
