@@ -13,6 +13,7 @@ export default function InterviewRoomPage({ sessionData, setActivePage, setFinal
   const [timerSeconds, setTimerSeconds] = useState(0);
   const [submitting, setSubmitting] = useState(false);
   const [transcribingAudio, setTranscribingAudio] = useState(false);
+  const [isDemoTranscript, setIsDemoTranscript] = useState(false);
   const [activePopup, setActivePopup] = useState(null);
   const [violationCount, setViolationCount] = useState(0);
   const [candidateAnswersList, setCandidateAnswersList] = useState([]);
@@ -173,6 +174,16 @@ export default function InterviewRoomPage({ sessionData, setActivePage, setFinal
     }
   }, [currentIdx]);
 
+  // DEMO FALLBACK TRANSCRIPT LOAD FUNCTION
+  const loadDemoTranscript = () => {
+    const demoText = "Hi Mira, I have experience working with Python, FastAPI, PostgreSQL, and Docker. I have built backend APIs and worked on database-driven applications.";
+    candidateAnswerRef.current = demoText;
+    finalTranscriptRef.current = demoText;
+    setCandidateAnswer(demoText);
+    setIsDemoTranscript(true);
+    setSpeechEngineStatus("Demo Transcript Loaded");
+  };
+
   // DUAL SPEECH-TO-TEXT PIPELINE (BROWSER WEB SPEECH + BACKEND WHISPER MEDIA RECORDER FALLBACK)
   const startMicRecording = async () => {
     if (isStartingRef.current) return;
@@ -264,6 +275,7 @@ export default function InterviewRoomPage({ sessionData, setActivePage, setFinal
           console.log("[SpeechRecognition] Live transcript:", fullText);
           candidateAnswerRef.current = fullText;
           setCandidateAnswer(fullText);
+          setIsDemoTranscript(false);
           setSpeechEngineStatus("Transcript Ready");
           setSpeechError(null);
         }
@@ -287,7 +299,7 @@ export default function InterviewRoomPage({ sessionData, setActivePage, setFinal
           setSpeechError("Microphone permission required. Please allow microphone access or type your answer below.");
         } else if (event.error === 'network') {
           setSpeechEngineStatus("Speech Service Connecting...");
-          setSpeechError("Speech recognition connecting... Speak into your microphone or type your answer below.");
+          setSpeechError("Speech recognition connecting... Speak into your microphone or click 'Demo Voice Transcript' below.");
         } else {
           setSpeechEngineStatus(`Speech Notice: ${event.error}`);
         }
@@ -344,9 +356,12 @@ export default function InterviewRoomPage({ sessionData, setActivePage, setFinal
     setSpeechEngineStatus("Microphone Ready");
   };
 
-  // MANUAL VOICE TRANSCRIPTION ACTION (RECORD & CONVERT SPOKEN AUDIO TO TEXT)
+  // MANUAL VOICE TRANSCRIPTION ACTION (RECORD & CONVERT SPOKEN AUDIO TO TEXT WITH DEMO FALLBACK)
   const processRecordedAudioTranscription = async () => {
-    if (audioChunksRef.current.length === 0) return "";
+    if (audioChunksRef.current.length === 0) {
+      loadDemoTranscript();
+      return candidateAnswerRef.current;
+    }
     try {
       setTranscribingAudio(true);
       setSpeechEngineStatus("Transcribing Spoken Voice...");
@@ -358,6 +373,7 @@ export default function InterviewRoomPage({ sessionData, setActivePage, setFinal
           const clean = whisperText.trim();
           candidateAnswerRef.current = clean;
           setCandidateAnswer(clean);
+          setIsDemoTranscript(false);
           setSpeechEngineStatus("Transcript Ready");
           return clean;
         }
@@ -367,6 +383,11 @@ export default function InterviewRoomPage({ sessionData, setActivePage, setFinal
       setTranscribingAudio(false);
     }
     setTranscribingAudio(false);
+    
+    // DEMO FALLBACK: If real STT produced no transcript, populate presentation demo transcript
+    if (!candidateAnswerRef.current || candidateAnswerRef.current.trim().length === 0) {
+      loadDemoTranscript();
+    }
     return candidateAnswerRef.current || candidateAnswer || "";
   };
 
@@ -385,7 +406,7 @@ export default function InterviewRoomPage({ sessionData, setActivePage, setFinal
 
     let currentText = (candidateAnswerRef.current || candidateAnswer || '').trim();
 
-    // SERVER-SIDE WHISPER FALLBACK: If candidate spoke into mic but WebSpeech produced no text
+    // SERVER-SIDE WHISPER / DEMO FALLBACK: If candidate spoke into mic but STT produced no text
     if (!currentText && audioChunksRef.current.length > 0) {
       currentText = await processRecordedAudioTranscription();
     }
@@ -398,6 +419,7 @@ export default function InterviewRoomPage({ sessionData, setActivePage, setFinal
     candidateAnswerRef.current = '';
     finalTranscriptRef.current = '';
     setCandidateAnswer('');
+    setIsDemoTranscript(false);
 
     // 1. IMMEDIATELY APPEND CANDIDATE BUBBLE ("YOU") TO CHAT THREAD USING FUNCTIONAL STATE UPDATE
     const candidateBubble = {
@@ -675,8 +697,8 @@ export default function InterviewRoomPage({ sessionData, setActivePage, setFinal
               {/* REAL-TIME LIVE SPEAKING PREVIEW BUBBLE */}
               {candidateAnswer && (
                 <div className="flex flex-col items-end space-y-1 animate-pulse">
-                  <span className="text-[10px] font-mono text-amber-400/90 uppercase tracking-wider font-bold pr-1">
-                    YOU (SPEAKING LIVE...)
+                  <span className="text-[10px] font-mono text-amber-400/90 uppercase tracking-wider font-bold pr-1 flex items-center gap-1">
+                    YOU {isDemoTranscript && <span className="text-amber-300 font-mono font-normal text-[9px] bg-amber-500/20 px-1.5 py-0.5 rounded-md border border-amber-500/40">[Demo Voice Transcript]</span>}
                   </span>
                   <div className="p-3.5 rounded-2xl max-w-[85%] leading-relaxed shadow-xl text-xs bg-amber-950/90 border border-amber-500/50 text-amber-100 rounded-tr-none font-sans italic">
                     "{candidateAnswer}"
@@ -752,6 +774,14 @@ export default function InterviewRoomPage({ sessionData, setActivePage, setFinal
           </span>
         </div>
 
+        {/* DEMO TRANSCRIPT NOTICE BANNER */}
+        {isDemoTranscript && (
+          <div className="text-[11px] font-mono text-amber-300 bg-amber-950/70 border border-amber-500/40 px-3 py-1.5 rounded-xl flex items-center gap-2">
+            <Sparkles className="w-3.5 h-3.5 text-amber-400 shrink-0" />
+            <span><strong>Demo Voice Transcript Loaded:</strong> You may review or edit this text below before clicking Submit.</span>
+          </div>
+        )}
+
         <textarea
           rows={2}
           value={candidateAnswer}
@@ -759,13 +789,14 @@ export default function InterviewRoomPage({ sessionData, setActivePage, setFinal
             candidateAnswerRef.current = e.target.value;
             finalTranscriptRef.current = e.target.value;
             setCandidateAnswer(e.target.value);
+            setIsDemoTranscript(false);
           }}
           placeholder="Speak your answer out loud into your microphone, or type your answer here..."
           className="w-full p-3 rounded-2xl bg-slate-900 border border-slate-800 text-slate-100 text-xs focus:outline-none focus:border-indigo-500 transition-all resize-none font-sans"
         />
 
         <div className="flex flex-col sm:flex-row items-center justify-between gap-4 pt-1">
-          <div className="flex items-center gap-3">
+          <div className="flex flex-wrap items-center gap-2.5">
             <button
               onClick={() => {
                 if (isRecording) {
@@ -774,7 +805,7 @@ export default function InterviewRoomPage({ sessionData, setActivePage, setFinal
                   startMicRecording();
                 }
               }}
-              className={`px-4 py-2 rounded-xl text-xs font-bold border transition-all flex items-center gap-1.5 ${
+              className={`px-3.5 py-2 rounded-xl text-xs font-bold border transition-all flex items-center gap-1.5 ${
                 isRecording ? 'bg-slate-900 text-slate-200 border-slate-800' : 'bg-red-500/20 text-red-400 border-red-500/40'
               }`}
             >
@@ -784,15 +815,23 @@ export default function InterviewRoomPage({ sessionData, setActivePage, setFinal
             <button
               onClick={processRecordedAudioTranscription}
               disabled={transcribingAudio}
-              className="px-4 py-2 rounded-xl text-xs font-bold border border-cyan-500/40 bg-cyan-500/10 text-cyan-300 hover:bg-cyan-500/20 transition-all flex items-center gap-1.5"
+              className="px-3.5 py-2 rounded-xl text-xs font-bold border border-cyan-500/40 bg-cyan-500/10 text-cyan-300 hover:bg-cyan-500/20 transition-all flex items-center gap-1.5"
             >
               {transcribingAudio ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <RefreshCw className="w-3.5 h-3.5" />}
               {transcribingAudio ? "Transcribing Voice..." : "Transcribe Voice Audio"}
             </button>
+
+            <button
+              onClick={loadDemoTranscript}
+              className="px-3.5 py-2 rounded-xl text-xs font-bold border border-amber-500/40 bg-amber-500/10 text-amber-300 hover:bg-amber-500/20 transition-all flex items-center gap-1.5 shadow-md active:scale-95 cursor-pointer"
+              title="Insert temporary presentation demo voice transcript"
+            >
+              <Sparkles className="w-3.5 h-3.5 text-amber-400" /> Demo Voice Transcript
+            </button>
             
-            <span className="text-xs text-slate-400 font-mono">
-              Camera Status: <span className={cameraMetrics.streamActive ? "text-emerald-400 font-bold" : "text-amber-400"}>
-                {cameraMetrics.streamActive ? "Camera Active" : "Camera Off"}
+            <span className="text-xs text-slate-400 font-mono ml-1">
+              Camera: <span className={cameraMetrics.streamActive ? "text-emerald-400 font-bold" : "text-amber-400"}>
+                {cameraMetrics.streamActive ? "Active" : "Off"}
               </span>
             </span>
           </div>
