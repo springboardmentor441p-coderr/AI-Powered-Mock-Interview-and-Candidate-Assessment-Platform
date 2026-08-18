@@ -57,23 +57,27 @@ class MiraAgent {
 
     const lower = spokenText.toLowerCase();
 
+    if (lower.includes("introduce") || lower.includes("experience") || lower.includes("background") || lower.includes("engineer") || lower.includes("developer") || lower.includes("working")) {
+      return `Thank you for introducing yourself! Building on your background and experience, let's start with our first technical discussion: ${qText}`;
+    }
+
     if (lower.includes("ai") || lower.includes("machine learning") || lower.includes("ml") || lower.includes("data science")) {
       return `Great to hear about your experience in AI and Machine Learning! Building on what you just shared: ${qText}`;
     }
     
     if (lower.includes("python") || lower.includes("script") || lower.includes("code")) {
-      return `Nice! Since you mentioned your background writing Python code, let's explore this next topic: ${qText}`;
+      return `Nice! Since you mentioned your background writing Python code, let me ask: ${qText}`;
     }
 
     if (lower.includes("web") || lower.includes("api") || lower.includes("backend") || lower.includes("fastapi")) {
       return `Awesome! Given your experience building backend web applications and APIs: ${qText}`;
     }
 
-    if (lower.includes("list") || lower.includes("tuple") || lower.includes("dictionary") || lower.includes("array")) {
-      return `That's a very clear explanation of core concepts! Following up on what you just mentioned: ${qText}`;
+    if (lower.includes("database") || lower.includes("sql") || lower.includes("postgres") || lower.includes("queries")) {
+      return `That's very relevant experience with databases! Following up on what you mentioned: ${qText}`;
     }
 
-    return `Thank you for that response! Building on your answer: ${qText}`;
+    return `Thank you for sharing that! Building on your answer: ${qText}`;
   }
 
   /**
