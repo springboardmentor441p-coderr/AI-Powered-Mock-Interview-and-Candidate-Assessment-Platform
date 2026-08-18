@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Video, Mic, MicOff, Volume2, Clock, ArrowRight, CheckCircle2, AlertCircle, RefreshCw, Send, Sparkles, VolumeX, Bot, User, MessageSquare, PhoneOff, Bell, AlertTriangle, ShieldAlert } from 'lucide-react';
+import { Video, Mic, MicOff, Volume2, Clock, ArrowRight, CheckCircle2, AlertCircle, RefreshCw, Send, Sparkles, VolumeX, Bot, User, MessageSquare, PhoneOff, Bell, AlertTriangle, ShieldAlert, XCircle } from 'lucide-react';
 import WebcamMonitor from '../components/WebcamMonitor';
 import AudioWaveform from '../components/AudioWaveform';
 import { submitQuestionAnswer, finishInterviewSession, fetchNextAdaptiveQuestion } from '../services/api';
@@ -18,7 +18,7 @@ export default function InterviewRoomPage({ sessionData, setActivePage, setFinal
   const [speechError, setSpeechError] = useState(null);
   const chatScrollRef = useRef(null);
 
-  // Truthful camera status metrics (No fake random numbers)
+  // Truthful camera status metrics
   const [cameraMetrics, setCameraMetrics] = useState({
     streamActive: false,
     faceDetected: "Initializing...",
@@ -30,28 +30,24 @@ export default function InterviewRoomPage({ sessionData, setActivePage, setFinal
   const activeDomain = sessionData?.domain || sessionData?.category || "Python Developer";
   const activeDifficulty = sessionData?.difficulty || "Medium";
 
-  // Initial Question Set
-  const initialQuestions = (sessionData?.questions && sessionData.questions.length > 0) ? sessionData.questions : [
-    {
-      id: 1,
-      question_number: "Question 1 of 5",
-      question_text: `Hello! My name is ${miraAgent.name}. Welcome to your ${activeDomain} interview (${activeDifficulty} level). To begin, could you briefly introduce yourself and share your experience with ${activeDomain}?`,
-      sample_answer: "I am a software engineer experienced with web applications, APIs, and databases."
-    }
-  ];
+  // Check if dynamic Groq questions were returned from backend
+  const backendQuestions = sessionData?.questions && Array.isArray(sessionData.questions) && sessionData.questions.length > 0 ? sessionData.questions : null;
+  const hasGenerationError = sessionData?.error || !backendQuestions;
 
-  const [questionsList, setQuestionsList] = useState(initialQuestions);
-  const currentQ = questionsList[currentIdx] || questionsList[0];
+  const [questionsList, setQuestionsList] = useState(backendQuestions || []);
+  const currentQ = questionsList[currentIdx] || null;
 
-  // REAL-TIME CONTINUOUS CONVERSATION CHAT THREAD
-  const [chatThread, setChatThread] = useState([
-    {
-      id: 1,
-      sender: `Mira (AI Interviewer)`,
-      text: currentQ.question_text || currentQ.q || `Welcome to your ${activeDomain} interview.`,
-      type: 'interviewer'
-    }
-  ]);
+  // REAL-TIME CONTINUOUS CONVERSATION THREAD CHAT HISTORY
+  const [chatThread, setChatThread] = useState(
+    currentQ ? [
+      {
+        id: 1,
+        sender: `Mira (AI Interviewer)`,
+        text: currentQ.question_text || currentQ.q,
+        type: 'interviewer'
+      }
+    ] : []
+  );
 
   // Session Timer
   useEffect(() => {
@@ -125,9 +121,9 @@ export default function InterviewRoomPage({ sessionData, setActivePage, setFinal
 
   // Speech synthesis via miraAgent
   const speakCurrentQuestion = (textToSpeak) => {
-    const promptText = textToSpeak || currentQ.question_text || currentQ.q;
+    if (!textToSpeak) return;
     miraAgent.speak(
-      promptText,
+      textToSpeak,
       () => {
         setIsSpeaking(true);
         stopMicRecording();
@@ -140,10 +136,12 @@ export default function InterviewRoomPage({ sessionData, setActivePage, setFinal
   };
 
   useEffect(() => {
-    const timeout = setTimeout(() => {
-      speakCurrentQuestion(currentQ.question_text || currentQ.q);
-    }, 400);
-    return () => clearTimeout(timeout);
+    if (currentQ) {
+      const timeout = setTimeout(() => {
+        speakCurrentQuestion(currentQ.question_text || currentQ.q);
+      }, 400);
+      return () => clearTimeout(timeout);
+    }
   }, [currentIdx]);
 
   // Speech Recognition Handling
@@ -215,6 +213,8 @@ export default function InterviewRoomPage({ sessionData, setActivePage, setFinal
 
   // REAL-TIME SUBMIT / UNANSWERED QUESTION HANDLER
   const handleNextQuestion = async () => {
+    if (!currentQ) return;
+
     miraAgent.stopSpeaking();
     stopMicRecording();
     setSubmitting(true);
@@ -277,16 +277,14 @@ export default function InterviewRoomPage({ sessionData, setActivePage, setFinal
     if (currentIdx < maxQuestions - 1) {
       let nextQObj = null;
 
-      // Fetch dynamic adaptive next question from backend
-      if (isAnswered) {
-        nextQObj = await fetchNextAdaptiveQuestion({
-          domain: activeDomain,
-          difficulty: activeDifficulty,
-          skills: sessionData?.skills || [],
-          previous_questions: previousQuestionsAsked,
-          candidate_answer: finalCandidateAnswer
-        });
-      }
+      // Fetch dynamic adaptive next question from backend Groq LLM
+      nextQObj = await fetchNextAdaptiveQuestion({
+        domain: activeDomain,
+        difficulty: activeDifficulty,
+        skills: sessionData?.skills || [],
+        previous_questions: previousQuestionsAsked,
+        candidate_answer: isAnswered ? finalCandidateAnswer : ""
+      });
 
       if (nextQObj && nextQObj.question_text) {
         setQuestionsList(prev => {
@@ -294,36 +292,33 @@ export default function InterviewRoomPage({ sessionData, setActivePage, setFinal
           copy[currentIdx + 1] = nextQObj;
           return copy;
         });
-      } else if (!questionsList[currentIdx + 1]) {
-        const fallbackNext = {
-          id: currentIdx + 2,
-          question_text: `Building on your background in ${activeDomain}, explain how you handle software error logging and performance trade-offs in production systems.`,
-          skill_focus: activeDomain
-        };
-        setQuestionsList(prev => [...prev, fallbackNext]);
       }
 
-      const upcomingQ = nextQObj || questionsList[currentIdx + 1] || {
-        question_text: `Building on your background in ${activeDomain}, explain how you handle software error logging.`
-      };
+      const upcomingQ = nextQObj || questionsList[currentIdx + 1];
 
-      const nextInterviewerText = isAnswered 
-        ? miraAgent.generateAdaptivePrompt(finalCandidateAnswer, upcomingQ)
-        : `Okay, let's move on to the next question. ${upcomingQ.question_text}`;
+      if (upcomingQ) {
+        const nextInterviewerText = isAnswered 
+          ? miraAgent.generateAdaptivePrompt(finalCandidateAnswer, upcomingQ)
+          : `Okay, let's move on to the next question. ${upcomingQ.question_text}`;
 
-      setTimeout(() => {
-        const interviewerBubble = {
-          id: Date.now() + 1,
-          sender: `Mira (AI Interviewer)`,
-          text: nextInterviewerText,
-          type: 'interviewer'
-        };
-        setChatThread(prev => [...prev, interviewerBubble]);
-        speakCurrentQuestion(nextInterviewerText);
-      }, 400);
+        setTimeout(() => {
+          const interviewerBubble = {
+            id: Date.now() + 1,
+            sender: `Mira (AI Interviewer)`,
+            text: nextInterviewerText,
+            type: 'interviewer'
+          };
+          setChatThread(prev => [...prev, interviewerBubble]);
+          speakCurrentQuestion(nextInterviewerText);
+        }, 400);
 
-      setCurrentIdx(prev => prev + 1);
-      setSubmitting(false);
+        setCurrentIdx(prev => prev + 1);
+        setSubmitting(false);
+      } else {
+        // Show error if next question could not be generated
+        setSubmitting(false);
+        alert("Unable to generate the next dynamic question via Groq LLM backend API.");
+      }
     } else {
       // Finalize session
       const report = await finishInterviewSession(sessionData?.session_id || 1);
@@ -374,6 +369,29 @@ export default function InterviewRoomPage({ sessionData, setActivePage, setFinal
     }
   };
 
+  // IF GROQ GENERATION FAILED / ERROR VIEW
+  if (hasGenerationError) {
+    return (
+      <div className="max-w-3xl mx-auto px-4 py-16 text-center space-y-6 font-sans">
+        <div className="glass-card p-8 rounded-3xl border border-red-500/30 bg-slate-950 space-y-4">
+          <div className="w-16 h-16 rounded-2xl bg-red-500/10 border border-red-500/30 flex items-center justify-center text-red-400 mx-auto">
+            <XCircle className="w-8 h-8" />
+          </div>
+          <h2 className="text-xl font-bold text-white">Dynamic Question Generation Error</h2>
+          <p className="text-xs text-slate-300 max-w-md mx-auto leading-relaxed">
+            {sessionData?.error || "The Groq LLM backend service was unable to generate dynamic interview questions. Please verify your GROQ_API_KEY in backend/.env and ensure the backend server is running."}
+          </p>
+          <button
+            onClick={() => setActivePage('interview-setup')}
+            className="px-6 py-3 rounded-xl font-bold text-xs bg-indigo-600 text-white shadow-lg hover:bg-indigo-500 transition-all"
+          >
+            ← Return to Interview Setup
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="max-w-7xl mx-auto px-4 py-4 space-y-6 pb-20 relative font-sans">
       
@@ -412,7 +430,7 @@ export default function InterviewRoomPage({ sessionData, setActivePage, setFinal
         </div>
       </div>
 
-      {/* MAIN TWO-COLUMN LAYOUT: LEFT (MIRA AVATAR & CONVERSATION THREAD), RIGHT (WEBCAM & CAMERA STATUS) */}
+      {/* MAIN LAYOUT: LEFT (MIRA AVATAR & CONVERSATION THREAD), RIGHT (WEBCAM & CAMERA STATUS) */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
         
         {/* LEFT COLUMN: MIRA AVATAR & SCROLLABLE CHAT THREAD (8 COLS) */}

@@ -1,6 +1,8 @@
-import random
+import logging
 from typing import List, Dict, Optional
 from services.llm_service import generate_llm_questions, is_llm_available
+
+logger = logging.getLogger(__name__)
 
 def generate_interview_questions(
     category: str,
@@ -11,57 +13,24 @@ def generate_interview_questions(
     previous_questions: Optional[List[str]] = None
 ) -> Optional[List[Dict]]:
     """
-    Primary Question Generator: Uses Groq LLM (openai/gpt-oss-120b) for dynamic question generation.
-    Does NOT rely on a fixed static question bank as the primary path.
-    Guarantees no repeated questions.
+    Dynamic Question Generator: Uses Groq LLM (openai/gpt-oss-120b) as the SOLE question source.
+    Does NOT use any hardcoded or static fallback question banks.
+    Returns None if LLM generation fails so an explicit API error is returned to the user.
     """
-    # 1. Primary path: Call Groq LLM generator
-    if is_llm_available():
-        llm_questions = generate_llm_questions(
-            domain=domain,
-            difficulty=difficulty,
-            num_questions=num_questions,
-            skills=skills,
-            previous_questions=previous_questions or []
-        )
-        if llm_questions:
-            return llm_questions
+    if not is_llm_available():
+        logger.error("Groq API key is not configured. Unable to generate dynamic questions.")
+        return None
 
-    # 2. Graceful fallback ONLY on actual Groq API network/key failure
-    fallback_templates = [
-        {
-            "q": f"Describe how you design modular, maintainable software architectures in {domain}.",
-            "a": "I focus on clean component separation, error handling, design patterns, and unit testing."
-        },
-        {
-            "q": f"How do you approach debugging complex runtime errors or performance bottlenecks in {domain} applications?",
-            "a": "I analyze system logs, profile memory and database calls, isolate bugs in test suites, and deploy hotfixes."
-        },
-        {
-            "q": f"What security, configuration, and environment best practices do you enforce in {domain} projects?",
-            "a": "Using environment variables, TLS HTTPS encryption, dependency security audits, and strict authentication."
-        },
-        {
-            "q": f"Explain your workflow for writing automated tests and maintaining continuous integration in {domain}.",
-            "a": "Writing unit and integration tests, running CI pipelines on every pull request, and enforcing linting rules."
-        },
-        {
-            "q": f"Where do you see software engineering in your domain evolving over the next 2-3 years?",
-            "a": "Increasing integration of autonomous AI agents, scalable cloud architectures, and developer productivity tools."
-        }
-    ]
+    llm_questions = generate_llm_questions(
+        domain=domain,
+        difficulty=difficulty,
+        num_questions=num_questions,
+        skills=skills,
+        previous_questions=previous_questions or []
+    )
 
-    result = []
-    for i in range(min(num_questions, len(fallback_templates))):
-        item = fallback_templates[i]
-        skill_tag = skills[i % len(skills)] if skills else domain
-        result.append({
-            "id": i + 1,
-            "category": category,
-            "difficulty": difficulty,
-            "domain": domain,
-            "skill_focus": skill_tag,
-            "question_text": item["q"],
-            "sample_answer": item["a"]
-        })
-    return result
+    if llm_questions and len(llm_questions) > 0:
+        return llm_questions
+
+    logger.error("Groq LLM question generation returned no valid questions.")
+    return None

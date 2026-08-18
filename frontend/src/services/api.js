@@ -11,7 +11,7 @@ export const getStoredUser = () => {
 export const setStoredUser = (user) => localStorage.setItem("smarthire_user", JSON.stringify(user));
 
 /**
- * Truthful System Readiness Diagnostic Call
+ * System Readiness Diagnostic Call
  * Queries backend for DB connectivity and Groq LLM configuration status.
  */
 export async function fetchSystemCheck() {
@@ -116,52 +116,16 @@ export async function startInterviewSession(payload) {
       },
       body: JSON.stringify({ category: category || "Technical Interview", difficulty: difficulty || "Medium", domain: domain || "Python Developer", num_questions, skills })
     });
-    if (res.ok) return await res.json();
-  } catch (e) {
-    console.warn("Backend API offline. Dynamic questions generation via LLM unavailable.");
-  }
-
-  const defaultQuestions = [
-    {
-      id: 1,
-      question_number: "Question 1 of 5",
-      question_text: `Welcome! Please introduce yourself and highlight your experience relevant to ${domain || "Software Development"}.`,
-      sample_answer: "I am a software engineer experienced with application development, API integrations, and code architecture."
-    },
-    {
-      id: 2,
-      question_number: "Question 2 of 5",
-      question_text: `What technical tools, frameworks, and best practices do you utilize when building applications in ${domain || "Software Development"}?`,
-      sample_answer: "I utilize clean architecture, modular component design, error logging, and unit testing."
-    },
-    {
-      id: 3,
-      question_number: "Question 3 of 5",
-      question_text: "Describe a difficult bug or system issue you encountered recently and how you debugged and fixed it.",
-      sample_answer: "I reviewed system logs, isolated the failure state, wrote unit tests to reproduce the error, and patched the underlying cause."
-    },
-    {
-      id: 4,
-      question_number: "Question 4 of 5",
-      question_text: "How do you ensure code maintainability, security, and performance in collaborative codebases?",
-      sample_answer: "Through code reviews, automated CI/CD pipelines, static analysis linting, and environment secret management."
-    },
-    {
-      id: 5,
-      question_number: "Question 5 of 5",
-      question_text: "What technical goals are you currently pursuing, and how do you stay updated with industry developments?",
-      sample_answer: "I continuously build open-source projects, follow technical blogs, and expand my expertise in modern AI engineering."
+    if (res.ok) {
+      const data = await res.json();
+      return data;
     }
-  ];
-
-  return {
-    session_id: Date.now(),
-    title: `${category || "Technical Interview"} with Mira (${domain || "Python Developer"})`,
-    category: category || "Technical Interview",
-    difficulty: difficulty || "Medium",
-    domain: domain || "Python Developer",
-    questions: defaultQuestions
-  };
+    const errData = await res.json().catch(() => ({}));
+    return { error: errData.detail || "Groq LLM question generation unavailable." };
+  } catch (e) {
+    console.warn("Backend API unreachable during interview start:", e);
+    return { error: "Backend server offline or Groq API key not configured." };
+  }
 }
 
 export async function fetchNextAdaptiveQuestion(payload) {
@@ -176,7 +140,7 @@ export async function fetchNextAdaptiveQuestion(payload) {
       return data.question;
     }
   } catch (e) {
-    console.warn("Unable to fetch adaptive next question via backend API.");
+    console.warn("Unable to fetch adaptive next question via backend API:", e);
   }
   return null;
 }
@@ -215,7 +179,7 @@ export async function submitQuestionAnswer(payload) {
       is_answered: isAnswered,
       technical_score: isAnswered ? 85.0 : 0.0,
       clarity_score: isAnswered ? 85.0 : 0.0,
-      feedback: isAnswered ? "Evaluation recorded." : "Question was skipped without an answer.",
+      feedback: isAnswered ? "Answer evaluated." : "Question was skipped without an answer.",
       strengths: isAnswered ? ["Technical answer provided"] : [],
       weaknesses: isAnswered ? [] : ["Question skipped without an answer."]
     }

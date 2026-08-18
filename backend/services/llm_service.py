@@ -56,7 +56,7 @@ def is_llm_available() -> bool:
     """Check whether Groq or OpenAI API key is configured."""
     return bool(GROQ_API_KEY or OPENAI_API_KEY)
 
-def is_question_too_similar(new_question: str, previous_questions: List[str], threshold: float = 0.45) -> bool:
+def is_question_too_similar(new_question: str, previous_questions: List[str], threshold: float = 0.40) -> bool:
     """
     Checks if a newly generated question is semantically or structurally too similar to any previously asked question.
     Calculates sequence matcher ratio and word-token Jaccard overlap.
@@ -80,7 +80,7 @@ def is_question_too_similar(new_question: str, previous_questions: List[str], th
         else:
             jaccard = 0.0
 
-        if seq_ratio >= threshold or jaccard >= 0.55:
+        if seq_ratio >= threshold or jaccard >= 0.45:
             logger.warning("Question rejected due to similarity (seq: %.2f, jaccard: %.2f): '%s' vs '%s'", seq_ratio, jaccard, new_question, prev_q)
             return True
 
@@ -90,7 +90,7 @@ def is_question_too_similar(new_question: str, previous_questions: List[str], th
 # GROQ HELPER
 # =========================================================
 
-def _call_groq(prompt: str, temperature: float = 0.75) -> Optional[str]:
+def _call_groq(prompt: str, temperature: float = 0.8) -> Optional[str]:
     """Send a prompt to Groq using model openai/gpt-oss-120b and return response."""
     if not GROQ_API_KEY:
         logger.warning("GROQ_API_KEY is not configured.")
@@ -106,7 +106,7 @@ def _call_groq(prompt: str, temperature: float = 0.75) -> Optional[str]:
         "messages": [
             {
                 "role": "system",
-                "content": f"You are {INTERVIEWER_NAME}, an expert AI technical interviewer. You conduct realistic, varied, deep professional technical job interviews. Always return strictly valid JSON.",
+                "content": f"You are {INTERVIEWER_NAME}, a senior AI technical interviewer conducting a live professional interview. Always return strictly valid JSON.",
             },
             {
                 "role": "user",
@@ -149,7 +149,7 @@ def _call_groq(prompt: str, temperature: float = 0.75) -> Optional[str]:
 # OPENAI HELPER (Secondary Fallback if configured)
 # =========================================================
 
-def _call_openai(prompt: str, temperature: float = 0.75) -> Optional[str]:
+def _call_openai(prompt: str, temperature: float = 0.8) -> Optional[str]:
     """Send a prompt to OpenAI if configured."""
     if not OPENAI_API_KEY:
         return None
@@ -195,7 +195,7 @@ def _call_openai(prompt: str, temperature: float = 0.75) -> Optional[str]:
         return None
 
 # =========================================================
-# DYNAMIC INTERVIEW QUESTION GENERATION (NO STATIC BANK)
+# DYNAMIC INTERVIEW QUESTION GENERATION (STRICT GROQ ONLY)
 # =========================================================
 
 def generate_llm_questions(
@@ -208,20 +208,20 @@ def generate_llm_questions(
     resume_text: str = "",
 ) -> Optional[List[Dict[str, Any]]]:
     """
-    Dynamically generates unique, varied technical interview questions using Groq LLM (openai/gpt-oss-120b).
+    Dynamically generates unique, highly specific technical interview questions using Groq LLM (openai/gpt-oss-120b).
     Guarantees topic diversity across Easy/Medium/Hard tiers and rejects repetitive questions.
     """
     skills_text = ", ".join(skills) if (skills and len(skills) > 0) else domain
     prev_q_list = previous_questions or []
-    prev_q_formatted = "\n".join([f"- {q}" for q in prev_q_list]) if prev_q_list else "None (This is the start of the interview)."
+    prev_q_formatted = "\n".join([f"- {q}" for q in prev_q_list]) if prev_q_list else "None (This is the beginning of the interview)."
 
     difficulty_guidance = ""
     if difficulty.lower() == "easy":
-        difficulty_guidance = "Ask clear fundamental concepts, core language syntax, standard library tools, or basic REST API design."
+        difficulty_guidance = "Ask core language concepts, fundamental data structures, standard library tools, or basic REST API design."
     elif difficulty.lower() == "medium":
-        difficulty_guidance = "Ask production scenario questions involving memory management, concurrency, database query optimization, framework trade-offs, or error debugging."
+        difficulty_guidance = "Ask production scenario questions involving memory management, async IO, database indexing, framework internals, or error debugging."
     else:  # Hard
-        difficulty_guidance = "Ask high-scale system design architecture, distributed system consistency, multi-region fault tolerance, zero-downtime deployment pipelines, or microsecond latency optimization."
+        difficulty_guidance = "Ask high-scale system design architecture, distributed system consistency, multi-region fault tolerance, zero-downtime deployment pipelines, or microsecond latency trade-offs."
 
     prompt = f"""
 You are {INTERVIEWER_NAME}, a senior AI technical interviewer conducting a live, realistic technical job interview.
@@ -238,28 +238,29 @@ PREVIOUS QUESTIONS ASKED IN THIS SESSION:
 Candidate's Previous Answer Context:
 {previous_candidate_answer if previous_candidate_answer else "No previous answer."}
 
-Number of Questions Needed: {num_questions}
+Number of Unique Questions Needed: {num_questions}
 
 CRITICAL RULES:
-1. Every single question must be unique and cover a DISTINCT sub-topic (e.g. Question 1: Intro/Background, Question 2: Practical Coding/Scenario, Question 3: Architecture & System Design, Question 4: Debugging & Performance Trade-offs, Question 5: Deep Framework/Tooling internal).
-2. Do NOT repeat or paraphrase any question from the PREVIOUS QUESTIONS listed above.
-3. Do NOT ask repetitive beginner questions like 'What is Python?' or 'What are the features of Python?' unless difficulty is Easy. For Medium and Hard, ask deep scenario and architectural questions.
-4. Avoid adding the role name mechanically (e.g. avoid 'As a Python Developer, tell me...'). Make the technical content itself naturally specific to the domain.
+1. Do NOT ask generic intro templates like 'Welcome! Please introduce yourself...' or 'What technical tools, frameworks, and best practices do you utilize...'.
+2. Ask realistic, deep technical questions tailored specifically to {domain} and candidate skills ({skills_text}).
+3. For Question 1, ask a realistic, specific technical question about the candidate's hands-on experience and architectural decisions in {domain}.
+4. Every single question must be unique and cover a DISTINCT sub-topic.
+5. Do NOT repeat or paraphrase any question from the PREVIOUS QUESTIONS listed above.
 
 Return ONLY a valid JSON object in this format:
 {{
     "questions": [
         {{
             "id": 1,
-            "question_text": "Detailed technical scenario or architecture question",
+            "question_text": "Detailed, specific technical question here",
             "sample_answer": "Expected ideal response",
-            "skill_focus": "Specific topic (e.g. Async IO / Indexing / System Design)"
+            "skill_focus": "Specific topic tag"
         }}
     ]
 }}
 """
 
-    content = _call_groq(prompt, temperature=0.8)
+    content = _call_groq(prompt, temperature=0.85)
     if content:
         try:
             parsed = json.loads(content)
@@ -278,7 +279,7 @@ Return ONLY a valid JSON object in this format:
             logger.error("Groq returned invalid JSON: %s", exc)
 
     # Fallback to OpenAI if configured
-    content = _call_openai(prompt, temperature=0.8)
+    content = _call_openai(prompt, temperature=0.85)
     if content:
         try:
             parsed = json.loads(content)
