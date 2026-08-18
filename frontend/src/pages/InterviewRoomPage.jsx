@@ -16,19 +16,20 @@ export default function InterviewRoomPage({ sessionData, setActivePage, setFinal
   const [violationCount, setViolationCount] = useState(0);
   const [candidateAnswersList, setCandidateAnswersList] = useState([]);
   const [speechError, setSpeechError] = useState(null);
-  
+  const [micPermissionGranted, setMicPermissionGranted] = useState(false);
+  const [speechEngineStatus, setSpeechEngineStatus] = useState("Initializing...");
+
   const chatScrollRef = useRef(null);
   const recognitionRef = useRef(null);
   const isRecordingRef = useRef(true);
   const isStartingRef = useRef(false);
-  const hasNetworkErrorRef = useRef(false);
 
   // Sync ref with state to prevent stale closures in speech event listeners
   useEffect(() => {
     isRecordingRef.current = isRecording;
   }, [isRecording]);
 
-  // Truthful camera & mic status metrics
+  // Truthful camera status metrics
   const [cameraMetrics, setCameraMetrics] = useState({
     streamActive: false,
     faceDetected: "Initializing...",
@@ -146,7 +147,7 @@ export default function InterviewRoomPage({ sessionData, setActivePage, setFinal
     );
   };
 
-  // Speak opening question on mount and auto-start mic recording for candidate turn
+  // Speak opening question on mount
   useEffect(() => {
     if (backendQuestions && backendQuestions.length > 0 && currentIdx === 0) {
       const timeout = setTimeout(() => {
@@ -166,19 +167,33 @@ export default function InterviewRoomPage({ sessionData, setActivePage, setFinal
     }
   }, [currentIdx]);
 
-  // ROBUST BROWSER SPEECH RECOGNITION HANDLING (SINGLETON GUARD & NON-BLOCKING FALLBACKS)
+  // ROBUST BROWSER SPEECH RECOGNITION HANDLING
   const startMicRecording = async () => {
     if (isStartingRef.current) return;
     isStartingRef.current = true;
 
     try {
       setSpeechError(null);
-      hasNetworkErrorRef.current = false;
-      await navigator.mediaDevices.getUserMedia({ audio: true });
+
+      // Verify microphone hardware permission without locking the audio stream
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        stream.getTracks().forEach(track => track.stop()); // Release track so SpeechRecognition can bind cleanly
+        setMicPermissionGranted(true);
+      } catch (err) {
+        console.warn("Microphone access denied:", err);
+        setMicPermissionGranted(false);
+        setSpeechEngineStatus("Microphone Permission Required");
+        setSpeechError("Microphone permission denied. Please allow microphone access or type your response below.");
+        setIsRecording(false);
+        isStartingRef.current = false;
+        return;
+      }
 
       const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
       if (!SpeechRecognition) {
-        setSpeechError("Live speech recognition is not supported in this browser. You can speak into your microphone or type/edit your response below.");
+        setSpeechEngineStatus("Browser Web Speech API Unavailable");
+        setSpeechError("Live browser speech recognition is not supported in this browser. You can speak into your microphone or type/edit your response below.");
         isStartingRef.current = false;
         return;
       }
@@ -196,6 +211,7 @@ export default function InterviewRoomPage({ sessionData, setActivePage, setFinal
         setIsRecording(true);
         isRecordingRef.current = true;
         isStartingRef.current = false;
+        setSpeechEngineStatus("Listening for Speech...");
         setSpeechError(null);
       };
 
@@ -207,34 +223,33 @@ export default function InterviewRoomPage({ sessionData, setActivePage, setFinal
         const cleanText = fullTranscript.trim();
         if (cleanText) {
           setCandidateAnswer(cleanText);
+          setSpeechEngineStatus("Transcribing Spoken Response...");
+          setSpeechError(null);
         }
       };
 
       recognition.onerror = (event) => {
-        console.warn("Speech recognition notice:", event.error);
+        console.warn("SpeechRecognition notice:", event.error);
+        isStartingRef.current = false;
 
         if (event.error === 'no-speech' || event.error === 'aborted') {
-          // Soft notices: non-fatal, do not break recognition state
-          isStartingRef.current = false;
           return;
         }
 
         if (event.error === 'network') {
-          hasNetworkErrorRef.current = true;
+          setSpeechEngineStatus("Speech recognition connecting...");
           setSpeechError("Speech cloud service temporarily unreachable. You can speak into your microphone or type/edit your response below.");
         } else if (event.error === 'not-allowed' || event.error === 'permission-denied') {
-          hasNetworkErrorRef.current = true;
+          setSpeechEngineStatus("Microphone Permission Required");
           setSpeechError("Microphone permission required. Please allow microphone access or type your response below.");
         } else {
-          setSpeechError(`Speech Notice: ${event.error}`);
+          setSpeechEngineStatus(`Speech Notice: ${event.error}`);
         }
-        isStartingRef.current = false;
       };
 
       recognition.onend = () => {
         isStartingRef.current = false;
-        // Prevent infinite error loops: restart ONLY if recording is active and no fatal network/permission error occurred
-        if (isRecordingRef.current && !hasNetworkErrorRef.current) {
+        if (isRecordingRef.current) {
           try {
             recognitionRef.current?.start();
           } catch (e) {}
@@ -248,7 +263,8 @@ export default function InterviewRoomPage({ sessionData, setActivePage, setFinal
         isStartingRef.current = false;
       }
     } catch (err) {
-      console.warn("Microphone access error:", err);
+      console.warn("Speech initialization error:", err);
+      setSpeechEngineStatus("Microphone Device Error");
       setSpeechError("Microphone access permission denied or disconnected. You can type your response in the box below.");
       isStartingRef.current = false;
     }
@@ -553,7 +569,7 @@ export default function InterviewRoomPage({ sessionData, setActivePage, setFinal
 
         </div>
 
-        {/* RIGHT COLUMN: WEBCAM & DEVICE STATUS */}
+        {/* RIGHT COLUMN: WEBCAM & SEPARATED DEVICE / SPEECH MONITORING */}
         <div className="lg:col-span-4 space-y-4">
           
           {/* Candidate Webcam Box */}
@@ -563,10 +579,10 @@ export default function InterviewRoomPage({ sessionData, setActivePage, setFinal
             />
           </div>
 
-          {/* DEVICE MONITORING BOX */}
+          {/* TRUTHFUL DEVICE & SPEECH MONITORING BOX */}
           <div className="glass-card p-5 rounded-3xl border border-slate-800 space-y-3.5 shadow-xl">
             <div className="flex items-center justify-between border-b border-slate-800 pb-2">
-              <span className="text-xs font-mono text-slate-300 font-bold uppercase">Device Monitoring</span>
+              <span className="text-xs font-mono text-slate-300 font-bold uppercase">Device & Speech Monitoring</span>
               <span className="text-[10px] font-mono text-emerald-400 flex items-center gap-1">
                 <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping"></span> STATUS
               </span>
@@ -581,9 +597,16 @@ export default function InterviewRoomPage({ sessionData, setActivePage, setFinal
               </div>
 
               <div className="flex justify-between p-2.5 rounded-xl bg-slate-900 border border-slate-800">
-                <span className="text-slate-400">Microphone Input:</span>
-                <span className={isRecording ? "text-emerald-400 font-bold" : "text-amber-400"}>
-                  {isRecording ? "Live Audio Active" : "Muted"}
+                <span className="text-slate-400">Microphone Permission:</span>
+                <span className={micPermissionGranted ? "text-emerald-400 font-bold" : "text-amber-400"}>
+                  {micPermissionGranted ? "Permission Granted" : "Permission Required"}
+                </span>
+              </div>
+
+              <div className="flex justify-between p-2.5 rounded-xl bg-slate-900 border border-slate-800">
+                <span className="text-slate-400">Speech-to-Text Engine:</span>
+                <span className="text-cyan-400 font-bold truncate max-w-[130px]">
+                  {speechEngineStatus}
                 </span>
               </div>
             </div>
