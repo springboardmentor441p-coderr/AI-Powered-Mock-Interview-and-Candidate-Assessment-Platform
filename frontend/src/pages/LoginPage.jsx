@@ -272,32 +272,6 @@ export const LoginPage = () => {
             </button>
           </form>
 
-          {/* Quick Fill Demo Credentials */}
-          <div className="pt-2 border-t border-slate-800/80 space-y-2">
-            <span className="text-[10px] text-slate-500 font-mono block uppercase text-center font-bold">
-              ⚡ Quick Fill Demo Credentials
-            </span>
-            <div className="grid grid-cols-2 gap-2">
-              <button
-                type="button"
-                onClick={() => fillDemoAccount('dileep@smarthire.ai', 'dileep123')}
-                className="px-2.5 py-2 rounded-xl bg-slate-900 hover:bg-slate-850 border border-slate-800 text-[11px] font-mono text-cyan-300 flex items-center justify-center gap-1.5 transition-all cursor-pointer"
-              >
-                <UserCheck className="w-3.5 h-3.5 text-cyan-400" />
-                <span>Dileep (Primary)</span>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => fillDemoAccount('demo@smarthire.ai', 'demo123')}
-                className="px-2.5 py-2 rounded-xl bg-slate-900 hover:bg-slate-850 border border-slate-800 text-[11px] font-mono text-purple-300 flex items-center justify-center gap-1.5 transition-all cursor-pointer"
-              >
-                <KeyRound className="w-3.5 h-3.5 text-purple-400" />
-                <span>Demo Account</span>
-              </button>
-            </div>
-          </div>
-
           {/* Divider */}
           <div className="relative my-4 text-center">
             <div className="absolute inset-0 flex items-center">
