@@ -888,7 +888,8 @@ function computeOverallScore({
 
 The SmartHire AI interface allows the candidate to select a job role and difficulty level before starting the interview.
 
-<img src="screenshots/home.png" alt="SmartHire AI Interview Setup" width="100%">
+<img width="1919" height="938" alt="home" src="https://github.com/user-attachments/assets/8d75e183-01f4-45aa-ba95-907334986bf1" />
+
 
 ---
 
@@ -896,7 +897,8 @@ The SmartHire AI interface allows the candidate to select a job role and difficu
 
 The interview room provides the question interface, timer, microphone/camera controls, answer capture area, and navigation controls.
 
-<img src="screenshots/interview-room.png" alt="SmartHire AI Interview Room" width="100%">
+<img width="1919" height="683" alt="interview-room" src="https://github.com/user-attachments/assets/be0b2db4-4eb0-4843-86d2-f6cb047449f0" />
+
 
 ---
 
