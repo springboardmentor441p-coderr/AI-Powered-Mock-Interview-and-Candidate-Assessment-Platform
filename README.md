@@ -1,178 +1,875 @@
-# SmartHire AI — Autonomous Mock Interview & Candidate Assessment Platform
+# SmartHire AI 🤖
 
-> **SmartHire AI** is a state-of-the-art, end-to-end AI-powered mock interview and multi-dimensional candidate evaluation platform. It combines real-time video avatar presenters, speech transcription, vision proctoring telemetry, adaptive follow-up probing questions, and structured LLM evaluation to generate comprehensive candidate assessment reports.
+### AI-Powered Mock Interview & Personalized Assessment Platform
 
----
+SmartHire AI is an intelligent mock interview platform that conducts **real-time, personalized interviews based on a candidate's Resume and Job Description (JD)**.
 
-## 🌟 Key Features
-
-### 1. Pre-Interview Resume & JD Understanding
-- **LLM Structured Parser**: Extracts candidate technical skills, projects, work experience, education, certifications, and target role from resumes.
-- **JD Requirement Synthesis**: Parses job description text to extract required technical skills, key responsibilities, experience levels, and behavioral criteria.
-- **Role-Specific Question Generator**: Dynamically synthesizes customized interview questions enriched with metadata (`question_type`, `expected_skills`, `difficulty`, `topic`, `expected_points`).
-
-### 2. Live Interactive AI Interview Room
-- **Lifelike AI Presenter**: Photorealistic virtual avatar with natural micro-movements, lip-sync waveform animation, and voice synthesis.
-- **Ultravox WebRTC Voice & Whisper STT**: Ultra-low-latency real-time voice conversation powered by Ultravox WebRTC and Groq Whisper audio transcription.
-- **Controlled Interview State Machine**: Driven by an explicit state controller pipeline:
-  $$\text{SPEAKING} \longrightarrow \text{LISTENING} \longrightarrow \text{ANALYZING} \longrightarrow \text{GENERATING} \longrightarrow \text{SPEAKING}$$
-  - **🔊 SPEAKING**: AI reads question prompt with live subtitle overlay.
-  - **🎤 LISTENING**: Captures candidate verbal answer continuously with silence-detection trigger.
-  - **🤖 ANALYZING**: Backend LLM evaluates answer correctness, relevance, depth, resume context, and JD alignment in real-time.
-  - **🤖 GENERATING**: Synthesizes next question or generates dynamic adaptive follow-up probing questions for weak skill areas.
-
-### 3. MediaPipe Proctoring & Vision Telemetry
-- **Integrity Signal Tracking**: Real-time MediaPipe vision analyzer tracking Face Presence %, Single Face %, Face Missing Count, Looking Away Events, and Mobile Device / Face Cover Detection.
-- **Separated Integrity Score**: Proctoring integrity metrics are tracked and displayed **separately** from candidate technical and behavioral skill scores (ensuring looking away doesn't artificially pollute candidate technical scores).
-
-### 4. Adaptive Assessment Engine
-- **Dynamic Follow-Up Probing**: When a candidate gives a weak answer or low score (< 7.0) on a technical topic (e.g. SQL joins), the AI automatically generates and asks a targeted follow-up question to test foundational knowledge.
-
-### 5. Multi-Dimensional Assessment Report
-- **Overall Score Card**: Calculated candidate index (e.g., `8.2 / 10 Strong Performance`).
-- **6-Metric Performance Breakdown**: Technical Skills, Problem Solving, Communication, Behavioral, Resume Knowledge, JD Capabilities.
-- **Skills Demonstrated & Needs Improvement**: Badged lists of proven skills vs growth areas.
-- **Resume Validation (Depth Check)**: Validates whether candidates can actually defend resume claims during live questioning ("Demonstrated strongly" vs "Partially demonstrated").
-- **JD Capability Match**: Evaluates candidate performance against specific job requirements.
-- **Behavioral & Communication Audit**: 7 core behavioral dimensions + 7 communication parameters.
-- **Question-by-Question Review**: Per-question audio transcript, expected key points, score out of 10, and structured feedback commentary.
-- **Recorded Proctor Video Playback & Archive**: WebM video recording playback player with direct file download link.
-- **One-Click PDF Export**: Download official candidate verification report PDF.
+Instead of using generic interview questions or ATS-style resume matching, SmartHire AI understands the candidate's background and the target role, generates relevant questions, conducts a face-to-face AI interview, evaluates every answer, and produces a detailed personalized assessment.
 
 ---
 
-## 📐 System Architecture
+## ✨ Key Features
 
-```mermaid
-flowchart TD
-    A[Candidate Resume] --> C[LLM Resume & JD Parser]
-    B[Job Description] --> C
-    C --> D[Role-Specific Question Generator]
-    D --> E[AI Interview Room]
-    
-    subgraph Interview Execution & Telemetry
-        E --> F[AI Avatar & Voice Engine]
-        E --> G[Whisper STT Transcript]
-        E --> H[MediaPipe Vision Proctoring]
-    end
+### 📄 Resume-Based Interview
 
-    G --> I[Interview Controller State Machine]
-    I -->|SPEAKING| F
-    I -->|LISTENING| G
-    I -->|ANALYZING| J[Backend Answer Evaluator]
-    J -->|Score < 7.0| K[Adaptive Follow-Up Generator]
-    K -->|GENERATING| D
-    
-    J --> L[SmartHire Master Assessment Engine]
-    H --> L
-    
-    L --> M[Candidate Assessment Page]
-    M --> N[Overall Performance Index]
-    M --> O[Skill-wise Technical Scores]
-    M --> P[Resume Validation]
-    M --> Q[JD Capability Assessment]
-    M --> R[Interview Integrity Metrics]
-    M --> S[Webcam Proctor Recording Playback]
-    M --> T[PDF Report Export]
+* Upload a candidate resume.
+* Extract education, skills, projects, experience, and technologies.
+* Generate interview questions based on the candidate's actual background.
+* Validate whether the candidate can explain the technologies and projects mentioned in the resume.
+
+### 💼 Job Description-Based Interview
+
+* Analyze the target Job Description.
+* Identify required skills, responsibilities, and role expectations.
+* Generate questions specifically for the selected JD.
+* Assess whether the candidate demonstrates the capabilities required by the JD.
+
+### 🤖 AI Interviewer
+
+* Real-time AI interviewer experience.
+* AI avatar speaks questions using Text-to-Speech.
+* Avatar supports speaking animations such as:
+  * Lip movement
+  * Eye blinking
+  * Facial movement
+  * Speaking state
+* AI automatically moves through the interview.
+
+### 🎤 Voice Interaction
+
+* Candidate answers using their microphone.
+* Speech-to-Text converts the candidate's response into a transcript.
+* AI analyzes the response.
+* Dynamic follow-up questions can be generated based on the candidate's answer.
+
+### 🧠 Dynamic Interview
+
+The interview is not a fixed list of questions.
+
+```text
+Question
+   ↓
+Candidate Answer
+   ↓
+Speech-to-Text
+   ↓
+AI Analysis
+   ↓
+Follow-up Decision
+   ↓
+Next Question
+```
+
+The AI can adjust the next question according to the candidate's response.
+
+### 👁️ Face Tracking & Interview Monitoring
+
+Using computer-vision models such as MediaPipe:
+
+* Face detection
+* Face landmarks
+* Face tracking
+* Multiple-face detection
+* Face-missing detection
+* Head-pose estimation
+* Looking-away detection
+* Eye/blink-related signals
+* Interview integrity monitoring
+
+These signals are kept separate from the candidate's technical performance score.
+
+### 📊 Personalized Assessment
+
+SmartHire AI does **not** provide an ATS score.
+
+Instead, it evaluates:
+
+* Technical skills
+* Problem solving
+* Behavioral skills
+* Communication
+* Resume knowledge
+* JD capabilities
+* Question-by-question performance
+* Interview integrity signals
+
+### 📑 Final AI Report
+
+After the interview, the candidate receives:
+
+* Overall performance
+* Skill-wise scores
+* Strengths
+* Areas for improvement
+* Resume validation
+* JD capability assessment
+* Question-by-question analysis
+* Personalized learning recommendations
+* Interview summary
+
+---
+
+# 🏗️ System Architecture
+
+```text
+                         SmartHire AI
+                              │
+              ┌───────────────┴───────────────┐
+              │                               │
+           Resume                             JD
+              │                               │
+              ▼                               ▼
+       Resume Parser                    JD Parser
+              │                               │
+              └───────────────┬───────────────┘
+                              ▼
+                    LLM Understanding
+                              │
+                              ▼
+                  Interview Plan Generator
+                              │
+                              ▼
+                    AI Interview Room
+                              │
+          ┌───────────────────┼──────────────────┐
+          │                   │                  │
+          ▼                   ▼                  ▼
+      AI Avatar            Webcam           Microphone
+          │                   │                  │
+          ▼                   ▼                  ▼
+        TTS             MediaPipe             Whisper
+                              │                  │
+                              └────────┬─────────┘
+                                       ▼
+                                  Transcript
+                                       │
+                                       ▼
+                              LLM Answer Analysis
+                                       │
+                       ┌───────────────┼───────────────┐
+                       ▼               ▼               ▼
+                 Skill Analysis   Follow-up       JD Assessment
+                       │           Questions            │
+                       └───────────────┬───────────────┘
+                                       ▼
+                              Final Assessment
+                                       │
+                                       ▼
+                                AI Report
 ```
 
 ---
 
-## 🛠️ Technology Stack
+# 🧠 AI Pipeline
 
-### Backend
-- **Framework**: Python 3.10+ / FastAPI
-- **Database**: SQLite / SQLAlchemy ORM
-- **AI / LLM Engine**: Groq API (`qwen/qwen3.6-27b`, `openai/gpt-oss-120b`)
-- **Speech-to-Text**: Groq Whisper API (`whisper-large-v3`)
-- **Real-Time Voice Call**: Ultravox WebRTC API
+## 1. Resume Parsing
 
-### Frontend
-- **Framework**: React 19 / Vite
-- **Styling**: Vanilla CSS, Tailwind CSS, Glassmorphism design system
-- **Computer Vision**: MediaPipe Face Mesh & Vision Telemetry
-- **Icons**: Lucide React
-- **Export**: html2canvas & jsPDF
-
----
-
-## 🚀 Getting Started & Local Setup
-
-### Prerequisites
-- Node.js (v18.0 or higher)
-- Python (v3.10 or higher)
-- Groq API Key (get key at [https://console.groq.com](https://console.groq.com))
-
----
-
-### 1. Backend Setup
-
-```bash
-# Navigate to backend directory
-cd backend
-
-# Create a virtual environment (optional but recommended)
-python -m venv venv
-# On Windows:
-venv\Scripts\activate
-# On macOS/Linux:
-source venv/bin/activate
-
-# Install dependencies
-pip install -r requirements.txt
-
-# Configure environment variables in backend/.env
-GROQ_API_KEY=your_groq_api_key_here
-ULTRAVOX_API_KEY=your_ultravox_api_key_here
-
-# Recreate database tables with latest models schema
-python clear_db.py
-
-# Start FastAPI backend server on port 8000
-python -m uvicorn app.main:app --reload --port 8000
+```text
+Resume PDF
+    ↓
+Text Extraction
+    ↓
+LLM
+    ↓
+Structured Candidate Profile
 ```
 
-Backend will be accessible at:
-- **API Server**: [http://localhost:8000](http://localhost:8000)
-- **Interactive OpenAPI Docs**: [http://localhost:8000/docs](http://localhost:8000/docs)
+Extracts information such as:
+
+```text
+Name
+Education
+Experience
+Skills
+Projects
+Technologies
+Certifications
+Achievements
+```
 
 ---
 
-### 2. Frontend Setup
+## 2. JD Parsing
+
+```text
+Job Description
+      ↓
+LLM
+      ↓
+Structured JD Profile
+```
+
+Extracts:
+
+```text
+Role
+Required Skills
+Responsibilities
+Technical Requirements
+Experience Requirements
+Expected Capabilities
+```
+
+---
+
+## 3. Question Generation
+
+The LLM combines:
+
+```text
+Resume
++
+Job Description
++
+Interview Type
++
+Difficulty
+```
+
+and generates personalized questions.
+
+Example:
+
+```text
+Resume:
+FastAPI + JWT + PostgreSQL
+
+JD:
+Backend Developer
+
+Question:
+"Explain how you implemented JWT authentication
+in your FastAPI project."
+```
+
+---
+
+## 4. Real-Time Interview
+
+```text
+AI generates question
+        ↓
+AI Avatar speaks
+        ↓
+Candidate listens
+        ↓
+Candidate answers
+        ↓
+Microphone records
+        ↓
+Speech-to-Text
+        ↓
+Transcript
+        ↓
+AI evaluates answer
+        ↓
+Next question / Follow-up
+```
+
+---
+
+# 🔄 AI Interview States
+
+The frontend should clearly communicate what the AI is doing.
+
+```text
+SPEAKING
+   ↓
+LISTENING
+   ↓
+ANALYZING
+   ↓
+GENERATING
+   ↓
+SPEAKING
+```
+
+Example UI states:
+
+```text
+🔊 AI is speaking...
+
+🎤 Listening to your answer...
+
+🤖 Analyzing your answer...
+
+🤖 Preparing the next question...
+```
+
+This makes the experience feel like a real face-to-face interview.
+
+---
+
+# 🎯 Assessment Engine
+
+Every answer is evaluated against the context of the interview.
+
+```text
+Resume
+   +
+JD
+   +
+Question
+   +
+Expected Skills
+   +
+Candidate Answer
+   ↓
+LLM Evaluation
+```
+
+Example evaluation:
+
+```json
+{
+  "technical_accuracy": 8,
+  "relevance": 9,
+  "clarity": 8,
+  "depth": 7,
+  "overall": 8
+}
+```
+
+---
+
+# 📊 Assessment Categories
+
+### Technical Skills
+
+```text
+Python
+SQL
+React
+FastAPI
+REST APIs
+Authentication
+Databases
+```
+
+### Problem Solving
+
+```text
+Logical thinking
+Approach
+Reasoning
+Solution quality
+```
+
+### Behavioral
+
+```text
+Teamwork
+Ownership
+Adaptability
+Leadership
+Decision making
+```
+
+### Communication
+
+```text
+Clarity
+Relevance
+Structure
+Grammar
+Explanation quality
+```
+
+### Resume Knowledge
+
+Checks whether the candidate can genuinely explain the skills and projects claimed in the resume.
+
+### JD Capability
+
+Checks whether the candidate demonstrated the capabilities required by the target job description.
+
+---
+
+# 📈 Example Assessment
+
+```text
+Overall Performance
+        8.2 / 10
+
+Technical Skills
+        8.4 / 10
+
+Problem Solving
+        8.0 / 10
+
+Communication
+        7.8 / 10
+
+Behavioral
+        8.5 / 10
+
+Resume Knowledge
+        8.6 / 10
+
+JD Capabilities
+        8.1 / 10
+```
+
+---
+
+# 👁️ Computer Vision Pipeline
+
+```text
+Webcam
+  │
+  ▼
+MediaPipe Face Landmarker
+  │
+  ├── Face Detection
+  ├── Face Landmarks
+  ├── Face Tracking
+  ├── Multiple Faces
+  ├── Head Pose
+  ├── Looking Away
+  └── Eye/Blink Signals
+```
+
+The computer-vision system operates locally in the browser where possible, reducing unnecessary transmission of camera frames.
+
+---
+
+# 🎙️ Speech Pipeline
+
+```text
+Candidate Voice
+      ↓
+Microphone
+      ↓
+Audio Recording
+      ↓
+Whisper
+      ↓
+Transcript
+      ↓
+LLM
+      ↓
+Answer Evaluation
+```
+
+---
+
+# 🔊 AI Voice Pipeline
+
+```text
+LLM
+ │
+ ▼
+Question
+ │
+ ▼
+Text-to-Speech
+ │
+ ▼
+AI Avatar
+ │
+ ▼
+Lip / Speaking Animation
+```
+
+---
+
+# 🧩 Technology Stack
+
+## Frontend
+
+* React
+* Vite
+* JavaScript
+* CSS
+* Lucide React
+* MediaPipe Tasks Vision
+* Web APIs
+
+## AI / ML
+
+* LLM for reasoning and assessment
+* Whisper for Speech-to-Text
+* Text-to-Speech for AI interviewer
+* MediaPipe Face Landmarker for face tracking and interview monitoring
+
+## Backend
+
+The backend is responsible for:
+
+```text
+Authentication
+Resume processing
+JD processing
+LLM orchestration
+Interview sessions
+Question management
+Answer processing
+Assessment generation
+Report generation
+Data persistence
+```
+
+---
+
+# 📁 Suggested Project Structure
+
+```text
+frontend/
+│
+├── src/
+│   ├── components/
+│   │   ├── interview/
+│   │   │   ├── AIInterviewer.jsx
+│   │   │   ├── AIInterviewer.css
+│   │   │   ├── Webcam.jsx
+│   │   │   ├── Webcam.css
+│   │   │   ├── Timer.jsx
+│   │   │   └── Timer.css
+│   │   │
+│   │   ├── assessment/
+│   │   │   ├── ScoreCard.jsx
+│   │   │   ├── SkillBreakdown.jsx
+│   │   │   ├── QuestionReview.jsx
+│   │   │   └── AssessmentSummary.jsx
+│   │
+│   ├── pages/
+│   │   ├── setup/
+│   │   │   └── InterviewSetup.jsx
+│   │   │
+│   │   ├── interview/
+│   │   │   └── InterviewRoom.jsx
+│   │   │
+│   │   └── assessment/
+│   │       └── Assessment.jsx
+│   │
+│   ├── hooks/
+│   │   ├── useFaceDetection.js
+│   │   ├── useSpeechRecognition.js
+│   │   └── useSpeechSynthesis.js
+│   │
+│   ├── services/
+│   │   ├── api.js
+│   │   ├── interviewService.js
+│   │   └── assessmentService.js
+│   │
+│   └── App.jsx
+│
+├── public/
+│   ├── models/
+│   │   └── face_landmarker.task
+│   │
+│   └── wasm/
+│
+└── package.json
+```
+
+---
+
+# 🔐 Interview Session Lifecycle
+
+```text
+Create Interview Session
+        ↓
+Upload Resume
+        ↓
+Add Job Description
+        ↓
+Analyze Resume + JD
+        ↓
+Generate Interview Plan
+        ↓
+Pre-Interview Checks
+        ↓
+Face Registration
+        ↓
+Camera + Microphone Check
+        ↓
+Start Interview
+        ↓
+Ask Question
+        ↓
+Listen
+        ↓
+Transcribe
+        ↓
+Evaluate
+        ↓
+Generate Follow-up / Next Question
+        ↓
+Repeat
+        ↓
+Interview Completed
+        ↓
+Generate Assessment
+        ↓
+Show Assessment Page
+```
+
+---
+
+# 📝 Interview Setup
+
+The candidate should provide:
+
+```text
+Resume
++
+Job Description
++
+Target Role
++
+Interview Duration
++
+Interview Difficulty
+```
+
+Optional:
+
+```text
+Interview Type
+Technical
+Behavioral
+Mixed
+```
+
+The system then creates an interview session.
+
+---
+
+# 🛡️ Interview Integrity
+
+During the interview, monitor:
+
+```text
+✓ Camera active
+✓ Microphone active
+✓ Face present
+✓ Single face
+✓ Looking-away events
+✓ Interview duration
+```
+
+These are **integrity indicators**, not automatic proof of cheating.
+
+---
+
+# 🚫 What SmartHire AI Does Not Use
+
+SmartHire AI is intentionally focused on interview performance.
+
+It does **not** require:
+
+* ATS score
+* Generic resume matching score
+* Recruiter dashboard
+* Admin dashboard
+* Fake candidate accounts
+* Fake interview data
+* Sample candidate profiles in production
+* Generic interview questions unrelated to the candidate
+
+The interview is based on:
+
+```text
+Candidate Resume
+       +
+Job Description
+       +
+Candidate's Interview Answers
+```
+
+---
+
+# 🎯 Core Product Goal
+
+SmartHire AI should behave like a real AI interviewer:
+
+```text
+Understand candidate
+        ↓
+Understand target role
+        ↓
+Ask relevant question
+        ↓
+Listen to candidate
+        ↓
+Understand answer
+        ↓
+Evaluate answer
+        ↓
+Ask intelligent follow-up
+        ↓
+Adapt interview
+        ↓
+Assess candidate
+        ↓
+Provide personalized feedback
+```
+
+---
+
+# 🚀 Development Roadmap
+
+## Phase 1 — Foundation
+
+* [ ] React + Vite setup
+* [ ] Application routing
+* [ ] Interview setup page
+* [ ] Resume upload
+* [ ] JD input
+* [ ] Backend API
+
+## Phase 2 — Resume & JD Intelligence
+
+* [ ] Resume extraction
+* [ ] Resume structured data
+* [ ] JD extraction
+* [ ] JD structured data
+* [ ] LLM integration
+* [ ] Interview plan generation
+
+## Phase 3 — Interview Room
+
+* [ ] Live webcam
+* [ ] Microphone
+* [ ] Face registration
+* [ ] Face tracking
+* [ ] AI avatar
+* [ ] AI voice
+* [ ] Interview timer
+* [ ] Interview states
+
+## Phase 4 — Conversational AI
+
+* [ ] Speech-to-text
+* [ ] Question generation
+* [ ] Dynamic follow-ups
+* [ ] Answer evaluation
+* [ ] Context management
+* [ ] Interview state management
+
+## Phase 5 — Assessment
+
+* [ ] Technical assessment
+* [ ] Behavioral assessment
+* [ ] Communication assessment
+* [ ] Resume validation
+* [ ] JD capability assessment
+* [ ] Question-level scoring
+* [ ] Overall assessment
+
+## Phase 6 — Final Report
+
+* [ ] Strengths
+* [ ] Weaknesses
+* [ ] Skill breakdown
+* [ ] Personalized recommendations
+* [ ] Interview summary
+* [ ] Assessment dashboard
+
+## Phase 7 — Production
+
+* [ ] Authentication
+* [ ] Database
+* [ ] Secure API
+* [ ] Error handling
+* [ ] Rate limiting
+* [ ] Logging
+* [ ] Monitoring
+* [ ] Privacy controls
+* [ ] Production deployment
+
+---
+
+# ⚡ Performance Principles
+
+SmartHire AI should:
+
+* Process webcam data efficiently.
+* Avoid unnecessary camera-frame uploads.
+* Keep UI responsive during AI processing.
+* Use asynchronous backend processing where appropriate.
+* Cache reusable interview context.
+* Avoid sending the entire resume/JD repeatedly to the LLM.
+* Store structured interview state.
+* Keep question generation and answer evaluation deterministic where possible.
+
+---
+
+# 🔒 Privacy
+
+Candidate data should be handled securely.
+
+Important principles:
+
+* Use HTTPS in production.
+* Secure uploaded resumes.
+* Protect interview transcripts.
+* Don't expose API keys in the frontend.
+* Keep LLM API credentials on the backend.
+* Give candidates control over their interview data where applicable.
+* Clearly communicate what camera, microphone, transcript, and interview-monitoring data is collected.
+
+---
+
+# 🧪 Development
+
+Install dependencies:
 
 ```bash
-# Navigate to frontend directory
-cd frontend
-
-# Install npm dependencies
 npm install
+```
 
-# Start Vite frontend dev server
+Start the frontend:
+
+```bash
 npm run dev
 ```
 
-Frontend application will be accessible at:
-- **Web Application**: [http://localhost:5173](http://localhost:5173)
+Build for production:
+
+```bash
+npm run build
+```
+
+Preview the production build:
+
+```bash
+npm run preview
+```
 
 ---
 
-## 📡 Primary API Endpoints
+# 🌟 Vision
 
-| Endpoint | Method | Description |
-| :--- | :--- | :--- |
-| `/api/v1/analyze/resume` | `POST` | Parses raw resume text into structured candidate JSON |
-| `/api/v1/analyze/jd` | `POST` | Extracts required skills & responsibilities from Job Description |
-| `/api/v1/analyze/generate-interview` | `POST` | Generates role-specific questions with metadata |
-| `/api/v1/interview/setup` | `POST` | Initializes interview session |
-| `/api/v1/interview/evaluate-answer` | `POST` | Evaluates single answer against resume/JD context |
-| `/api/v1/interview/adaptive-question` | `POST` | Generates dynamic follow-up probing question for weak skill |
-| `/api/v1/interview/evaluate/{session_id}` | `POST` | Compiles master candidate assessment report |
-| `/api/v1/interview/save-details` | `POST` | Stores session, questions, answers, and scores into SQLite DB |
-| `/api/v1/interview/upload-recording/{session_id}` | `POST` | Archives webcam WebM proctor video file |
-| `/api/v1/interview/transcribe` | `POST` | Whisper speech-to-text audio transcription |
+SmartHire AI aims to make interview preparation feel like a **real one-to-one interview with an intelligent interviewer**.
 
----
+Not just:
 
-## 📄 License
+```text
+Question → Answer → Score
+```
 
-This project is licensed under the MIT License.
+But:
+
+```text
+Understand
+    ↓
+Ask
+    ↓
+Listen
+    ↓
+Understand
+    ↓
+Challenge
+    ↓
+Follow Up
+    ↓
+Evaluate
+    ↓
+Coach
+```
+
+### SmartHire AI
+
+**Your Resume. Your Job. Your Interview. Your Assessment.**
