@@ -7,17 +7,94 @@ class MiraAgent {
   constructor(agentName = "Mira") {
     this.name = agentName;
     this.role = "Senior AI Technical Interviewer";
-    this.currentUtterance = null; // Module/instance ref to prevent Chrome garbage collection of active speech
+    this.currentUtterance = null;
+    this.currentAudio = null;
   }
 
   /**
-   * Speak the prompt aloud using natural Web Speech Synthesis
+   * Unlock Web Audio & SpeechSynthesis context on user interaction
+   */
+  unlockAudio() {
+    try {
+      if ('speechSynthesis' in window) {
+        window.speechSynthesis.resume();
+      }
+      const AudioCtx = window.AudioContext || window.webkitAudioContext;
+      if (AudioCtx) {
+        const ctx = new AudioCtx();
+        if (ctx.state === 'suspended') {
+          ctx.resume();
+        }
+      }
+    } catch (e) {}
+  }
+
+  /**
+   * Fail-Safe Audio Element TTS Fallback
+   */
+  speakAudioFallback(text, onStartCallback, onEndCallback) {
+    try {
+      if (this.currentAudio) {
+        try { this.currentAudio.pause(); } catch (e) {}
+        this.currentAudio = null;
+      }
+
+      const cleanText = (text || '').replace(/<[^>]*>?/gm, '').trim();
+      if (!cleanText) {
+        if (onEndCallback) onEndCallback();
+        return;
+      }
+
+      const urlText = cleanText.length > 200 ? cleanText.substring(0, 197) + "..." : cleanText;
+      const audioUrl = `https://translate.google.com/translate_tts?ie=UTF-8&q=${encodeURIComponent(urlText)}&tl=en&client=tw-ob`;
+      
+      const audio = new Audio(audioUrl);
+      this.currentAudio = audio;
+      audio.volume = 1.0;
+
+      audio.onplay = () => {
+        console.log(`[${this.name}] Playing TTS audio fallback via Audio element.`);
+        if (onStartCallback) onStartCallback();
+      };
+
+      audio.onended = () => {
+        console.log(`[${this.name}] TTS audio fallback completed.`);
+        this.currentAudio = null;
+        if (onEndCallback) onEndCallback();
+      };
+
+      audio.onerror = (err) => {
+        console.warn(`[${this.name}] Audio fallback notice:`, err);
+        this.currentAudio = null;
+        if (onEndCallback) onEndCallback();
+      };
+
+      audio.play().catch(err => {
+        console.warn(`[${this.name}] Audio play blocked by browser policy:`, err);
+        this.currentAudio = null;
+        if (onEndCallback) onEndCallback();
+      });
+    } catch (e) {
+      console.warn(`[${this.name}] Audio fallback exception:`, e);
+      if (onEndCallback) onEndCallback();
+    }
+  }
+
+  /**
+   * Speak the prompt aloud using natural Web Speech Synthesis with HTML5 Audio Fallback
    */
   speak(text, onStartCallback, onEndCallback) {
+    this.unlockAudio();
+
     try {
+      if (this.currentAudio) {
+        try { this.currentAudio.pause(); } catch (e) {}
+        this.currentAudio = null;
+      }
+
       if (!('speechSynthesis' in window)) {
-        console.warn(`[${this.name}] Speech synthesis (window.speechSynthesis) is not supported in this browser.`);
-        if (onEndCallback) onEndCallback();
+        console.warn(`[${this.name}] Speech synthesis not supported, switching to Audio fallback.`);
+        this.speakAudioFallback(text, onStartCallback, onEndCallback);
         return;
       }
 
@@ -25,7 +102,7 @@ class MiraAgent {
         window.speechSynthesis.resume();
       }
 
-      window.speechSynthesis.cancel(); // Clear any previous queued speech
+      window.speechSynthesis.cancel();
       this.currentUtterance = null;
 
       const cleanText = (text || '').replace(/<[^>]*>?/gm, '').trim();
@@ -34,13 +111,15 @@ class MiraAgent {
         return;
       }
 
-      // Create utterance and store in class instance reference to prevent V8 garbage collection
       const utterance = new SpeechSynthesisUtterance(cleanText);
       this.currentUtterance = utterance;
 
       utterance.rate = 0.95;
       utterance.pitch = 1.05;
+      utterance.volume = 1.0;
       utterance.lang = 'en-US';
+
+      let speechStarted = false;
 
       const performSpeak = () => {
         try {
@@ -57,6 +136,7 @@ class MiraAgent {
           }
 
           utterance.onstart = () => {
+            speechStarted = true;
             console.log(`[${this.name}] Started speaking question aloud: "${cleanText.substring(0, 40)}..."`);
             if (onStartCallback) onStartCallback();
           };
@@ -68,17 +148,33 @@ class MiraAgent {
           };
 
           utterance.onerror = (e) => {
-            console.warn(`[${this.name}] SpeechUtterance error:`, e.error, e);
+            console.warn(`[${this.name}] SpeechUtterance error:`, e.error);
             this.currentUtterance = null;
-            if (onEndCallback) onEndCallback();
+            if (!speechStarted) {
+              console.log(`[${this.name}] Switching to Audio element TTS fallback.`);
+              this.speakAudioFallback(cleanText, onStartCallback, onEndCallback);
+            } else if (onEndCallback) {
+              onEndCallback();
+            }
           };
 
           setTimeout(() => {
             window.speechSynthesis.speak(utterance);
           }, 50);
+
+          // Safety check: if SpeechSynthesis fails to start audio within 400ms, use Audio fallback
+          setTimeout(() => {
+            if (!speechStarted && this.currentUtterance === utterance) {
+              console.warn(`[${this.name}] SpeechSynthesis silent start detected. Triggering Audio fallback.`);
+              window.speechSynthesis.cancel();
+              this.currentUtterance = null;
+              this.speakAudioFallback(cleanText, onStartCallback, onEndCallback);
+            }
+          }, 400);
+
         } catch (e) {
           console.warn(`[${this.name}] Error setting voice:`, e);
-          window.speechSynthesis.speak(utterance);
+          this.speakAudioFallback(cleanText, onStartCallback, onEndCallback);
         }
       };
 
@@ -91,15 +187,14 @@ class MiraAgent {
           performSpeak();
         };
         setTimeout(() => {
-          if (this.currentUtterance === utterance) {
+          if (this.currentUtterance === utterance && !speechStarted) {
             performSpeak();
           }
         }, 300);
       }
     } catch (err) {
-      console.warn(`[${this.name}] Speech synthesis error:`, err);
-      this.currentUtterance = null;
-      if (onEndCallback) onEndCallback();
+      console.warn(`[${this.name}] Speech synthesis exception:`, err);
+      this.speakAudioFallback(text, onStartCallback, onEndCallback);
     }
   }
 
@@ -110,6 +205,10 @@ class MiraAgent {
     if ('speechSynthesis' in window) {
       window.speechSynthesis.cancel();
       this.currentUtterance = null;
+    }
+    if (this.currentAudio) {
+      try { this.currentAudio.pause(); } catch (e) {}
+      this.currentAudio = null;
     }
   }
 

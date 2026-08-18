@@ -619,17 +619,17 @@ export default function InterviewRoomPage({ sessionData, setActivePage, setFinal
               </p>
             </div>
 
-            {/* Replay Question Voice Button */}
             <button
               onClick={() => {
+                miraAgent.unlockAudio();
                 const currentQuestionText = currentQ?.question_text || currentQ?.q || "";
                 if (currentQuestionText) {
                   speakCurrentQuestion(currentQuestionText);
                 }
               }}
-              className="mt-2 px-3 py-1.5 rounded-xl bg-cyan-500/10 hover:bg-cyan-500/20 border border-cyan-500/30 text-cyan-300 text-xs font-mono flex items-center gap-1.5 transition-all shadow-md"
+              className="mt-2 px-3.5 py-1.5 rounded-xl bg-gradient-to-r from-cyan-600 to-indigo-600 hover:from-cyan-500 hover:to-indigo-500 text-white font-bold text-xs font-mono flex items-center gap-1.5 transition-all shadow-lg active:scale-95 cursor-pointer"
             >
-              <Volume2 className="w-3.5 h-3.5" /> Replay Question Voice
+              <Volume2 className="w-3.5 h-3.5" /> 🔊 Replay Question Voice
             </button>
           </div>
 
