@@ -1116,7 +1116,13 @@ export const InterviewRoom = () => {
               body: formData
             });
             if (uploadResp.ok) {
-              console.log("Webcam video recording uploaded and stored successfully!");
+              const uploadData = await uploadResp.json();
+              console.log("Webcam video recording uploaded and stored successfully!", uploadData);
+              if (uploadData && uploadData.video_recording_url) {
+                try {
+                  localStorage.setItem('smarthire_video_url', uploadData.video_recording_url);
+                } catch (e) {}
+              }
             } else {
               console.error("Webcam recording upload failed:", await uploadResp.text());
             }
@@ -1425,7 +1431,7 @@ export const InterviewRoom = () => {
             <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
             <span>Candidate Live</span>
           </div>
-          <VisionAnalyzer compact={true} onTelemetryUpdate={handleTelemetryUpdate} faceSignature={setupChecks?.faceSignature} />
+          <VisionAnalyzer compact={true} onTelemetryUpdate={handleTelemetryUpdate} onStreamActive={handleStreamActive} faceSignature={setupChecks?.faceSignature} />
         </div>
 
         {/* Live Call Control Toolbar & Subtitles Stream Bar (Bottom of Video) */}

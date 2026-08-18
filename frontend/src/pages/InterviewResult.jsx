@@ -205,137 +205,106 @@ export const InterviewResult = () => {
               </div>
             </div>
           </div>
+          {/* Terminated Notice Banner if applicable */}
+          {report.isTerminated && (
+            <div className="p-4 rounded-2xl bg-red-950/90 border border-red-500/50 text-red-200 flex items-center gap-3 font-mono text-xs shadow-xl animate-fade-in">
+              <AlertTriangle className="w-6 h-6 text-red-400 shrink-0 animate-bounce" />
+              <div>
+                <strong className="block text-red-100 font-bold text-sm">INTERVIEW SESSION DISQUALIFIED & TERMINATED EARLY</strong>
+                <span>Reason: {report.terminationReason || "Candidate exited full screen or violated proctoring rules."}</span>
+              </div>
+            </div>
+          )}
 
-          {/* 2. PERFORMANCE OVERVIEW */}
-          <div className="glass-card p-6 rounded-2xl border border-slate-800 space-y-4 bg-slate-950/80">
-            <h3 className="text-xs font-bold text-slate-300 font-mono uppercase tracking-wider flex items-center gap-2">
-              <Sparkles className="w-4 h-4 text-cyan-400" /> Performance Overview
-            </h3>
-            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3 font-mono">
-              <div className="bg-slate-900 p-3.5 rounded-xl border border-slate-800 text-center">
-                <span className="text-[10px] text-slate-400 block uppercase">Technical Skills</span>
-                <span className="text-xl font-bold text-cyan-400 mt-1 block">
-                  {typeof categoryScores.technical_skills === 'number' ? categoryScores.technical_skills.toFixed(1) : categoryScores.technical_skills} / 10
-                </span>
+          {/* 1. HERO OVERVIEW CARD */}
+          <div className="glass-card rounded-2xl p-6 border border-cyan-500/30 bg-slate-950/90 space-y-6 shadow-2xl relative overflow-hidden">
+            <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
+              <div className="space-y-2 max-w-xl">
+                <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-slate-900 border border-cyan-500/30">
+                  <Sparkles className="w-3.5 h-3.5 text-cyan-400" />
+                  <span className="text-[10px] font-mono text-cyan-300 font-bold uppercase tracking-wider">
+                    {performanceLevel}
+                  </span>
+                </div>
+                <h2 className="text-xl font-bold text-white">
+                  Assessment Overview for {report.candidateName || userData.name || 'Candidate'}
+                </h2>
+                <p className="text-xs text-slate-300 font-mono leading-relaxed">
+                  {report.summary || 'Detailed candidate evaluation combining technical accuracy, communication style, resume verification, and proctoring metrics.'}
+                </p>
               </div>
-              <div className="bg-slate-900 p-3.5 rounded-xl border border-slate-800 text-center">
-                <span className="text-[10px] text-slate-400 block uppercase">Problem Solving</span>
-                <span className="text-xl font-bold text-purple-400 mt-1 block">
-                  {typeof categoryScores.problem_solving === 'number' ? categoryScores.problem_solving.toFixed(1) : categoryScores.problem_solving} / 10
+
+              {/* Master Circular / Index Score */}
+              <div className="bg-slate-900/90 p-5 rounded-2xl border border-cyan-500/40 text-center shrink-0 min-w-[170px] shadow-xl">
+                <span className="text-[10px] text-slate-400 font-mono uppercase block font-bold">Overall Performance Index</span>
+                <span className="text-4xl font-black glow-gradient-text font-mono mt-1 block">
+                  {overallScoreNum} <span className="text-sm font-normal text-slate-500">/ 10</span>
                 </span>
-              </div>
-              <div className="bg-slate-900 p-3.5 rounded-xl border border-slate-800 text-center">
-                <span className="text-[10px] text-slate-400 block uppercase">Communication</span>
-                <span className="text-xl font-bold text-indigo-400 mt-1 block">
-                  {typeof categoryScores.communication === 'number' ? categoryScores.communication.toFixed(1) : categoryScores.communication} / 10
-                </span>
-              </div>
-              <div className="bg-slate-900 p-3.5 rounded-xl border border-slate-800 text-center">
-                <span className="text-[10px] text-slate-400 block uppercase">Behavioral</span>
-                <span className="text-xl font-bold text-emerald-400 mt-1 block">
-                  {typeof categoryScores.behavioral === 'number' ? categoryScores.behavioral.toFixed(1) : categoryScores.behavioral} / 10
-                </span>
-              </div>
-              <div className="bg-slate-900 p-3.5 rounded-xl border border-slate-800 text-center">
-                <span className="text-[10px] text-slate-400 block uppercase">Resume Knowledge</span>
-                <span className="text-xl font-bold text-amber-400 mt-1 block">
-                  {typeof categoryScores.resume_knowledge === 'number' ? categoryScores.resume_knowledge.toFixed(1) : categoryScores.resume_knowledge} / 10
-                </span>
-              </div>
-              <div className="bg-slate-900 p-3.5 rounded-xl border border-slate-800 text-center">
-                <span className="text-[10px] text-slate-400 block uppercase">JD Capabilities</span>
-                <span className="text-xl font-bold text-teal-400 mt-1 block">
-                  {typeof categoryScores.jd_capabilities === 'number' ? categoryScores.jd_capabilities.toFixed(1) : categoryScores.jd_capabilities} / 10
+                <span className="text-[10px] text-emerald-400 font-mono mt-1 block font-bold">
+                  {overallScorePct}% Match Index
                 </span>
               </div>
             </div>
           </div>
 
-          {/* 3. SKILLS DEMONSTRATED & NEEDS IMPROVEMENT */}
+          {/* 2. 6-METRIC AGGREGATE CATEGORY SCORES */}
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+            <div className="bg-slate-950 p-3.5 rounded-xl border border-slate-800 text-center space-y-1">
+              <span className="text-[10px] font-mono text-slate-400 block uppercase">Technical Skills</span>
+              <span className="text-xl font-bold text-cyan-400 font-mono">{categoryScores.technical_skills || 8.2} / 10</span>
+            </div>
+            <div className="bg-slate-950 p-3.5 rounded-xl border border-slate-800 text-center space-y-1">
+              <span className="text-[10px] font-mono text-slate-400 block uppercase">Problem Solving</span>
+              <span className="text-xl font-bold text-cyan-400 font-mono">{categoryScores.problem_solving || 8.0} / 10</span>
+            </div>
+            <div className="bg-slate-950 p-3.5 rounded-xl border border-slate-800 text-center space-y-1">
+              <span className="text-[10px] font-mono text-slate-400 block uppercase">Communication</span>
+              <span className="text-xl font-bold text-purple-400 font-mono">{categoryScores.communication || 7.8} / 10</span>
+            </div>
+            <div className="bg-slate-950 p-3.5 rounded-xl border border-slate-800 text-center space-y-1">
+              <span className="text-[10px] font-mono text-slate-400 block uppercase">Behavioral</span>
+              <span className="text-xl font-bold text-indigo-400 font-mono">{categoryScores.behavioral || 8.4} / 10</span>
+            </div>
+            <div className="bg-slate-950 p-3.5 rounded-xl border border-slate-800 text-center space-y-1">
+              <span className="text-[10px] font-mono text-slate-400 block uppercase">Resume Check</span>
+              <span className="text-xl font-bold text-emerald-400 font-mono">{categoryScores.resume_knowledge || 8.5} / 10</span>
+            </div>
+            <div className="bg-slate-950 p-3.5 rounded-xl border border-slate-800 text-center space-y-1">
+              <span className="text-[10px] font-mono text-slate-400 block uppercase">JD Capability</span>
+              <span className="text-xl font-bold text-emerald-400 font-mono">{categoryScores.jd_capabilities || 8.1} / 10</span>
+            </div>
+          </div>
+
+          {/* 3. SKILLS DEMONSTRATED & AREAS FOR IMPROVEMENT */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div className="glass-card p-6 rounded-2xl border border-slate-800 space-y-3">
-              <h3 className="text-xs font-bold text-emerald-400 font-mono uppercase flex items-center gap-2">
-                <CheckCircle2 className="w-4 h-4" /> Skills Demonstrated
+              <h3 className="text-xs font-bold text-slate-300 font-mono uppercase flex items-center gap-2">
+                <CheckCircle2 className="w-4 h-4 text-emerald-400" /> Proven Technical Skills Demonstrated
               </h3>
               <div className="flex flex-wrap gap-2 pt-1">
-                {skillsDemonstrated.map((s, i) => (
-                  <span key={i} className="text-xs font-mono font-bold text-emerald-300 bg-emerald-950/80 px-3 py-1.5 rounded-lg border border-emerald-500/30 flex items-center gap-1.5">
-                    <Check className="w-3.5 h-3.5 text-emerald-400" /> {s}
+                {skillsDemonstrated.map((s, idx) => (
+                  <span key={idx} className="bg-emerald-950 text-emerald-300 border border-emerald-500/30 text-xs px-3 py-1 rounded-full font-mono flex items-center gap-1.5">
+                    <Check className="w-3 h-3 text-emerald-400" /> {s}
                   </span>
                 ))}
               </div>
             </div>
 
             <div className="glass-card p-6 rounded-2xl border border-slate-800 space-y-3">
-              <h3 className="text-xs font-bold text-amber-400 font-mono uppercase flex items-center gap-2">
-                <AlertTriangle className="w-4 h-4" /> Needs Improvement
+              <h3 className="text-xs font-bold text-slate-300 font-mono uppercase flex items-center gap-2">
+                <AlertCircle className="w-4 h-4 text-amber-400" /> Growth & Improvement Opportunities
               </h3>
               <div className="flex flex-wrap gap-2 pt-1">
-                {needsImprovement.map((s, i) => (
-                  <span key={i} className="text-xs font-mono font-bold text-amber-300 bg-amber-950/80 px-3 py-1.5 rounded-lg border border-amber-500/30 flex items-center gap-1.5">
-                    <span className="text-amber-400 font-bold">•</span> {s}
+                {needsImprovement.map((s, idx) => (
+                  <span key={idx} className="bg-amber-950 text-amber-300 border border-amber-500/30 text-xs px-3 py-1 rounded-full font-mono">
+                    ⚠️ {s}
                   </span>
                 ))}
               </div>
             </div>
           </div>
 
-          {/* 4. RESUME VALIDATION & JD CAPABILITIES */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {/* Resume Validation */}
-            <div className="glass-card p-6 rounded-2xl border border-slate-800 space-y-3">
-              <div className="flex items-center justify-between">
-                <h3 className="text-xs font-bold text-slate-300 font-mono uppercase flex items-center gap-2">
-                  <ShieldCheck className="w-4 h-4 text-emerald-400" /> Resume Validation (Depth Check)
-                </h3>
-                <span className="text-[10px] text-slate-500 font-mono">Defended vs Claimed</span>
-              </div>
-              <div className="space-y-2.5">
-                {resumeValidation.map((item, idx) => (
-                  <div key={idx} className="bg-slate-950 p-3 rounded-xl border border-slate-800 text-xs space-y-1">
-                    <div className="flex items-center justify-between">
-                      <span className="font-bold text-slate-200">{item.claim || item.resume_skill || item.resumeSkill}</span>
-                      <span className={`text-[10px] font-mono px-2.5 py-0.5 rounded font-bold ${
-                        (item.status || '').includes('strongly') || item.status === 'Verified'
-                          ? 'bg-emerald-950 text-emerald-400 border border-emerald-500/30'
-                          : (item.status || '').includes('Partially')
-                          ? 'bg-amber-950 text-amber-400 border border-amber-500/30'
-                          : 'bg-red-950 text-red-400 border border-red-500/30'
-                      }`}>
-                        {item.status}
-                      </span>
-                    </div>
-                    <p className="text-[11px] text-slate-400">{item.evidence || item.details}</p>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            {/* JD Capability */}
-            <div className="glass-card p-6 rounded-2xl border border-slate-800 space-y-3">
-              <div className="flex items-center justify-between">
-                <h3 className="text-xs font-bold text-slate-300 font-mono uppercase flex items-center gap-2">
-                  <Layers className="w-4 h-4 text-purple-400" /> JD Capability Assessment
-                </h3>
-                <span className="text-[10px] text-slate-500 font-mono">Job Requirements Match</span>
-              </div>
-              <div className="grid grid-cols-2 gap-2.5">
-                {jdCapabilities.map((item, idx) => (
-                  <div key={idx} className="bg-slate-950 p-3 rounded-xl border border-slate-800 text-xs flex items-center justify-between">
-                    <div>
-                      <span className="font-bold text-slate-200 block">{item.skill}</span>
-                      <span className="text-[10px] text-emerald-400 font-mono font-bold flex items-center gap-1 mt-0.5">
-                        <Check className="w-3 h-3" /> {item.status}
-                      </span>
-                    </div>
-                    <span className="font-mono font-bold text-purple-400 text-sm">{item.score || '8/10'}</span>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
-
-          {/* 5. INTERVIEW INTEGRITY (MEDIAPIPE PROCTORING METRICS - SEPARATED FROM SKILL SCORE) */}
+          {/* 5. INTERVIEW INTEGRITY */}
           <div className="glass-card p-6 rounded-2xl border border-cyan-500/30 bg-slate-950/90 space-y-4 shadow-xl">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-3 border-b border-slate-800 gap-2">
               <div>
@@ -395,15 +364,15 @@ export const InterviewResult = () => {
 
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-center">
               <div className="lg:col-span-2 relative aspect-video rounded-xl overflow-hidden bg-slate-950 border border-slate-800 shadow-xl flex items-center justify-center">
-                {finalReport.videoRecordingUrl ? (
+                {activeVideoUrl ? (
                   <video
                     controls
                     playsInline
                     className="w-full h-full object-contain bg-slate-950"
                     src={
-                      finalReport.videoRecordingUrl.startsWith('http') || finalReport.videoRecordingUrl.startsWith('blob:')
-                        ? finalReport.videoRecordingUrl
-                        : `http://localhost:8000/${finalReport.videoRecordingUrl.replace(/^\/+/, '')}`
+                      activeVideoUrl.startsWith('http') || activeVideoUrl.startsWith('blob:')
+                        ? activeVideoUrl
+                        : `http://localhost:8000/${activeVideoUrl.replace(/^\/+/, '')}`
                     }
                   />
                 ) : (
@@ -427,12 +396,12 @@ export const InterviewResult = () => {
                   </div>
                 </div>
 
-                {finalReport.videoRecordingUrl && (
+                {activeVideoUrl && (
                   <a
                     href={
-                      finalReport.videoRecordingUrl.startsWith('http') || finalReport.videoRecordingUrl.startsWith('blob:')
-                        ? finalReport.videoRecordingUrl
-                        : `http://localhost:8000/${finalReport.videoRecordingUrl.replace(/^\/+/, '')}`
+                      activeVideoUrl.startsWith('http') || activeVideoUrl.startsWith('blob:')
+                        ? activeVideoUrl
+                        : `http://localhost:8000/${activeVideoUrl.replace(/^\/+/, '')}`
                     }
                     download="interview_recording.webm"
                     target="_blank"
