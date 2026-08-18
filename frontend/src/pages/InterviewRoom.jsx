@@ -1447,41 +1447,7 @@ export const InterviewRoom = () => {
         </div>
       </div>
 
-      {/* 3. QUESTIONS SECTION */}
-      <div className="glass-card rounded-2xl p-5 border border-slate-800 bg-slate-950/90 space-y-4 shadow-lg">
-        <div className="flex items-center justify-between pb-2 border-b border-slate-800/80">
-          <div className="flex items-center gap-2">
-            <HelpCircle className="w-4 h-4 text-cyan-400" />
-            <h2 className="text-xs font-bold text-white uppercase font-mono tracking-wider">
-              {isWelcomePhase ? 'AI Presenter Welcome & Readiness Check' : 'Current Interview Question'}
-            </h2>
-          </div>
 
-          <div className="flex items-center gap-2">
-            {isWelcomePhase ? (
-              <span className="text-[10px] font-mono text-emerald-400 bg-emerald-950 px-2.5 py-0.5 rounded border border-emerald-500/30">
-                Orientation Phase
-              </span>
-            ) : (
-              <>
-                <span className="text-[10px] font-mono text-cyan-400 bg-cyan-950 px-2.5 py-0.5 rounded border border-cyan-500/30">
-                  Question {qIndex + 1} of {questions.length}
-                </span>
-                <span className="text-[10px] font-mono text-purple-400 bg-purple-950 px-2.5 py-0.5 rounded border border-purple-500/30">
-                  {currentQ ? `${currentQ.category || 'Technical'} • ${currentQ.topic || 'Core'}` : ''}
-                </span>
-              </>
-            )}
-          </div>
-        </div>
-
-        <p className="text-base sm:text-lg font-semibold text-white leading-relaxed pt-1">
-          {isWelcomePhase
-            ? "Welcome to Smart AI Interview! I am Advika, your Virtual Presenter, and I will be conducting your technical assessment today. Shall we start the interview?"
-            : (currentQ ? (currentQ.questionText || currentQ.question_text) : '')
-          }
-        </p>
-      </div>
 
       {/* 4. DIRECT HANDS-FREE SPEECH MIC STATUS BAR */}
       <SpeechToText
