@@ -1,0 +1,40 @@
+version: "3.9"
+
+# SQLite-based setup — single database file, zero extra DB containers.
+# Run with: docker-compose up --build
+
+services:
+  backend:
+    build: ./backend
+    ports:
+      - "8000:8000"
+    volumes:
+      - backend_data:/app/data
+    environment:
+      - DATABASE_URL=sqlite:////app/data/smarthire.db
+      - JWT_SECRET_KEY=change-this-secret-in-production
+    restart: unless-stopped
+
+  frontend:
+    build: ./frontend
+    ports:
+      - "3000:80"
+    depends_on:
+      - backend
+    restart: unless-stopped
+
+  # Web-based SQLite GUI (like phpMyAdmin/Mongo Compass, but for SQLite).
+  # Browse tables, run SELECT queries, edit rows — all in the browser.
+  db-viewer:
+    image: coleifer/sqlite-web
+    command: sqlite_web -H 0.0.0.0 -x /data/smarthire.db
+    volumes:
+      - backend_data:/data
+    ports:
+      - "8080:8080"
+    depends_on:
+      - backend
+    restart: unless-stopped
+
+volumes:
+  backend_data:
