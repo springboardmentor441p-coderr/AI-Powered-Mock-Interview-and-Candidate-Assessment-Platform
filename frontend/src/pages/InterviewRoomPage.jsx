@@ -23,6 +23,7 @@ export default function InterviewRoomPage({ sessionData, setActivePage, setFinal
   const recognitionRef = useRef(null);
   const isRecordingRef = useRef(true);
   const isStartingRef = useRef(false);
+  const candidateAnswerRef = useRef('');
 
   // Sync ref with state to prevent stale closures in speech event listeners
   useEffect(() => {
@@ -222,6 +223,7 @@ export default function InterviewRoomPage({ sessionData, setActivePage, setFinal
         }
         const cleanText = fullTranscript.trim();
         if (cleanText) {
+          candidateAnswerRef.current = cleanText;
           setCandidateAnswer(cleanText);
           setSpeechEngineStatus("Transcribing Spoken Response...");
           setSpeechError(null);
@@ -293,9 +295,12 @@ export default function InterviewRoomPage({ sessionData, setActivePage, setFinal
     stopMicRecording();
     setSubmitting(true);
 
-    const rawInput = candidateAnswer.trim();
+    const rawInput = (candidateAnswerRef.current || candidateAnswer || '').trim();
     const isAnswered = rawInput.length > 0;
     const finalCandidateAnswer = isAnswered ? rawInput : "Not answered";
+
+    candidateAnswerRef.current = '';
+    setCandidateAnswer('');
 
     // 1. IMMEDIATELY APPEND CANDIDATE BUBBLE ("YOU") TO CHAT THREAD
     const candidateBubble = {
@@ -306,7 +311,6 @@ export default function InterviewRoomPage({ sessionData, setActivePage, setFinal
     };
 
     setChatThread(prev => [...prev, candidateBubble]);
-    setCandidateAnswer('');
 
     // 2. Submit answer or unanswered status to backend
     const backendRes = await submitQuestionAnswer({
@@ -558,6 +562,18 @@ export default function InterviewRoomPage({ sessionData, setActivePage, setFinal
                   </div>
                 </div>
               ))}
+
+              {/* REAL-TIME LIVE SPEAKING PREVIEW BUBBLE */}
+              {candidateAnswer && (
+                <div className="flex flex-col items-end space-y-1 animate-pulse">
+                  <span className="text-[10px] font-mono text-amber-400/90 uppercase tracking-wider font-bold pr-1">
+                    YOU (SPEAKING LIVE...)
+                  </span>
+                  <div className="p-3.5 rounded-2xl max-w-[85%] leading-relaxed shadow-xl text-xs bg-amber-950/90 border border-amber-500/50 text-amber-100 rounded-tr-none font-sans italic">
+                    "{candidateAnswer}"
+                  </div>
+                </div>
+              )}
             </div>
 
             {speechError && (
@@ -630,7 +646,10 @@ export default function InterviewRoomPage({ sessionData, setActivePage, setFinal
         <textarea
           rows={2}
           value={candidateAnswer}
-          onChange={(e) => setCandidateAnswer(e.target.value)}
+          onChange={(e) => {
+            candidateAnswerRef.current = e.target.value;
+            setCandidateAnswer(e.target.value);
+          }}
           placeholder="Speak your answer out loud into your microphone, or type your answer here..."
           className="w-full p-3 rounded-2xl bg-slate-900 border border-slate-800 text-slate-100 text-xs focus:outline-none focus:border-indigo-500 transition-all resize-none font-sans"
         />
