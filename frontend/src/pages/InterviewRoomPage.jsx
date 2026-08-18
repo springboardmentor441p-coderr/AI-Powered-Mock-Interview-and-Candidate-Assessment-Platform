@@ -16,21 +16,28 @@ export default function InterviewRoomPage({ sessionData, setActivePage, setFinal
   const [violationCount, setViolationCount] = useState(0);
   const [candidateAnswersList, setCandidateAnswersList] = useState([]);
   const [speechError, setSpeechError] = useState(null);
+  
   const chatScrollRef = useRef(null);
+  const recognitionRef = useRef(null);
+  const isRecordingRef = useRef(true);
+  const hasNetworkErrorRef = useRef(false);
 
-  // Truthful camera status metrics
+  // Sync ref with state to prevent stale closures in speech event listeners
+  useEffect(() => {
+    isRecordingRef.current = isRecording;
+  }, [isRecording]);
+
+  // Truthful camera & mic status metrics
   const [cameraMetrics, setCameraMetrics] = useState({
     streamActive: false,
     faceDetected: "Initializing...",
     cameraStatus: "Camera Active"
   });
 
-  const recognitionRef = useRef(null);
-
   const activeDomain = sessionData?.domain || sessionData?.category || "Python Developer";
   const activeDifficulty = sessionData?.difficulty || "Medium";
 
-  // Check if dynamic questions were returned from backend
+  // Dynamic questions returned from backend
   const backendQuestions = sessionData?.questions && Array.isArray(sessionData.questions) && sessionData.questions.length > 0 ? sessionData.questions : null;
   const hasGenerationError = sessionData?.error || !backendQuestions;
 
@@ -58,7 +65,7 @@ export default function InterviewRoomPage({ sessionData, setActivePage, setFinal
     return () => clearInterval(timer);
   }, []);
 
-  // Auto-scroll chat thread to bottom whenever messages or typing change
+  // Auto-scroll chat thread to bottom
   useEffect(() => {
     if (chatScrollRef.current) {
       chatScrollRef.current.scrollTop = chatScrollRef.current.scrollHeight;
@@ -148,15 +155,16 @@ export default function InterviewRoomPage({ sessionData, setActivePage, setFinal
     }
   }, []);
 
-  // Speech Recognition Handling
+  // ROBUST BROWSER SPEECH RECOGNITION HANDLING (WITHOUT INFINITE NETWORK ERROR LOOPS)
   const startMicRecording = async () => {
     try {
       setSpeechError(null);
+      hasNetworkErrorRef.current = false;
       await navigator.mediaDevices.getUserMedia({ audio: true });
 
       const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
       if (!SpeechRecognition) {
-        setSpeechError("Speech recognition is not supported in this browser. Please type your answer or use Chrome/Edge.");
+        setSpeechError("Browser live speech recognition is not supported in this browser environment. You can type or edit your answer in the box below.");
         return;
       }
 
@@ -171,6 +179,7 @@ export default function InterviewRoomPage({ sessionData, setActivePage, setFinal
 
       recognition.onstart = () => {
         setIsRecording(true);
+        isRecordingRef.current = true;
       };
 
       recognition.onresult = (event) => {
@@ -178,19 +187,31 @@ export default function InterviewRoomPage({ sessionData, setActivePage, setFinal
         for (let i = 0; i < event.results.length; i++) {
           cleanText += event.results[i][0].transcript + ' ';
         }
-        setCandidateAnswer(cleanText.trim());
+        if (cleanText.trim().length > 0) {
+          setCandidateAnswer(cleanText.trim());
+          setSpeechError(null);
+        }
       };
 
       recognition.onerror = (event) => {
-        if (event.error !== 'no-speech') {
-          console.warn("Speech recognition error:", event.error);
-          setSpeechError(`Speech Error: ${event.error}`);
+        console.warn("Speech recognition error:", event.error);
+        if (event.error === 'network') {
+          hasNetworkErrorRef.current = true;
+          setSpeechError("Speech recognition cloud connection unavailable. You can speak into your microphone or type/edit your answer in the response box below.");
+        } else if (event.error === 'not-allowed' || event.error === 'permission-denied') {
+          hasNetworkErrorRef.current = true;
+          setSpeechError("Microphone access permission denied. Please allow microphone access or type your response below.");
+        } else if (event.error !== 'no-speech') {
+          setSpeechError(`Speech Notice: ${event.error}`);
         }
       };
 
       recognition.onend = () => {
-        if (isRecording && recognitionRef.current) {
-          try { recognitionRef.current.start(); } catch (e) {}
+        // Prevent infinite network error loops: restart ONLY if recording is active AND no network/permission error occurred
+        if (isRecordingRef.current && !hasNetworkErrorRef.current) {
+          try {
+            recognitionRef.current?.start();
+          } catch (e) {}
         }
       };
 
@@ -198,12 +219,13 @@ export default function InterviewRoomPage({ sessionData, setActivePage, setFinal
       recognition.start();
     } catch (err) {
       console.warn("Microphone access error:", err);
-      setSpeechError("Microphone access permission denied or disconnected.");
+      setSpeechError("Microphone access permission denied or disconnected. You can type your answer in the response box below.");
     }
   };
 
   const stopMicRecording = () => {
     setIsRecording(false);
+    isRecordingRef.current = false;
     if (recognitionRef.current) {
       try { recognitionRef.current.stop(); } catch (e) {}
     }
@@ -426,7 +448,7 @@ export default function InterviewRoomPage({ sessionData, setActivePage, setFinal
         </div>
       </div>
 
-      {/* MAIN LAYOUT: LEFT (MIRA AVATAR & CONVERSATION THREAD), RIGHT (WEBCAM & CAMERA STATUS) */}
+      {/* MAIN LAYOUT: LEFT (MIRA AVATAR & CONVERSATION THREAD), RIGHT (WEBCAM & DEVICE STATUS) */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
         
         {/* LEFT COLUMN: MIRA AVATAR & SCROLLABLE CHAT THREAD (8 COLS) */}
@@ -488,30 +510,18 @@ export default function InterviewRoomPage({ sessionData, setActivePage, setFinal
                   </div>
                 </div>
               ))}
-
-              {/* Real-time Candidate Spoken Transcript Preview */}
-              {candidateAnswer && (
-                <div className="flex flex-col items-end space-y-1 animate-pulse">
-                  <span className="text-[10px] font-mono text-amber-400 uppercase tracking-wider font-bold pr-1">
-                    YOU (SPEAKING LIVE...):
-                  </span>
-                  <div className="p-3.5 rounded-2xl bg-amber-950/90 border border-amber-500/50 text-amber-100 max-w-[85%] italic">
-                    "{candidateAnswer}"
-                  </div>
-                </div>
-              )}
             </div>
 
             {speechError && (
               <div className="p-2 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-300 text-[11px] font-mono">
-                ⚠️ {speechError}
+                💡 {speechError}
               </div>
             )}
           </div>
 
         </div>
 
-        {/* RIGHT COLUMN: WEBCAM & CLEAN CAMERA STATUS */}
+        {/* RIGHT COLUMN: WEBCAM & DEVICE STATUS */}
         <div className="lg:col-span-4 space-y-4">
           
           {/* Candidate Webcam Box */}
@@ -521,7 +531,7 @@ export default function InterviewRoomPage({ sessionData, setActivePage, setFinal
             />
           </div>
 
-          {/* TRUTHFUL CAMERA STATUS BOX */}
+          {/* DEVICE MONITORING BOX */}
           <div className="glass-card p-5 rounded-3xl border border-slate-800 space-y-3.5 shadow-xl">
             <div className="flex items-center justify-between border-b border-slate-800 pb-2">
               <span className="text-xs font-mono text-slate-300 font-bold uppercase">Device Monitoring</span>
@@ -551,42 +561,66 @@ export default function InterviewRoomPage({ sessionData, setActivePage, setFinal
 
       </div>
 
-      {/* BOTTOM CONTROL BAR */}
-      <div className="glass-card p-4 rounded-3xl border border-slate-800 flex flex-col sm:flex-row items-center justify-between gap-4">
-        
-        <div className="flex items-center gap-3">
-          <button
-            onClick={() => setIsRecording(!isRecording)}
-            className={`px-4 py-2 rounded-xl text-xs font-bold border transition-all flex items-center gap-1.5 ${
-              isRecording ? 'bg-slate-900 text-slate-200 border-slate-800' : 'bg-red-500/20 text-red-400 border-red-500/40'
-            }`}
-          >
-            <Mic className="w-4 h-4 text-cyan-400" /> {isRecording ? "Mute Mic" : "Unmute Mic"}
-          </button>
-          
-          <span className="text-xs text-slate-400 font-mono">
-            Camera Status: <span className={cameraMetrics.streamActive ? "text-emerald-400 font-bold" : "text-amber-400"}>
-              {cameraMetrics.streamActive ? "Camera Active" : "Camera Off"}
-            </span>
+      {/* EDITABLE CANDIDATE RESPONSE & CONTROL BAR */}
+      <div className="glass-card p-4 rounded-3xl border border-slate-800 space-y-3">
+        <div className="flex items-center justify-between">
+          <label className="text-xs font-bold text-white flex items-center gap-2">
+            <Mic className="w-4 h-4 text-cyan-400" /> Candidate Response (Live Spoken / Typed Transcript):
+          </label>
+          <span className="text-[10px] text-slate-400 font-mono">
+            Speak into mic or type/edit answer below
           </span>
         </div>
 
-        <div className="flex items-center gap-3">
-          <button
-            onClick={handleNextQuestion}
-            disabled={submitting}
-            className="px-6 py-2.5 rounded-xl font-bold text-xs bg-indigo-600 hover:bg-indigo-500 text-white shadow-lg transition-all flex items-center gap-2"
-          >
-            {submitting ? "Mira Processing..." : (
-              currentIdx < 4 ? (
-                candidateAnswer.trim().length > 0 
-                  ? <>Submit Answer & Next Question <ArrowRight className="w-4 h-4" /></>
-                  : <>Skip Question (Log Unanswered) <ArrowRight className="w-4 h-4" /></>
-              ) : (
-                <>Complete Interview & Generate Report <PhoneOff className="w-4 h-4" /></>
-              )
-            )}
-          </button>
+        <textarea
+          rows={2}
+          value={candidateAnswer}
+          onChange={(e) => setCandidateAnswer(e.target.value)}
+          placeholder="Speak your answer out loud into your microphone, or type your answer here..."
+          className="w-full p-3 rounded-2xl bg-slate-900 border border-slate-800 text-slate-100 text-xs focus:outline-none focus:border-indigo-500 transition-all resize-none font-sans"
+        />
+
+        <div className="flex flex-col sm:flex-row items-center justify-between gap-4 pt-1">
+          <div className="flex items-center gap-3">
+            <button
+              onClick={() => {
+                if (isRecording) {
+                  stopMicRecording();
+                } else {
+                  startMicRecording();
+                }
+              }}
+              className={`px-4 py-2 rounded-xl text-xs font-bold border transition-all flex items-center gap-1.5 ${
+                isRecording ? 'bg-slate-900 text-slate-200 border-slate-800' : 'bg-red-500/20 text-red-400 border-red-500/40'
+              }`}
+            >
+              <Mic className="w-4 h-4 text-cyan-400" /> {isRecording ? "Mute Mic" : "Unmute Mic"}
+            </button>
+            
+            <span className="text-xs text-slate-400 font-mono">
+              Camera Status: <span className={cameraMetrics.streamActive ? "text-emerald-400 font-bold" : "text-amber-400"}>
+                {cameraMetrics.streamActive ? "Camera Active" : "Camera Off"}
+              </span>
+            </span>
+          </div>
+
+          <div className="flex items-center gap-3">
+            <button
+              onClick={handleNextQuestion}
+              disabled={submitting}
+              className="px-6 py-2.5 rounded-xl font-bold text-xs bg-indigo-600 hover:bg-indigo-500 text-white shadow-lg transition-all flex items-center gap-2"
+            >
+              {submitting ? "Mira Processing..." : (
+                currentIdx < 4 ? (
+                  candidateAnswer.trim().length > 0 
+                    ? <>Submit Answer & Next Question <ArrowRight className="w-4 h-4" /></>
+                    : <>Skip Question (Log Unanswered) <ArrowRight className="w-4 h-4" /></>
+                ) : (
+                  <>Complete Interview & Generate Report <PhoneOff className="w-4 h-4" /></>
+                )
+              )}
+            </button>
+          </div>
         </div>
 
       </div>
