@@ -139,6 +139,7 @@ export const InterviewResult = () => {
     suggestions: Array.isArray(report.areasForImprovement) ? report.areasForImprovement : (Array.isArray(report.aiRecommendations) ? report.aiRecommendations : []),
     questionPerformance: questionPerfList
   };
+  const activeVideoUrl = report.videoRecordingUrl || (typeof localStorage !== 'undefined' ? localStorage.getItem('smarthire_video_url') : null);
 
   return (
     <div className="max-w-6xl mx-auto px-6 py-8 space-y-6">
