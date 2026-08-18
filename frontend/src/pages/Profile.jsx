@@ -1,8 +1,10 @@
 import React, { useState } from 'react';
-import { User, Mail, Briefcase, Upload, ShieldCheck, FileText, CheckCircle } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { User, Mail, Briefcase, Upload, ShieldCheck, FileText, CheckCircle, LogOut } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 
 export const Profile = () => {
+  const navigate = useNavigate();
   const { candidate: user, setCandidate: setUser, resumeData, setResumeData } = useApp();
   const [savedMessage, setSavedMessage] = useState(false);
 
@@ -12,13 +14,45 @@ export const Profile = () => {
     setTimeout(() => setSavedMessage(false), 2500);
   };
 
+  const handleLogout = () => {
+    try {
+      localStorage.removeItem('smarthire_token');
+      localStorage.removeItem('smarthire_user');
+      localStorage.removeItem('smarthire_session_qa');
+      localStorage.removeItem('smarthire_video_url');
+    } catch (e) {}
+
+    if (typeof setUser === 'function') {
+      setUser({
+        id: null,
+        name: '',
+        email: '',
+        targetRole: '',
+        avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=250&q=80',
+        isLoggedIn: false
+      });
+    }
+    navigate('/login');
+  };
+
   return (
     <div className="max-w-4xl mx-auto px-6 py-8 space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold text-white flex items-center gap-2">
-          Candidate Profile & Resume Manager
-        </h1>
-        <p className="text-xs text-slate-400 font-mono">Manage your technical skills, target roles, and master resume</p>
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 border-b border-slate-800 pb-4">
+        <div>
+          <h1 className="text-2xl font-bold text-white flex items-center gap-2">
+            Candidate Profile & Resume Manager
+          </h1>
+          <p className="text-xs text-slate-400 font-mono">Manage your technical skills, target roles, and master resume</p>
+        </div>
+
+        <button
+          type="button"
+          onClick={handleLogout}
+          className="px-4 py-2 rounded-xl bg-red-950/80 hover:bg-red-900 border border-red-500/40 text-red-300 font-bold text-xs font-mono flex items-center gap-2 transition-all cursor-pointer shadow-md hover:shadow-red-500/20"
+        >
+          <LogOut className="w-4 h-4 text-red-400" />
+          <span>Sign Out Account</span>
+        </button>
       </div>
 
       <div className="glass-card rounded-2xl p-6 border border-slate-800 space-y-6">
