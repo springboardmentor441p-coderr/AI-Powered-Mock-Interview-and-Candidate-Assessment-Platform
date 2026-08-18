@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Video, Mic, MicOff, Volume2, Clock, ArrowRight, CheckCircle2, AlertCircle, RefreshCw, Send, Sparkles, VolumeX, Bot, User, MessageSquare, PhoneOff, Bell, AlertTriangle, ShieldAlert, XCircle, Loader2 } from 'lucide-react';
 import WebcamMonitor from '../components/WebcamMonitor';
 import AudioWaveform from '../components/AudioWaveform';
-import { submitQuestionAnswer, finishInterviewSession, fetchNextAdaptiveQuestion } from '../services/api';
+import { submitQuestionAnswer, finishInterviewSession, fetchNextAdaptiveQuestion, transcribeAudioBlob } from '../services/api';
 import { miraAgent } from '../services/aiAgent';
 
 export default function InterviewRoomPage({ sessionData, setActivePage, setFinalReport }) {
@@ -12,15 +12,19 @@ export default function InterviewRoomPage({ sessionData, setActivePage, setFinal
   const [isSpeaking, setIsSpeaking] = useState(false);
   const [timerSeconds, setTimerSeconds] = useState(0);
   const [submitting, setSubmitting] = useState(false);
+  const [transcribingAudio, setTranscribingAudio] = useState(false);
   const [activePopup, setActivePopup] = useState(null);
   const [violationCount, setViolationCount] = useState(0);
   const [candidateAnswersList, setCandidateAnswersList] = useState([]);
   const [speechError, setSpeechError] = useState(null);
-  const [micPermissionGranted, setMicPermissionGranted] = useState(true);
+  const [micPermissionGranted, setMicPermissionGranted] = useState(false);
   const [speechEngineStatus, setSpeechEngineStatus] = useState("Microphone Ready");
 
   const chatScrollRef = useRef(null);
   const recognitionRef = useRef(null);
+  const mediaRecorderRef = useRef(null);
+  const audioChunksRef = useRef([]);
+  const micStreamRef = useRef(null);
   
   const isRecordingRef = useRef(true);
   const isStartingRef = useRef(false);
@@ -169,7 +173,7 @@ export default function InterviewRoomPage({ sessionData, setActivePage, setFinal
     }
   }, [currentIdx]);
 
-  // UNLOCKED BROWSER SPEECH RECOGNITION (DIRECT MICROPHONE HARDWARE INPUT)
+  // REAL SPEECH CAPTURE PIPELINE (MEDIARECORDER BACKEND WHISPER + BROWSER SPEECHRECOGNITION)
   const startMicRecording = async () => {
     if (isStartingRef.current) return;
     isStartingRef.current = true;
@@ -177,117 +181,106 @@ export default function InterviewRoomPage({ sessionData, setActivePage, setFinal
     try {
       setSpeechError(null);
 
-      const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-      if (!SpeechRecognition) {
+      // 1. Capture real audio stream via getUserMedia & MediaRecorder for Whisper backend transcription
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        micStreamRef.current = stream;
+        setMicPermissionGranted(true);
+        
+        audioChunksRef.current = [];
+        if (window.MediaRecorder) {
+          const recorder = new MediaRecorder(stream);
+          recorder.ondataavailable = (e) => {
+            if (e.data && e.data.size > 0) {
+              audioChunksRef.current.push(e.data);
+            }
+          };
+          recorder.start(500);
+          mediaRecorderRef.current = recorder;
+        }
+      } catch (err) {
+        console.warn("[Microphone] Access permission denied:", err);
+        setMicPermissionGranted(false);
         setSpeechEngineStatus("Voice transcription unavailable");
-        setSpeechError("Live speech recognition is not supported in this browser. Please type your answer below.");
+        setSpeechError("Microphone access is required for speech-to-text. Please un-block your microphone.");
+        setIsRecording(false);
         isStartingRef.current = false;
         return;
       }
 
-      if (recognitionRef.current) {
-        try { recognitionRef.current.abort(); } catch (e) {}
-      }
-
-      const recognition = new SpeechRecognition();
-      recognition.continuous = true;
-      recognition.interimResults = true;
-      recognition.lang = 'en-US';
-
-      recognition.onstart = () => {
-        console.log("[SpeechRecognition] Engine started listening.");
-        setIsRecording(true);
-        isRecordingRef.current = true;
-        isStartingRef.current = false;
-        setMicPermissionGranted(true);
-        setSpeechEngineStatus("Listening...");
-        setSpeechError(null);
-      };
-
-      recognition.onaudiostart = () => {
-        console.log("[SpeechRecognition] Audio capture stream opened.");
-      };
-
-      recognition.onsoundstart = () => {
-        console.log("[SpeechRecognition] Sound detected on audio stream.");
-      };
-
-      recognition.onspeechstart = () => {
-        console.log("[SpeechRecognition] Human speech detected!");
-        setSpeechEngineStatus("Transcribing...");
-      };
-
-      recognition.onresult = (event) => {
-        let currentInterim = '';
-        for (let i = event.resultIndex; i < event.results.length; i++) {
-          const chunk = event.results[i][0].transcript;
-          if (event.results[i].isFinal) {
-            finalTranscriptRef.current += chunk + ' ';
-          } else {
-            currentInterim += chunk + ' ';
-          }
+      // 2. Launch Browser Web Speech API for live transcription preview
+      const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+      if (SpeechRecognition) {
+        if (recognitionRef.current) {
+          try { recognitionRef.current.abort(); } catch (e) {}
         }
 
-        const fullText = (finalTranscriptRef.current + ' ' + currentInterim).trim();
-        if (fullText) {
-          console.log("[SpeechRecognition] Live transcript received:", fullText);
-          candidateAnswerRef.current = fullText;
-          setCandidateAnswer(fullText);
-          setSpeechEngineStatus("Transcript Ready");
-          setSpeechError(null);
-        }
-      };
+        const recognition = new SpeechRecognition();
+        recognition.continuous = true;
+        recognition.interimResults = true;
+        recognition.lang = 'en-US';
 
-      recognition.onspeechend = () => {
-        console.log("[SpeechRecognition] Speech segment completed.");
-      };
-
-      recognition.onerror = (event) => {
-        console.warn("[SpeechRecognition] Notice event:", event.error);
-        isStartingRef.current = false;
-
-        if (event.error === 'no-speech' || event.error === 'aborted') {
-          return;
-        }
-
-        if (event.error === 'not-allowed' || event.error === 'permission-denied') {
-          setMicPermissionGranted(false);
-          setSpeechEngineStatus("Microphone Permission Required");
-          setSpeechError("Microphone permission required. Please allow microphone access in your browser.");
-        } else if (event.error === 'network') {
-          setSpeechEngineStatus("Speech Service Connecting...");
-          setSpeechError("Speech recognition connecting... Speak into your microphone or type your answer below.");
-        } else {
-          setSpeechEngineStatus(`Speech Notice: ${event.error}`);
-        }
-      };
-
-      recognition.onend = () => {
-        console.log("[SpeechRecognition] Engine ended. Active state:", isRecordingRef.current);
-        isStartingRef.current = false;
-        if (isRecordingRef.current) {
+        recognition.onstart = () => {
+          console.log("[SpeechRecognition] Listening...");
+          setIsRecording(true);
+          isRecordingRef.current = true;
+          isStartingRef.current = false;
           setSpeechEngineStatus("Listening...");
-          setTimeout(() => {
-            if (isRecordingRef.current) {
-              try { recognitionRef.current?.start(); } catch (e) {}
-            }
-          }, 200);
-        } else {
-          setSpeechEngineStatus("Microphone Ready");
-        }
-      };
+          setSpeechError(null);
+        };
 
-      recognitionRef.current = recognition;
-      try {
-        recognition.start();
-      } catch (err) {
-        console.warn("[SpeechRecognition] Start exception:", err);
+        recognition.onresult = (event) => {
+          let currentInterim = '';
+          for (let i = event.resultIndex; i < event.results.length; i++) {
+            const chunk = event.results[i][0].transcript;
+            if (event.results[i].isFinal) {
+              finalTranscriptRef.current += chunk + ' ';
+            } else {
+              currentInterim += chunk + ' ';
+            }
+          }
+
+          const fullText = (finalTranscriptRef.current + ' ' + currentInterim).trim();
+          if (fullText) {
+            console.log("[SpeechRecognition] Real transcript received:", fullText);
+            candidateAnswerRef.current = fullText;
+            setCandidateAnswer(fullText);
+            setSpeechEngineStatus("Transcript Ready");
+            setSpeechError(null);
+          }
+        };
+
+        recognition.onerror = (event) => {
+          console.warn("[SpeechRecognition] Error notice:", event.error);
+          isStartingRef.current = false;
+
+          if (event.error === 'no-speech' || event.error === 'aborted') return;
+
+          if (event.error === 'network') {
+            setSpeechEngineStatus("Whisper Backend Audio Active");
+            setSpeechError("Speech-to-Text active via Whisper backend. Speak into your microphone.");
+          }
+        };
+
+        recognition.onend = () => {
+          isStartingRef.current = false;
+          if (isRecordingRef.current) {
+            setTimeout(() => {
+              if (isRecordingRef.current) {
+                try { recognitionRef.current?.start(); } catch (e) {}
+              }
+            }, 200);
+          }
+        };
+
+        recognitionRef.current = recognition;
+        try { recognition.start(); } catch (e) {}
+      } else {
         isStartingRef.current = false;
+        setSpeechEngineStatus("Whisper Backend Audio Active");
       }
     } catch (err) {
-      console.warn("[Speech] Exception during initialization:", err);
-      setSpeechEngineStatus("Voice transcription unavailable");
-      setSpeechError("Voice transcription is unavailable in this browser. Please type your answer below.");
+      console.warn("[Speech] Exception during mic start:", err);
       isStartingRef.current = false;
     }
   };
@@ -301,7 +294,42 @@ export default function InterviewRoomPage({ sessionData, setActivePage, setFinal
       try { recognitionRef.current.stop(); } catch (e) {}
     }
 
+    if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
+      try { mediaRecorderRef.current.stop(); } catch (e) {}
+    }
+
+    if (micStreamRef.current) {
+      try { micStreamRef.current.getTracks().forEach(t => t.stop()); } catch (e) {}
+      micStreamRef.current = null;
+    }
+
     setSpeechEngineStatus("Microphone Ready");
+  };
+
+  // PROCESS REAL SPOKEN AUDIO FROM MEDIARECORDER VIA GROQ WHISPER BACKEND
+  const processRecordedAudioTranscription = async () => {
+    if (audioChunksRef.current.length === 0) return "";
+    try {
+      setTranscribingAudio(true);
+      setSpeechEngineStatus("Transcribing Real Audio...");
+      const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
+      if (audioBlob.size > 200) {
+        const realTranscript = await transcribeAudioBlob(audioBlob);
+        setTranscribingAudio(false);
+        if (realTranscript && realTranscript.trim()) {
+          const clean = realTranscript.trim();
+          candidateAnswerRef.current = clean;
+          setCandidateAnswer(clean);
+          setSpeechEngineStatus("Transcript Ready");
+          return clean;
+        }
+      }
+    } catch (err) {
+      console.warn("[Whisper Transcription] Audio transcribe error:", err);
+      setTranscribingAudio(false);
+    }
+    setTranscribingAudio(false);
+    return candidateAnswerRef.current || candidateAnswer || "";
   };
 
   const formatTimer = (secs) => {
@@ -315,10 +343,17 @@ export default function InterviewRoomPage({ sessionData, setActivePage, setFinal
     if (!currentQ || submitting) return;
 
     miraAgent.stopSpeaking();
-    stopMicRecording();
     setSubmitting(true);
 
-    const currentText = (candidateAnswerRef.current || candidateAnswer || '').trim();
+    let currentText = (candidateAnswerRef.current || candidateAnswer || '').trim();
+
+    // WHISPER BACKEND TRANSCRIBE FALLBACK: If candidate spoke into mic but WebSpeech produced no text
+    if (!currentText && audioChunksRef.current.length > 0) {
+      currentText = await processRecordedAudioTranscription();
+    }
+
+    stopMicRecording();
+
     const isAnswered = currentText.length > 0 && currentText !== "Not answered";
     const finalCandidateAnswer = isAnswered ? currentText : "Not answered";
 
@@ -708,6 +743,15 @@ export default function InterviewRoomPage({ sessionData, setActivePage, setFinal
               <Mic className="w-4 h-4 text-cyan-400" /> {isRecording ? "Mute Mic" : "Unmute Mic / Speak"}
             </button>
 
+            <button
+              onClick={processRecordedAudioTranscription}
+              disabled={transcribingAudio}
+              className="px-3.5 py-2 rounded-xl text-xs font-bold border border-cyan-500/40 bg-cyan-500/10 text-cyan-300 hover:bg-cyan-500/20 transition-all flex items-center gap-1.5"
+            >
+              {transcribingAudio ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <RefreshCw className="w-3.5 h-3.5" />}
+              {transcribingAudio ? "Transcribing Spoken Voice..." : "Transcribe Voice Audio"}
+            </button>
+
             <span className="text-xs text-slate-400 font-mono ml-1">
               Camera: <span className={cameraMetrics.streamActive ? "text-emerald-400 font-bold" : "text-amber-400"}>
                 {cameraMetrics.streamActive ? "Active" : "Off"}
@@ -718,10 +762,10 @@ export default function InterviewRoomPage({ sessionData, setActivePage, setFinal
           <div className="flex items-center gap-3">
             <button
               onClick={handleNextQuestion}
-              disabled={submitting}
+              disabled={submitting || transcribingAudio}
               className="px-6 py-2.5 rounded-xl font-bold text-xs bg-indigo-600 hover:bg-indigo-500 text-white shadow-lg transition-all flex items-center gap-2"
             >
-              {submitting ? "Mira Processing..." : (
+              {submitting || transcribingAudio ? "Mira Processing..." : (
                 currentIdx < 4 ? (
                   candidateAnswer.trim().length > 0 
                     ? <>Submit Answer & Next Question <ArrowRight className="w-4 h-4" /></>
