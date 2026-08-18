@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Video, Mic, MicOff, Volume2, Clock, ArrowRight, CheckCircle2, AlertCircle, RefreshCw, Send, Sparkles, VolumeX, Bot, User, MessageSquare, PhoneOff, Bell, AlertTriangle, ShieldAlert, XCircle } from 'lucide-react';
 import WebcamMonitor from '../components/WebcamMonitor';
 import AudioWaveform from '../components/AudioWaveform';
-import { submitQuestionAnswer, finishInterviewSession, fetchNextAdaptiveQuestion } from '../services/api';
+import { submitQuestionAnswer, finishInterviewSession, fetchNextAdaptiveQuestion, transcribeAudioBlob } from '../services/api';
 import { miraAgent } from '../services/aiAgent';
 
 export default function InterviewRoomPage({ sessionData, setActivePage, setFinalReport }) {
@@ -17,10 +17,14 @@ export default function InterviewRoomPage({ sessionData, setActivePage, setFinal
   const [candidateAnswersList, setCandidateAnswersList] = useState([]);
   const [speechError, setSpeechError] = useState(null);
   const [micPermissionGranted, setMicPermissionGranted] = useState(false);
-  const [speechEngineStatus, setSpeechEngineStatus] = useState("Initializing...");
+  const [speechEngineStatus, setSpeechEngineStatus] = useState("Microphone Ready");
 
   const chatScrollRef = useRef(null);
   const recognitionRef = useRef(null);
+  const mediaRecorderRef = useRef(null);
+  const audioChunksRef = useRef([]);
+  const micStreamRef = useRef(null);
+  
   const isRecordingRef = useRef(true);
   const isStartingRef = useRef(false);
   const candidateAnswerRef = useRef('');
@@ -171,7 +175,7 @@ export default function InterviewRoomPage({ sessionData, setActivePage, setFinal
     }
   }, [currentIdx]);
 
-  // ULTIMATE REAL-TIME SPEECH RECOGNITION (INTERIM + FINAL TRANSCRIPT ACCUMULATION)
+  // DUAL SPEECH-TO-TEXT PIPELINE (BROWSER WEB SPEECH + BACKEND WHISPER MEDIA RECORDER FALLBACK)
   const startMicRecording = async () => {
     if (isStartingRef.current) return;
     isStartingRef.current = true;
@@ -179,11 +183,38 @@ export default function InterviewRoomPage({ sessionData, setActivePage, setFinal
     try {
       setSpeechError(null);
 
+      // 1. Initiate Microphone Audio Stream for MediaRecorder backup
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        micStreamRef.current = stream;
+        setMicPermissionGranted(true);
+        
+        audioChunksRef.current = [];
+        if (window.MediaRecorder) {
+          const recorder = new MediaRecorder(stream);
+          recorder.ondataavailable = (e) => {
+            if (e.data && e.data.size > 0) {
+              audioChunksRef.current.push(e.data);
+            }
+          };
+          recorder.start(500);
+          mediaRecorderRef.current = recorder;
+        }
+      } catch (err) {
+        console.warn("[Microphone] Access permission denied:", err);
+        setMicPermissionGranted(false);
+        setSpeechEngineStatus("Voice transcription unavailable");
+        setSpeechError("Voice transcription is unavailable in this browser. Please allow microphone access or type your answer below.");
+        setIsRecording(false);
+        isStartingRef.current = false;
+        return;
+      }
+
+      // 2. Launch Browser Native Web Speech API
       const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
       if (!SpeechRecognition) {
-        console.warn("[SpeechRecognition] Web Speech API not supported in browser environment.");
-        setSpeechEngineStatus("Browser Web Speech API Unavailable");
-        setSpeechError("Live browser speech recognition is not supported in this browser. You can speak into your microphone or type/edit your response below.");
+        setSpeechEngineStatus("Voice transcription unavailable");
+        setSpeechError("Voice transcription is unavailable in this browser. Please type your answer below.");
         isStartingRef.current = false;
         return;
       }
@@ -198,12 +229,11 @@ export default function InterviewRoomPage({ sessionData, setActivePage, setFinal
       recognition.lang = 'en-US';
 
       recognition.onstart = () => {
-        console.log("[SpeechRecognition] Engine listening for candidate audio...");
+        console.log("[SpeechRecognition] Engine started listening.");
         setIsRecording(true);
         isRecordingRef.current = true;
         isStartingRef.current = false;
-        setMicPermissionGranted(true);
-        setSpeechEngineStatus("Listening for Speech...");
+        setSpeechEngineStatus("Listening...");
         setSpeechError(null);
       };
 
@@ -212,22 +242,22 @@ export default function InterviewRoomPage({ sessionData, setActivePage, setFinal
       };
 
       recognition.onsoundstart = () => {
-        console.log("[SpeechRecognition] Sound activity detected on microphone.");
+        console.log("[SpeechRecognition] Sound detected on audio stream.");
       };
 
       recognition.onspeechstart = () => {
-        console.log("[SpeechRecognition] Human speech stream detected!");
-        setSpeechEngineStatus("Human Speech Detected...");
+        console.log("[SpeechRecognition] Human speech detected!");
+        setSpeechEngineStatus("Transcribing...");
       };
 
       recognition.onresult = (event) => {
         let currentInterim = '';
         for (let i = event.resultIndex; i < event.results.length; i++) {
-          const transcriptChunk = event.results[i][0].transcript;
+          const chunk = event.results[i][0].transcript;
           if (event.results[i].isFinal) {
-            finalTranscriptRef.current += transcriptChunk + ' ';
+            finalTranscriptRef.current += chunk + ' ';
           } else {
-            currentInterim += transcriptChunk + ' ';
+            currentInterim += chunk + ' ';
           }
         }
 
@@ -236,7 +266,7 @@ export default function InterviewRoomPage({ sessionData, setActivePage, setFinal
           console.log("[SpeechRecognition] Live transcript:", fullText);
           candidateAnswerRef.current = fullText;
           setCandidateAnswer(fullText);
-          setSpeechEngineStatus("Transcribing Spoken Response...");
+          setSpeechEngineStatus("Transcript Ready");
           setSpeechError(null);
         }
       };
@@ -255,13 +285,13 @@ export default function InterviewRoomPage({ sessionData, setActivePage, setFinal
 
         if (event.error === 'not-allowed' || event.error === 'permission-denied') {
           setMicPermissionGranted(false);
-          setSpeechEngineStatus("Microphone Permission Required");
-          setSpeechError("Microphone permission required. Please allow microphone access in your browser.");
+          setSpeechEngineStatus("Voice transcription unavailable");
+          setSpeechError("Microphone permission required. Please allow microphone access or type your answer below.");
         } else if (event.error === 'network') {
           setSpeechEngineStatus("Speech Service Connecting...");
-          setSpeechError("Speech service connecting... Speak into your microphone or type your answer in the box below.");
+          setSpeechError("Speech recognition connecting... Speak into your microphone or type your answer below.");
         } else {
-          setSpeechEngineStatus(`Speech Engine Notice: ${event.error}`);
+          setSpeechEngineStatus(`Speech Notice: ${event.error}`);
         }
       };
 
@@ -269,14 +299,14 @@ export default function InterviewRoomPage({ sessionData, setActivePage, setFinal
         console.log("[SpeechRecognition] Engine ended. Active state:", isRecordingRef.current);
         isStartingRef.current = false;
         if (isRecordingRef.current) {
-          setSpeechEngineStatus("Listening for Speech...");
+          setSpeechEngineStatus("Listening...");
           setTimeout(() => {
             if (isRecordingRef.current) {
               try { recognitionRef.current?.start(); } catch (e) {}
             }
           }, 200);
         } else {
-          setSpeechEngineStatus("Speech Engine Idle");
+          setSpeechEngineStatus("Microphone Ready");
         }
       };
 
@@ -288,9 +318,9 @@ export default function InterviewRoomPage({ sessionData, setActivePage, setFinal
         isStartingRef.current = false;
       }
     } catch (err) {
-      console.warn("[SpeechRecognition] Exception:", err);
-      setSpeechEngineStatus("Speech Initialization Error");
-      setSpeechError("Microphone or speech initialization error. You can type your response in the box below.");
+      console.warn("[Speech] Exception during initialization:", err);
+      setSpeechEngineStatus("Voice transcription unavailable");
+      setSpeechError("Voice transcription is unavailable in this browser. Please type your answer below.");
       isStartingRef.current = false;
     }
   };
@@ -299,10 +329,21 @@ export default function InterviewRoomPage({ sessionData, setActivePage, setFinal
     setIsRecording(false);
     isRecordingRef.current = false;
     isStartingRef.current = false;
+
     if (recognitionRef.current) {
       try { recognitionRef.current.stop(); } catch (e) {}
     }
-    setSpeechEngineStatus("Speech Engine Idle");
+
+    if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
+      try { mediaRecorderRef.current.stop(); } catch (e) {}
+    }
+
+    if (micStreamRef.current) {
+      try { micStreamRef.current.getTracks().forEach(t => t.stop()); } catch (e) {}
+      micStreamRef.current = null;
+    }
+
+    setSpeechEngineStatus("Microphone Ready");
   };
 
   const formatTimer = (secs) => {
@@ -316,18 +357,38 @@ export default function InterviewRoomPage({ sessionData, setActivePage, setFinal
     if (!currentQ || submitting) return;
 
     miraAgent.stopSpeaking();
-    stopMicRecording();
     setSubmitting(true);
 
-    const rawInput = (candidateAnswerRef.current || candidateAnswer || '').trim();
-    const isAnswered = rawInput.length > 0;
-    const finalCandidateAnswer = isAnswered ? rawInput : "Not answered";
+    let currentText = (candidateAnswerRef.current || candidateAnswer || '').trim();
+
+    // SERVER-SIDE WHISPER FALLBACK: If candidate spoke into mic but WebSpeech produced no text
+    if (!currentText && audioChunksRef.current.length > 0) {
+      try {
+        setSpeechEngineStatus("Transcribing...");
+        const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
+        if (audioBlob.size > 500) {
+          const whisperText = await transcribeAudioBlob(audioBlob);
+          if (whisperText) {
+            currentText = whisperText.trim();
+            candidateAnswerRef.current = currentText;
+            setCandidateAnswer(currentText);
+          }
+        }
+      } catch (err) {
+        console.warn("[Whisper Fallback] Error:", err);
+      }
+    }
+
+    stopMicRecording();
+
+    const isAnswered = currentText.length > 0 && currentText !== "Not answered";
+    const finalCandidateAnswer = isAnswered ? currentText : "Not answered";
 
     candidateAnswerRef.current = '';
     finalTranscriptRef.current = '';
     setCandidateAnswer('');
 
-    // 1. IMMEDIATELY APPEND CANDIDATE BUBBLE ("YOU") TO CHAT THREAD
+    // 1. IMMEDIATELY APPEND CANDIDATE BUBBLE ("YOU") TO CHAT THREAD USING FUNCTIONAL STATE UPDATE
     const candidateBubble = {
       id: `cand-${Date.now()}`,
       sender: 'YOU',

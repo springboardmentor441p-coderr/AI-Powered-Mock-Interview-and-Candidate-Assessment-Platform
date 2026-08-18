@@ -153,6 +153,24 @@ export async function fetchNextAdaptiveQuestion(payload) {
   return null;
 }
 
+export async function transcribeAudioBlob(audioBlob) {
+  try {
+    const formData = new FormData();
+    formData.append("file", audioBlob, "recording.webm");
+    const res = await fetch(`${API_BASE_URL}/speech/transcribe`, {
+      method: "POST",
+      body: formData
+    });
+    if (res.ok) {
+      const data = await res.json();
+      return data.transcript || "";
+    }
+  } catch (e) {
+    console.warn("Backend Whisper transcription endpoint unreachable:", e);
+  }
+  return "";
+}
+
 export async function submitQuestionAnswer(payload) {
   try {
     const token = getStoredToken();

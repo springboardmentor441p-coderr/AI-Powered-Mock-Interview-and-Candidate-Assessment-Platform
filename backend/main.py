@@ -284,6 +284,23 @@ def start_interview(
         "questions": questions
     }
 
+@app.post("/api/speech/transcribe")
+async def transcribe_audio_endpoint(file: UploadFile = File(...)):
+    """Transcribe recorded candidate audio using Groq Whisper API (whisper-large-v3)."""
+    try:
+        audio_bytes = await file.read()
+        if not audio_bytes or len(audio_bytes) < 100:
+            return {"transcript": "", "status": "empty_audio"}
+            
+        transcript = speech_service.transcribe_audio_bytes(audio_bytes, file.filename or "recording.webm")
+        return {
+            "transcript": transcript,
+            "status": "success" if transcript else "no_speech_detected"
+        }
+    except Exception as e:
+        logger.error(f"Audio transcription endpoint error: {str(e)}")
+        return {"transcript": "", "error": str(e), "status": "error"}
+
 @app.post("/api/interview/submit-answer")
 def submit_answer(
     req: schemas.AnswerSubmissionRequest,

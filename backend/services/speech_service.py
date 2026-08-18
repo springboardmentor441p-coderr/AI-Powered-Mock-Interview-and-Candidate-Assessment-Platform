@@ -1,6 +1,10 @@
+import os
 import re
+import requests
+import logging
 from typing import Dict, List
 
+logger = logging.getLogger("smarthire")
 FILLER_WORDS = ["um", "uh", "like", "you know", "basically", "actually", "sort of", "kind of", "i mean"]
 
 def analyze_speech_communication(transcript: str, duration_seconds: float = 45.0) -> Dict:
@@ -51,3 +55,38 @@ def analyze_speech_communication(transcript: str, duration_seconds: float = 45.0
         "clarity_score": round(clarity_score, 1),
         "grammar_score": round(grammar_score, 1)
     }
+
+def transcribe_audio_bytes(file_bytes: bytes, filename: str = "recording.webm") -> str:
+    """Transcribe raw audio bytes using Groq Whisper API (whisper-large-v3)."""
+    api_key = os.getenv("GROQ_API_KEY", "")
+    if not api_key:
+        logger.warning("No GROQ_API_KEY available for audio transcription.")
+        return ""
+
+    url = "https://api.groq.com/openai/v1/audio/transcriptions"
+    headers = {
+        "Authorization": f"Bearer {api_key}"
+    }
+    
+    files = {
+        "file": (filename, file_bytes, "audio/webm")
+    }
+    data = {
+        "model": "whisper-large-v3",
+        "response_format": "json",
+        "language": "en"
+    }
+
+    try:
+        response = requests.post(url, headers=headers, files=files, data=data, timeout=30)
+        if response.status_code == 200:
+            result = response.json()
+            transcript = result.get("text", "").strip()
+            logger.info(f"Groq Whisper transcription successful: '{transcript}'")
+            return transcript
+        else:
+            logger.warning(f"Groq Whisper transcription failed with status {response.status_code}: {response.text}")
+            return ""
+    except Exception as e:
+        logger.error(f"Error during Groq Whisper transcription: {str(e)}")
+        return ""
