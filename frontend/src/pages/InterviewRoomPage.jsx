@@ -168,7 +168,7 @@ export default function InterviewRoomPage({ sessionData, setActivePage, setFinal
     }
   }, [currentIdx]);
 
-  // DIRECT BROWSER NATIVE WEB SPEECH RECOGNITION (WITHOUT STREAM LOCKS)
+  // RAPID INSTANT SPEECH RECOGNITION (SEGMENT RE-TRIGGER LOOP)
   const startMicRecording = async () => {
     if (isStartingRef.current) return;
     isStartingRef.current = true;
@@ -190,12 +190,12 @@ export default function InterviewRoomPage({ sessionData, setActivePage, setFinal
       }
 
       const recognition = new SpeechRecognition();
-      recognition.continuous = true;
+      recognition.continuous = false; // Fast phrase-level recognition in Chrome
       recognition.interimResults = true;
       recognition.lang = 'en-US';
 
       recognition.onstart = () => {
-        console.log("[SpeechRecognition] Engine started listening for audio.");
+        console.log("[SpeechRecognition] Listening for candidate spoken phrases...");
         setIsRecording(true);
         isRecordingRef.current = true;
         isStartingRef.current = false;
@@ -205,35 +205,38 @@ export default function InterviewRoomPage({ sessionData, setActivePage, setFinal
       };
 
       recognition.onaudiostart = () => {
-        console.log("[SpeechRecognition] Audio capture stream opened.");
+        console.log("[SpeechRecognition] Microphone audio capture stream open.");
       };
 
       recognition.onsoundstart = () => {
-        console.log("[SpeechRecognition] Sound detected on audio stream.");
+        console.log("[SpeechRecognition] Microphone sound activity detected.");
       };
 
       recognition.onspeechstart = () => {
-        console.log("[SpeechRecognition] Human speech detected!");
+        console.log("[SpeechRecognition] Candidate speech stream detected!");
         setSpeechEngineStatus("Human Speech Detected...");
       };
 
       recognition.onresult = (event) => {
-        let fullTranscript = '';
-        for (let i = 0; i < event.results.length; i++) {
-          fullTranscript += event.results[i][0].transcript + ' ';
+        let phraseText = '';
+        for (let i = event.resultIndex; i < event.results.length; i++) {
+          phraseText += event.results[i][0].transcript + ' ';
         }
-        const cleanText = fullTranscript.trim();
-        if (cleanText) {
-          console.log("[SpeechRecognition] Real-time transcript:", cleanText);
-          candidateAnswerRef.current = cleanText;
-          setCandidateAnswer(cleanText);
-          setSpeechEngineStatus("Transcribing Spoken Response...");
+        const cleanPhrase = phraseText.trim();
+        if (cleanPhrase) {
+          console.log("[SpeechRecognition] Spoken phrase captured:", cleanPhrase);
+          const prevText = candidateAnswerRef.current ? candidateAnswerRef.current.trim() : '';
+          const combinedText = prevText ? `${prevText} ${cleanPhrase}` : cleanPhrase;
+
+          candidateAnswerRef.current = combinedText;
+          setCandidateAnswer(combinedText);
+          setSpeechEngineStatus("Live Spoken Response Captured!");
           setSpeechError(null);
         }
       };
 
       recognition.onspeechend = () => {
-        console.log("[SpeechRecognition] Speech segment completed.");
+        console.log("[SpeechRecognition] Spoken phrase segment completed.");
       };
 
       recognition.onerror = (event) => {
@@ -257,12 +260,15 @@ export default function InterviewRoomPage({ sessionData, setActivePage, setFinal
       };
 
       recognition.onend = () => {
-        console.log("[SpeechRecognition] Engine ended. Active state:", isRecordingRef.current);
+        console.log("[SpeechRecognition] Phrase segment ended. Restarting phrase listener...");
         isStartingRef.current = false;
         if (isRecordingRef.current) {
-          try {
-            recognitionRef.current?.start();
-          } catch (e) {}
+          setSpeechEngineStatus("Listening for Next Phrase...");
+          setTimeout(() => {
+            if (isRecordingRef.current) {
+              try { recognitionRef.current?.start(); } catch (e) {}
+            }
+          }, 150);
         } else {
           setSpeechEngineStatus("Speech Engine Idle");
         }
@@ -272,7 +278,7 @@ export default function InterviewRoomPage({ sessionData, setActivePage, setFinal
       try {
         recognition.start();
       } catch (err) {
-        console.warn("[SpeechRecognition] Start error:", err);
+        console.warn("[SpeechRecognition] Start exception:", err);
         isStartingRef.current = false;
       }
     } catch (err) {
