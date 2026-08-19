@@ -188,9 +188,16 @@ def start_interview(
             started_at=now_utc,
             questions_data=questions
         )
-        db.add(new_session)
-        db.commit()
-        db.refresh(new_session)
+        try:
+            db.add(new_session)
+            db.commit()
+            db.refresh(new_session)
+        except Exception as db_err:
+            db.rollback()
+            logger.warning("Retry creating interview session after rollback: %s", db_err)
+            db.add(new_session)
+            db.commit()
+            db.refresh(new_session)
 
         return {
             "session_id": new_session.id,

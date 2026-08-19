@@ -35,12 +35,21 @@ export default function InterviewRoomPage({ sessionData, setActivePage, setFinal
   
   const isRecordingRef = useRef(true);
   const candidateAnswerRef = useRef('');
-  const finalTranscriptRef = useRef('');
   const finalizingRef = useRef(false);
 
   useEffect(() => {
     isRecordingRef.current = isRecording;
   }, [isRecording]);
+
+  // Clean cleanup on component unmount
+  useEffect(() => {
+    return () => {
+      if (recognitionRef.current) {
+        try { recognitionRef.current.abort(); } catch (e) {}
+        recognitionRef.current = null;
+      }
+    };
+  }, []);
 
   const defaultQ1 = {
     id: 1,
@@ -225,21 +234,23 @@ export default function InterviewRoomPage({ sessionData, setActivePage, setFinal
       };
 
       recognition.onresult = (event) => {
-        let interimText = '';
-        for (let i = event.resultIndex; i < event.results.length; i++) {
-          const chunk = event.results[i][0].transcript;
+        let finalScript = '';
+        let interimScript = '';
+
+        for (let i = 0; i < event.results.length; i++) {
+          const transcriptChunk = event.results[i][0].transcript;
           if (event.results[i].isFinal) {
-            finalTranscriptRef.current += chunk + ' ';
+            finalScript += transcriptChunk + ' ';
           } else {
-            interimText += chunk + ' ';
+            interimScript += transcriptChunk + ' ';
           }
         }
 
-        const fullText = (finalTranscriptRef.current + ' ' + interimText).trim();
-        if (fullText) {
-          candidateAnswerRef.current = fullText;
-          setCandidateAnswer(fullText);
-          setSpeechEngineStatus("Receiving Live Speech...");
+        const recognizedText = (finalScript + ' ' + interimScript).trim();
+        if (recognizedText) {
+          candidateAnswerRef.current = recognizedText;
+          setCandidateAnswer(recognizedText);
+          setSpeechEngineStatus(interimScript ? "Speaking Live..." : "Transcript Ready");
           setSpeechError(null);
         }
       };
@@ -327,9 +338,11 @@ export default function InterviewRoomPage({ sessionData, setActivePage, setFinal
       setTranscribingAudio(false);
       if (realTranscript && realTranscript.trim()) {
         const clean = realTranscript.trim();
-        finalTranscriptRef.current += ' ' + clean;
-        candidateAnswerRef.current = finalTranscriptRef.current.trim();
-        setCandidateAnswer(finalTranscriptRef.current.trim());
+        const combined = candidateAnswerRef.current 
+          ? (candidateAnswerRef.current + ' ' + clean).trim() 
+          : clean;
+        candidateAnswerRef.current = combined;
+        setCandidateAnswer(combined);
         setSpeechEngineStatus("Transcript Ready");
         return clean;
       } else {
@@ -361,7 +374,6 @@ export default function InterviewRoomPage({ sessionData, setActivePage, setFinal
     const finalCandidateAnswer = isAnswered ? answerText : "Not answered";
 
     candidateAnswerRef.current = '';
-    finalTranscriptRef.current = '';
     setCandidateAnswer('');
 
     // 1. IMMEDIATELY APPEND CANDIDATE BUBBLE ("YOU") TO CHAT THREAD
@@ -786,7 +798,6 @@ export default function InterviewRoomPage({ sessionData, setActivePage, setFinal
           value={candidateAnswer}
           onChange={(e) => {
             candidateAnswerRef.current = e.target.value;
-            finalTranscriptRef.current = e.target.value;
             setCandidateAnswer(e.target.value);
           }}
           placeholder="Speak your answer out loud into your microphone, or type your answer here..."
