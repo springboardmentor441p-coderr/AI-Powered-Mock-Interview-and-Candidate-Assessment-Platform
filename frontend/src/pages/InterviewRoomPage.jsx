@@ -36,6 +36,7 @@ export default function InterviewRoomPage({ sessionData, setActivePage, setFinal
   const isRecordingRef = useRef(true);
   const candidateAnswerRef = useRef('');
   const finalizingRef = useRef(false);
+  const submittingRef = useRef(false); // Lock guard against duplicate submissions
 
   useEffect(() => {
     isRecordingRef.current = isRecording;
@@ -356,12 +357,13 @@ export default function InterviewRoomPage({ sessionData, setActivePage, setFinal
     return candidateAnswerRef.current || candidateAnswer || "";
   };
 
-  // SUBMIT ANSWER / NEXT QUESTION HANDLER
+  // SUBMIT ANSWER / NEXT QUESTION HANDLER WITH DUPLICATE LOCK GUARD
   const handleNextQuestion = async () => {
-    if (!currentQ || submitting || finalizingRef.current) return;
+    if (submittingRef.current || finalizingRef.current || !currentQ) return;
+    submittingRef.current = true;
+    setSubmitting(true);
 
     miraAgent.stopSpeaking();
-    setSubmitting(true);
 
     let currentText = (candidateAnswerRef.current || candidateAnswer || '').trim();
 
@@ -376,9 +378,9 @@ export default function InterviewRoomPage({ sessionData, setActivePage, setFinal
     candidateAnswerRef.current = '';
     setCandidateAnswer('');
 
-    // 1. IMMEDIATELY APPEND CANDIDATE BUBBLE ("YOU") TO CHAT THREAD
+    // 1. IMMEDIATELY APPEND CANDIDATE BUBBLE ("YOU") EXACTLY ONCE TO CHAT THREAD
     const candidateBubble = {
-      id: `cand-${Date.now()}`,
+      id: `cand-${currentIdx + 1}-${Date.now()}`,
       sender: 'YOU',
       text: finalCandidateAnswer,
       type: 'candidate'
@@ -386,7 +388,7 @@ export default function InterviewRoomPage({ sessionData, setActivePage, setFinal
 
     setChatThread(prev => [...prev, candidateBubble]);
 
-    // 2. Submit answer to backend
+    // 2. Submit answer to backend API
     const backendRes = await submitQuestionAnswer({
       session_id: sessionData?.session_id || 1,
       question_index: currentIdx + 1,
@@ -425,42 +427,67 @@ export default function InterviewRoomPage({ sessionData, setActivePage, setFinal
 
     const previousQuestionsAsked = updatedAnswers.map(a => a.q_text);
 
-    // QUESTION COUNT CHECK: Advance ONLY if currentIdx < maxQuestions - 1
+    // QUESTION COUNT CHECK: Advance to next question if currentIdx < maxQuestions - 1
     if (currentIdx < maxQuestions - 1) {
-      const nextQObj = await fetchNextAdaptiveQuestion({
-        domain: activeDomain,
-        difficulty: activeDifficulty,
-        skills: sessionData?.skills || [],
-        previous_questions: previousQuestionsAsked,
-        candidate_answer: isAnswered ? finalCandidateAnswer : ""
+      let nextQObj = null;
+
+      // Try fetching next adaptive question from backend
+      try {
+        nextQObj = await fetchNextAdaptiveQuestion({
+          domain: activeDomain,
+          difficulty: activeDifficulty,
+          skills: sessionData?.skills || [],
+          previous_questions: previousQuestionsAsked,
+          candidate_answer: isAnswered ? finalCandidateAnswer : ""
+        });
+      } catch (err) {
+        console.warn("fetchNextAdaptiveQuestion call failed:", err);
+      }
+
+      // Fallback 1: Use pre-generated question from initial questionsList if API failed or returned empty
+      if (!nextQObj || !nextQObj.question_text) {
+        nextQObj = questionsList[currentIdx + 1];
+      }
+
+      // Fallback 2: Domain default prompt if questionsList entry missing
+      if (!nextQObj || !nextQObj.question_text) {
+        nextQObj = {
+          id: currentIdx + 2,
+          question_text: `Could you elaborate on your experience with core architectural design patterns in ${activeDomain}?`,
+          skill_focus: `${activeDomain} Architecture`
+        };
+      }
+
+      // Update questionsList
+      setQuestionsList(prev => {
+        const copy = [...prev];
+        copy[currentIdx + 1] = nextQObj;
+        return copy;
       });
 
-      if (nextQObj && nextQObj.question_text) {
-        setQuestionsList(prev => {
-          const copy = [...prev];
-          copy[currentIdx + 1] = nextQObj;
-          return copy;
-        });
+      // Append Mira's next question bubble to conversation thread
+      const nextInterviewerText = isAnswered 
+        ? miraAgent.generateAdaptivePrompt(finalCandidateAnswer, nextQObj)
+        : `Okay, let's move on to the next question. ${nextQObj.question_text}`;
 
-        const nextInterviewerText = isAnswered 
-          ? miraAgent.generateAdaptivePrompt(finalCandidateAnswer, nextQObj)
-          : `Okay, let's move on to the next question. ${nextQObj.question_text}`;
+      const interviewerBubble = {
+        id: `mira-${currentIdx + 2}-${Date.now()}`,
+        sender: `Mira (AI Interviewer)`,
+        text: nextInterviewerText,
+        type: 'interviewer'
+      };
 
-        const interviewerBubble = {
-          id: `mira-${Date.now()}`,
-          sender: `Mira (AI Interviewer)`,
-          text: nextInterviewerText,
-          type: 'interviewer'
-        };
+      setChatThread(prev => [...prev, interviewerBubble]);
 
-        setChatThread(prev => [...prev, interviewerBubble]);
-        setCurrentIdx(prev => prev + 1);
-        setSubmitting(false);
-      } else {
-        setSubmitting(false);
-      }
+      // ALWAYS INCREMENT QUESTION INDEX (Q1 -> Q2 -> Q3)
+      setCurrentIdx(prev => prev + 1);
+
+      // Release submit lock
+      submittingRef.current = false;
+      setSubmitting(false);
     } else {
       // Reached configured max questions -> Finalize session cleanly as completed
+      submittingRef.current = false;
       await handleFinalizeSession("completed", updatedAnswers);
     }
   };

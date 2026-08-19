@@ -136,3 +136,37 @@ def generate_interview_questions(
 
     all_questions = [intro_question] + llm_questions
     return all_questions[:num_questions]
+
+def generate_adaptive_followup_question(
+    domain: str,
+    difficulty: str,
+    skills: Optional[List[str]] = None,
+    previous_questions: Optional[List[str]] = None,
+    candidate_answer: Optional[str] = ""
+) -> Dict:
+    """
+    Generates a single follow-up technical question dynamically via Groq LLM or domain fallback bank.
+    Guaranteed to return a valid question dictionary.
+    """
+    fallback_pool = get_fallback_questions(domain, 10)
+
+    if is_llm_available():
+        try:
+            llm_questions = generate_llm_questions(
+                domain=domain,
+                difficulty=difficulty,
+                num_questions=1,
+                skills=skills,
+                previous_questions=previous_questions or []
+            )
+            if llm_questions and len(llm_questions) > 0 and llm_questions[0].get("question_text"):
+                return llm_questions[0]
+        except Exception as err:
+            logger.error("Exception in generate_adaptive_followup_question LLM: %s", err)
+
+    prev_set = set(p.lower().strip() for p in (previous_questions or []))
+    for item in fallback_pool:
+        if item["question_text"].lower().strip() not in prev_set:
+            return item
+
+    return fallback_pool[0]
