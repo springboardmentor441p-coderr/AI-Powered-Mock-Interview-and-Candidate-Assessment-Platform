@@ -40,8 +40,8 @@ class InterviewStartRequest(BaseModel):
     difficulty: str # Easy, Medium, Hard
     domain: str # Full Stack, Data Science, DevOps, HR
     num_questions: Optional[int] = 5
-    duration_seconds: Optional[int] = 600
-    question_time_limit: Optional[int] = 90
+    duration_seconds: Optional[int] = 0 # 0 means Unlimited
+    question_time_limit: Optional[int] = 0 # 0 means Unlimited
 
 class AnswerSubmissionRequest(BaseModel):
     session_id: int

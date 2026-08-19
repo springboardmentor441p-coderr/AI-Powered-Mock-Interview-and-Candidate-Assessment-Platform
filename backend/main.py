@@ -175,8 +175,8 @@ def start_interview(
         )
 
         now_utc = datetime.utcnow()
-        duration_secs = getattr(req, "duration_seconds", 600) or 600
-        q_time_limit = getattr(req, "question_time_limit", 90) or 90
+        duration_secs = req.duration_seconds if (req.duration_seconds is not None) else 0
+        q_time_limit = req.question_time_limit if (req.question_time_limit is not None) else 0
 
         new_session = models.InterviewSession(
             user_id=current_user.id,

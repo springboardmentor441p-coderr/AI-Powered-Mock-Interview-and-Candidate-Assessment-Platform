@@ -10,11 +10,15 @@ export default function InterviewRoomPage({ sessionData, setActivePage, setFinal
 
   const activeDomain = sessionData?.domain || sessionData?.category || "Python Developer";
   const activeDifficulty = sessionData?.difficulty || "Medium";
-  const totalInterviewDurationSec = sessionData?.duration_seconds || 600;
-  const questionTimeLimitSec = sessionData?.question_time_limit || 90;
+  const totalInterviewDurationSec = sessionData?.duration_seconds !== undefined ? sessionData.duration_seconds : 0; // 0 means Unlimited
+  const questionTimeLimitSec = sessionData?.question_time_limit !== undefined ? sessionData.question_time_limit : 0; // 0 means Unlimited
 
-  // Calculate elapsed & remaining total interview time based on starting timestamp
+  // Dynamic configured question count (e.g., 3, 5, 10, 15)
+  const maxQuestions = sessionData?.total_questions || sessionData?.num_questions || (sessionData?.questions ? sessionData.questions.length : 5);
+
+  // Calculate elapsed & remaining total interview time based on starting timestamp (ONLY if limit > 0)
   const getInitialTotalRemaining = () => {
+    if (!totalInterviewDurationSec || totalInterviewDurationSec <= 0) return 0;
     const startedAt = sessionData?.started_at ? new Date(sessionData.started_at).getTime() : Date.now();
     const elapsedSec = Math.max(0, Math.floor((Date.now() - startedAt) / 1000));
     return Math.max(0, totalInterviewDurationSec - elapsedSec);
@@ -50,16 +54,21 @@ export default function InterviewRoomPage({ sessionData, setActivePage, setFinal
   const finalTranscriptRef = useRef('');
   const finalizingRef = useRef(false);
 
-  // Sync ref with state to prevent stale closures in speech event listeners
   useEffect(() => {
     isRecordingRef.current = isRecording;
   }, [isRecording]);
 
   // Dynamic questions list
-  const backendQuestions = sessionData?.questions && Array.isArray(sessionData.questions) && sessionData.questions.length > 0 ? sessionData.questions : null;
-  const hasGenerationError = sessionData?.error || !backendQuestions;
+  const defaultQ1 = {
+    id: 1,
+    question_text: `Welcome! I'm Mira, your AI technical interviewer today. To get started, could you briefly introduce yourself and highlight your experience relevant to the ${activeDomain} role?`,
+    skill_focus: "Self Introduction & Background"
+  };
 
-  const [questionsList, setQuestionsList] = useState(backendQuestions || []);
+  const backendQuestions = sessionData?.questions && Array.isArray(sessionData.questions) && sessionData.questions.length > 0 ? sessionData.questions : [defaultQ1];
+  const hasGenerationError = sessionData?.error || false;
+
+  const [questionsList, setQuestionsList] = useState(backendQuestions);
   const currentQ = questionsList[currentIdx] || null;
 
   // REAL-TIME CONVERSATION CHAT THREAD HISTORY
@@ -80,7 +89,6 @@ export default function InterviewRoomPage({ sessionData, setActivePage, setFinal
     return [];
   });
 
-  // Truthful camera status metrics
   const [cameraMetrics, setCameraMetrics] = useState({
     streamActive: false,
     faceDetected: "Initializing...",
@@ -100,11 +108,12 @@ export default function InterviewRoomPage({ sessionData, setActivePage, setFinal
         chatThread,
         candidateAnswersList,
         questions: questionsList,
+        total_questions: maxQuestions,
         status: "active"
       };
       localStorage.setItem("smarthire_active_session", JSON.stringify(activeState));
     }
-  }, [currentIdx, chatThread, candidateAnswersList, questionsList, sessionData]);
+  }, [currentIdx, chatThread, candidateAnswersList, questionsList, sessionData, maxQuestions]);
 
   // BROWSER PAGE-LEAVE / REFRESH PROTECTION WARNING
   useEffect(() => {
@@ -119,8 +128,12 @@ export default function InterviewRoomPage({ sessionData, setActivePage, setFinal
     return () => window.removeEventListener("beforeunload", handleBeforeUnload);
   }, []);
 
-  // 1. TOTAL INTERVIEW COUNTDOWN TIMER (START TIMESTAMP BASED)
+  // 1. TOTAL INTERVIEW COUNTDOWN TIMER (ONLY ACTIVE IF CONFIGURED LIMIT > 0)
   useEffect(() => {
+    if (!totalInterviewDurationSec || totalInterviewDurationSec <= 0) {
+      return; // Unlimited time limit selected - DO NOT automatically expire interview!
+    }
+
     const timerInterval = setInterval(() => {
       setTotalRemainingSec(prev => {
         if (prev <= 1) {
@@ -133,10 +146,14 @@ export default function InterviewRoomPage({ sessionData, setActivePage, setFinal
     }, 1000);
 
     return () => clearInterval(timerInterval);
-  }, []);
+  }, [totalInterviewDurationSec]);
 
-  // 2. PER-QUESTION COUNTDOWN TIMER
+  // 2. PER-QUESTION COUNTDOWN TIMER (ONLY ACTIVE IF CONFIGURED LIMIT > 0)
   useEffect(() => {
+    if (!questionTimeLimitSec || questionTimeLimitSec <= 0) {
+      return; // Unlimited per-question limit - DO NOT automatically submit/skip
+    }
+
     setQuestionRemainingSec(questionTimeLimitSec);
     const qInterval = setInterval(() => {
       setQuestionRemainingSec(prev => {
@@ -150,7 +167,7 @@ export default function InterviewRoomPage({ sessionData, setActivePage, setFinal
     }, 1000);
 
     return () => clearInterval(qInterval);
-  }, [currentIdx]);
+  }, [currentIdx, questionTimeLimitSec]);
 
   // Auto-scroll chat thread to bottom
   useEffect(() => {
@@ -159,7 +176,6 @@ export default function InterviewRoomPage({ sessionData, setActivePage, setFinal
     }
   }, [chatThread, candidateAnswer]);
 
-  // PROCTORING TAB-SWITCH VIOLATION HANDLER
   const triggerProctoringViolation = (reasonText) => {
     setViolationCount(prev => {
       const nextCount = prev + 1;
@@ -190,7 +206,6 @@ export default function InterviewRoomPage({ sessionData, setActivePage, setFinal
     return () => document.removeEventListener("visibilitychange", handleVisibilityChange);
   }, []);
 
-  // Speech synthesis via miraAgent
   const speakCurrentQuestion = (textToSpeak) => {
     if (!textToSpeak) return;
     miraAgent.speak(
@@ -208,7 +223,6 @@ export default function InterviewRoomPage({ sessionData, setActivePage, setFinal
     );
   };
 
-  // Speak question automatically whenever current question changes
   useEffect(() => {
     if (currentQ) {
       const qText = currentQ.question_text || currentQ.q || "";
@@ -221,7 +235,6 @@ export default function InterviewRoomPage({ sessionData, setActivePage, setFinal
     }
   }, [currentIdx]);
 
-  // UNLOCKED BROWSER SPEECH RECOGNITION (DIRECT MICROPHONE HARDWARE INPUT + MEDIARECORDER WHISPER FALLBACK)
   const startMicRecording = async () => {
     if (isStartingRef.current) return;
     isStartingRef.current = true;
@@ -229,7 +242,6 @@ export default function InterviewRoomPage({ sessionData, setActivePage, setFinal
     try {
       setSpeechError(null);
 
-      // 1. Capture real audio stream via getUserMedia & MediaRecorder for Whisper backend fallback
       try {
         const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
         micStreamRef.current = stream;
@@ -256,7 +268,6 @@ export default function InterviewRoomPage({ sessionData, setActivePage, setFinal
         return;
       }
 
-      // 2. Launch Browser Web Speech API for live transcription preview
       const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
       if (SpeechRecognition) {
         if (recognitionRef.current) {
@@ -269,7 +280,6 @@ export default function InterviewRoomPage({ sessionData, setActivePage, setFinal
         recognition.lang = 'en-US';
 
         recognition.onstart = () => {
-          console.log("[SpeechRecognition] Listening...");
           setIsRecording(true);
           isRecordingRef.current = true;
           isStartingRef.current = false;
@@ -290,7 +300,6 @@ export default function InterviewRoomPage({ sessionData, setActivePage, setFinal
 
           const fullText = (finalTranscriptRef.current + ' ' + currentInterim).trim();
           if (fullText) {
-            console.log("[SpeechRecognition] Real transcript received:", fullText);
             candidateAnswerRef.current = fullText;
             setCandidateAnswer(fullText);
             setSpeechEngineStatus("Transcript Ready");
@@ -299,7 +308,6 @@ export default function InterviewRoomPage({ sessionData, setActivePage, setFinal
         };
 
         recognition.onerror = (event) => {
-          console.warn("[SpeechRecognition] Error notice:", event.error);
           isStartingRef.current = false;
           if (event.error === 'no-speech' || event.error === 'aborted') return;
           if (event.error === 'network') {
@@ -326,7 +334,6 @@ export default function InterviewRoomPage({ sessionData, setActivePage, setFinal
         setSpeechEngineStatus("Whisper Backend Audio Active");
       }
     } catch (err) {
-      console.warn("[Speech] Exception during mic start:", err);
       isStartingRef.current = false;
     }
   };
@@ -352,7 +359,6 @@ export default function InterviewRoomPage({ sessionData, setActivePage, setFinal
     setSpeechEngineStatus("Microphone Ready");
   };
 
-  // PROCESS REAL SPOKEN AUDIO FROM MEDIARECORDER VIA GROQ WHISPER BACKEND
   const processRecordedAudioTranscription = async () => {
     if (audioChunksRef.current.length === 0) return "";
     try {
@@ -371,7 +377,6 @@ export default function InterviewRoomPage({ sessionData, setActivePage, setFinal
         }
       }
     } catch (err) {
-      console.warn("[Whisper Transcription] Audio transcribe error:", err);
       setTranscribingAudio(false);
     }
     setTranscribingAudio(false);
@@ -384,7 +389,7 @@ export default function InterviewRoomPage({ sessionData, setActivePage, setFinal
     return `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
   };
 
-  // QUESTION TIMEOUT HANDLER (AUTO-SUBMIT NON-EMPTY TRANSCRIPT OR LOG UNANSWERED)
+  // QUESTION TIMEOUT HANDLER
   const handleQuestionTimeout = async () => {
     if (submitting || finalizingRef.current) return;
     let currentText = (candidateAnswerRef.current || candidateAnswer || '').trim();
@@ -404,7 +409,6 @@ export default function InterviewRoomPage({ sessionData, setActivePage, setFinal
 
     let currentText = (candidateAnswerRef.current || candidateAnswer || '').trim();
 
-    // WHISPER BACKEND TRANSCRIBE FALLBACK: If candidate spoke into mic but WebSpeech produced no text
     if (!currentText && audioChunksRef.current.length > 0) {
       currentText = await processRecordedAudioTranscription();
     }
@@ -421,7 +425,7 @@ export default function InterviewRoomPage({ sessionData, setActivePage, setFinal
     finalTranscriptRef.current = '';
     setCandidateAnswer('');
 
-    // 1. IMMEDIATELY APPEND CANDIDATE BUBBLE ("YOU") TO CHAT THREAD USING FUNCTIONAL STATE UPDATE
+    // 1. IMMEDIATELY APPEND CANDIDATE BUBBLE ("YOU") TO CHAT THREAD
     const candidateBubble = {
       id: `cand-${Date.now()}`,
       sender: 'YOU',
@@ -431,7 +435,7 @@ export default function InterviewRoomPage({ sessionData, setActivePage, setFinal
 
     setChatThread(prev => [...prev, candidateBubble]);
 
-    // 2. Submit answer or unanswered status to backend
+    // 2. Submit answer to backend
     const backendRes = await submitQuestionAnswer({
       session_id: sessionData?.session_id || 1,
       question_index: currentIdx + 1,
@@ -468,11 +472,14 @@ export default function InterviewRoomPage({ sessionData, setActivePage, setFinal
     const updatedAnswers = [...candidateAnswersList, answerEntry];
     setCandidateAnswersList(updatedAnswers);
 
-    const maxQuestions = 5;
     const previousQuestionsAsked = updatedAnswers.map(a => a.q_text);
 
-    if (currentIdx < maxQuestions - 1 && totalRemainingSec > 0) {
-      // 3. FETCH DYNAMIC NEXT QUESTION FROM GROQ LLM BACKEND
+    // TIME & QUESTION LIMIT CHECK: Advance ONLY if currentIdx < maxQuestions - 1
+    const isTimeUnlimited = !totalInterviewDurationSec || totalInterviewDurationSec <= 0;
+    const hasTimeRemaining = isTimeUnlimited || totalRemainingSec > 0;
+
+    if (currentIdx < maxQuestions - 1 && hasTimeRemaining) {
+      // FETCH DYNAMIC NEXT QUESTION FROM GROQ LLM BACKEND
       const nextQObj = await fetchNextAdaptiveQuestion({
         domain: activeDomain,
         difficulty: activeDifficulty,
@@ -488,7 +495,6 @@ export default function InterviewRoomPage({ sessionData, setActivePage, setFinal
           return copy;
         });
 
-        // 4. FORMULATE & APPEND MIRA'S NEXT QUESTION BUBBLE
         const nextInterviewerText = isAnswered 
           ? miraAgent.generateAdaptivePrompt(finalCandidateAnswer, nextQObj)
           : `Okay, let's move on to the next question. ${nextQObj.question_text}`;
@@ -507,12 +513,11 @@ export default function InterviewRoomPage({ sessionData, setActivePage, setFinal
         setSubmitting(false);
       }
     } else {
-      // Reached max questions or total time expired -> Finalize session
+      // Reached configured max questions -> Finalize session as completed
       await handleFinalizeSession("completed", updatedAnswers);
     }
   };
 
-  // UNIFIED RELIABLE FINALIZATION FUNCTION (FOR TIMEOUT, END BUTTON, OR QUESTION LIMIT)
   const handleFinalizeSession = async (reason = "completed", customAnswers = null) => {
     if (finalizingRef.current) return;
     finalizingRef.current = true;
@@ -523,11 +528,10 @@ export default function InterviewRoomPage({ sessionData, setActivePage, setFinal
 
     const answersToUse = customAnswers || candidateAnswersList;
 
-    // Call backend finish endpoint with reason (completed, time_expired, ended_by_candidate)
     const report = await finishInterviewSession(sessionData?.session_id || 1, reason);
     
     const answeredList = answersToUse.filter(a => a.is_answered);
-    const unansweredCount = (questionsList.length || 5) - answeredList.length;
+    const unansweredCount = Math.max(0, maxQuestions - answeredList.length);
 
     const totalTechScore = answeredList.reduce((acc, a) => acc + (a.technical_score || 0), 0);
     const avgOverallScore = answeredList.length > 0 ? Math.round((totalTechScore / answeredList.length) * 10) / 10 : 0.0;
@@ -540,6 +544,10 @@ export default function InterviewRoomPage({ sessionData, setActivePage, setFinal
     const isTimeout = reason === "time_expired";
     const isCandidateEnded = reason === "ended_by_candidate";
 
+    // Calculate actual elapsed duration
+    const startedAt = sessionData?.started_at ? new Date(sessionData.started_at).getTime() : Date.now();
+    const actualElapsedSec = Math.max(0, Math.floor((Date.now() - startedAt) / 1000));
+
     const fullCustomReport = {
       ...report,
       overall_score: avgOverallScore,
@@ -548,6 +556,9 @@ export default function InterviewRoomPage({ sessionData, setActivePage, setFinal
       difficulty: activeDifficulty,
       status: reason,
       ended_reason: reason,
+      configured_duration_seconds: totalInterviewDurationSec,
+      configured_question_count: maxQuestions,
+      actual_duration_seconds: actualElapsedSec,
       candidate: {
         id: activeUser?.id || 1,
         full_name: activeUser?.full_name || "Candidate User",
@@ -557,17 +568,17 @@ export default function InterviewRoomPage({ sessionData, setActivePage, setFinal
       camera_status: cameraMetrics.streamActive ? "Camera Active" : "Camera Off",
       answers_history: answersToUse,
       answered_questions_count: answeredList.length,
-      unanswered_questions_count: max(0, unansweredCount),
-      total_questions_count: questionsList.length || 5,
+      unanswered_questions_count: unansweredCount,
+      total_questions_count: maxQuestions,
       strengths: answeredList.length > 0 ? [
         `Completed technical interview session in ${activeDomain} (${activeDifficulty} level)`,
-        `Demonstrated verbal technical answers for ${answeredList.length} prompt(s)`,
+        `Demonstrated verbal technical answers for ${answeredList.length} of ${maxQuestions} prompt(s)`,
         `Maintained active proctored stream throughout session`
       ] : [
         `Initiated technical interview session with Mira`
       ],
       weaknesses: unansweredCount > 0 ? [
-        isTimeout ? `Interview session ended because the total allotted time expired` : (isCandidateEnded ? `Interview session ended early by candidate` : `Candidate skipped ${unansweredCount} prompt(s)`),
+        isTimeout ? `Interview session ended because the allotted time expired` : (isCandidateEnded ? `Interview session ended early by candidate` : `Candidate skipped ${unansweredCount} prompt(s)`),
         `Ensure comprehensive verbal answers are provided for all technical prompts`
       ] : [
         `Elaborate further on system architecture and trade-offs in future responses`
@@ -584,7 +595,6 @@ export default function InterviewRoomPage({ sessionData, setActivePage, setFinal
     setActivePage('interview-report');
   };
 
-  // IF QUESTION GENERATION FAILED / CANDIDATE ERROR VIEW
   if (hasGenerationError) {
     return (
       <div className="max-w-3xl mx-auto px-4 py-16 text-center space-y-6 font-sans">
@@ -607,7 +617,7 @@ export default function InterviewRoomPage({ sessionData, setActivePage, setFinal
     );
   }
 
-  const isLowTime = totalRemainingSec > 0 && totalRemainingSec <= 120;
+  const isLowTime = totalInterviewDurationSec > 0 && totalRemainingSec > 0 && totalRemainingSec <= 120;
 
   return (
     <div className="max-w-7xl mx-auto px-4 py-4 space-y-6 pb-20 relative font-sans">
@@ -669,25 +679,37 @@ export default function InterviewRoomPage({ sessionData, setActivePage, setFinal
               Mira AI Interview Room <span className="text-[10px] text-cyan-400 font-mono font-normal">• Live Session</span>
             </h1>
             <span className="text-[11px] text-indigo-300 font-mono">
-              Candidate: <strong className="text-white">{activeUser?.full_name || "Candidate User"}</strong> | Role: <strong className="text-white">{activeDomain}</strong> ({activeDifficulty} Level — Q{currentIdx + 1} of 5)
+              Candidate: <strong className="text-white">{activeUser?.full_name || "Candidate User"}</strong> | Role: <strong className="text-white">{activeDomain}</strong> ({activeDifficulty} Level — Q{currentIdx + 1} of {maxQuestions})
             </span>
           </div>
         </div>
 
         <div className="flex items-center gap-3">
-          {/* TOTAL INTERVIEW TIMER */}
-          <span className={`px-3.5 py-1.5 rounded-xl border font-mono text-xs font-bold flex items-center gap-1.5 ${
-            isLowTime 
-              ? 'bg-red-500/20 border-red-500/50 text-red-400 animate-pulse' 
-              : 'bg-indigo-500/10 border-indigo-500/30 text-indigo-300'
-          }`}>
-            <Clock className="w-3.5 h-3.5" /> Total Time: {formatTimer(totalRemainingSec)}
-          </span>
+          {/* TOTAL INTERVIEW TIMER BADGE */}
+          {totalInterviewDurationSec > 0 ? (
+            <span className={`px-3.5 py-1.5 rounded-xl border font-mono text-xs font-bold flex items-center gap-1.5 ${
+              isLowTime 
+                ? 'bg-red-500/20 border-red-500/50 text-red-400 animate-pulse' 
+                : 'bg-indigo-500/10 border-indigo-500/30 text-indigo-300'
+            }`}>
+              <Clock className="w-3.5 h-3.5" /> Total Time: {formatTimer(totalRemainingSec)}
+            </span>
+          ) : (
+            <span className="px-3.5 py-1.5 rounded-xl border border-indigo-500/30 bg-indigo-500/10 text-indigo-300 font-mono text-xs font-bold flex items-center gap-1.5">
+              <Clock className="w-3.5 h-3.5 text-cyan-400" /> ⏱️ Unlimited Time
+            </span>
+          )}
 
-          {/* QUESTION TIMER */}
-          <span className="px-3.5 py-1.5 rounded-xl bg-slate-900 border border-slate-800 text-cyan-400 font-mono text-xs font-bold flex items-center gap-1.5">
-            Q Timer: {formatTimer(questionRemainingSec)}
-          </span>
+          {/* PER-QUESTION TIMER BADGE */}
+          {questionTimeLimitSec > 0 ? (
+            <span className="px-3.5 py-1.5 rounded-xl bg-slate-900 border border-slate-800 text-cyan-400 font-mono text-xs font-bold flex items-center gap-1.5">
+              Q Timer: {formatTimer(questionRemainingSec)}
+            </span>
+          ) : (
+            <span className="px-3.5 py-1.5 rounded-xl bg-slate-900 border border-slate-800 text-slate-400 font-mono text-xs font-bold flex items-center gap-1.5">
+              Q Timer: Unlimited
+            </span>
+          )}
 
           {/* END INTERVIEW BUTTON */}
           <button
@@ -797,17 +819,15 @@ export default function InterviewRoomPage({ sessionData, setActivePage, setFinal
 
         </div>
 
-        {/* RIGHT COLUMN: WEBCAM & SEPARATED DEVICE / SPEECH MONITORING */}
+        {/* RIGHT COLUMN: WEBCAM & DEVICE STATUS */}
         <div className="lg:col-span-4 space-y-4">
           
-          {/* Candidate Webcam Box */}
           <div className="relative">
             <WebcamMonitor 
               onMetricsUpdate={handleCameraMetricsUpdate}
             />
           </div>
 
-          {/* TRUTHFUL DEVICE & SPEECH MONITORING BOX */}
           <div className="glass-card p-5 rounded-3xl border border-slate-800 space-y-3.5 shadow-xl">
             <div className="flex items-center justify-between border-b border-slate-800 pb-2">
               <span className="text-xs font-mono text-slate-300 font-bold uppercase">Device & Speech Monitoring</span>
@@ -907,7 +927,7 @@ export default function InterviewRoomPage({ sessionData, setActivePage, setFinal
               className="px-6 py-2.5 rounded-xl font-bold text-xs bg-indigo-600 hover:bg-indigo-500 text-white shadow-lg transition-all flex items-center gap-2"
             >
               {submitting || transcribingAudio ? "Mira Processing..." : (
-                currentIdx < 4 ? (
+                currentIdx < maxQuestions - 1 ? (
                   candidateAnswer.trim().length > 0 
                     ? <>Submit Answer & Next Question <ArrowRight className="w-4 h-4" /></>
                     : <>Skip Question (Log Unanswered) <ArrowRight className="w-4 h-4" /></>
@@ -923,8 +943,4 @@ export default function InterviewRoomPage({ sessionData, setActivePage, setFinal
 
     </div>
   );
-}
-
-function max(a, b) {
-  return a > b ? a : b;
 }

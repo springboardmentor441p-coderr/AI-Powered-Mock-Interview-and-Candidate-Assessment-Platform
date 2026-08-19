@@ -1,5 +1,5 @@
 import React from 'react';
-import { Award, CheckCircle2, XCircle, AlertTriangle, Download, ArrowLeft, BarChart3, Eye, ShieldCheck, Sparkles, FileText, Check, HelpCircle, User, Clock, Info } from 'lucide-react';
+import { Award, CheckCircle2, XCircle, AlertTriangle, Download, ArrowLeft, BarChart3, Eye, ShieldCheck, Sparkles, FileText, Check, HelpCircle, User, Clock, Info, Sliders } from 'lucide-react';
 import jsPDF from 'jspdf';
 import { getStoredUser } from '../services/api';
 
@@ -23,8 +23,15 @@ export default function InterviewReportPage({ reportData, finalReport, setActive
   }
 
   const history = activeReport.answers_history || [];
-  const answeredCount = activeReport.answered_questions_count !== undefined ? activeReport.answered_questions_count : history.filter(a => a.is_answered || (a.user_answer && a.user_answer !== "Not answered")).length;
-  const unansweredCount = activeReport.unanswered_questions_count !== undefined ? activeReport.unanswered_questions_count : (history.length - answeredCount);
+  const configuredQuestionsCount = activeReport.configured_question_count || activeReport.total_questions_count || history.length || 5;
+  
+  const answeredCount = activeReport.answered_questions_count !== undefined 
+    ? activeReport.answered_questions_count 
+    : history.filter(a => a.is_answered || (a.user_answer && a.user_answer !== "Not answered")).length;
+    
+  const unansweredCount = activeReport.unanswered_questions_count !== undefined 
+    ? activeReport.unanswered_questions_count 
+    : Math.max(0, configuredQuestionsCount - answeredCount);
 
   const overallScore = activeReport.overall_score !== undefined ? activeReport.overall_score : 0.0;
   const rating = activeReport.performance_rating || (overallScore >= 80 ? "Strong Hire" : (overallScore >= 60 ? "Passable Candidate" : "Needs Improvement"));
@@ -34,6 +41,17 @@ export default function InterviewReportPage({ reportData, finalReport, setActive
   const candEmail = activeReport.candidate?.email || user?.email || "candidate@smarthire.ai";
   const candRole = activeReport.candidate?.role || user?.role || "Candidate";
   const endedReason = activeReport.ended_reason || activeReport.status || "completed";
+
+  // Time metrics
+  const confDurationSec = activeReport.configured_duration_seconds !== undefined ? activeReport.configured_duration_seconds : 0;
+  const actualDurationSec = activeReport.actual_duration_seconds !== undefined ? activeReport.actual_duration_seconds : 0;
+
+  const formatSecs = (sec) => {
+    if (!sec || sec <= 0) return "Unlimited";
+    const m = Math.floor(sec / 60);
+    const s = sec % 60;
+    return `${m}m ${s}s`;
+  };
 
   const handleDownloadPDF = () => {
     const doc = new jsPDF();
@@ -49,13 +67,14 @@ export default function InterviewReportPage({ reportData, finalReport, setActive
     doc.text(`Target Domain: ${activeReport.category || "Software Engineering"} (${activeReport.difficulty || "Medium"} Level)`, 14, 44);
     doc.text(`Overall Score: ${overallScore}%`, 14, 51);
     doc.text(`Performance Rating: ${rating}`, 14, 58);
-    doc.text(`Questions Answered: ${answeredCount} | Unanswered: ${unansweredCount}`, 14, 65);
-    doc.text(`Session Status: ${endedReason}`, 14, 72);
+    doc.text(`Questions Configured: ${configuredQuestionsCount} | Answered: ${answeredCount} | Unanswered: ${unansweredCount}`, 14, 65);
+    doc.text(`Time Limit Configured: ${formatSecs(confDurationSec)} | Actual Duration: ${formatSecs(actualDurationSec)}`, 14, 72);
+    doc.text(`Completion Status: ${endedReason}`, 14, 79);
 
     doc.setFont("helvetica", "bold");
-    doc.text("Question-by-Question Detailed Assessment:", 14, 84);
+    doc.text("Question-by-Question Detailed Assessment:", 14, 91);
     
-    let yPos = 92;
+    let yPos = 99;
     history.forEach((item, index) => {
       if (yPos > 260) {
         doc.addPage();
@@ -110,13 +129,13 @@ export default function InterviewReportPage({ reportData, finalReport, setActive
         </div>
       </div>
 
-      {/* REASON FOR ENDING BANNER (REQUIREMENT #10) */}
+      {/* STATUS BANNERS (REQUIREMENT #20) */}
       {endedReason === "time_expired" && (
         <div className="p-4 rounded-2xl bg-amber-500/10 border border-amber-500/30 text-amber-300 text-xs font-mono flex items-center gap-3 shadow-lg">
           <Clock className="w-5 h-5 text-amber-400 shrink-0" />
           <div>
-            <strong className="block text-amber-200">Interview Status: Time Expired</strong>
-            <span>Interview ended because the allotted time expired. Previously recorded answers were evaluated.</span>
+            <strong className="block text-amber-200">Completion Reason: Time Expired</strong>
+            <span>Interview ended because the configured time limit ({formatSecs(confDurationSec)}) expired. Recorded answers were evaluated.</span>
           </div>
         </div>
       )}
@@ -125,8 +144,8 @@ export default function InterviewReportPage({ reportData, finalReport, setActive
         <div className="p-4 rounded-2xl bg-cyan-500/10 border border-cyan-500/30 text-cyan-300 text-xs font-mono flex items-center gap-3 shadow-lg">
           <Info className="w-5 h-5 text-cyan-400 shrink-0" />
           <div>
-            <strong className="block text-cyan-200">Interview Status: Ended by Candidate</strong>
-            <span>Interview ended by candidate. Current progress was saved and evaluated.</span>
+            <strong className="block text-cyan-200">Completion Reason: Ended by Candidate</strong>
+            <span>Interview ended by candidate before completing all questions. Recorded answers were saved and evaluated.</span>
           </div>
         </div>
       )}
@@ -135,11 +154,36 @@ export default function InterviewReportPage({ reportData, finalReport, setActive
         <div className="p-4 rounded-2xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-300 text-xs font-mono flex items-center gap-3 shadow-lg">
           <CheckCircle2 className="w-5 h-5 text-emerald-400 shrink-0" />
           <div>
-            <strong className="block text-emerald-200">Interview Status: Completed</strong>
-            <span>Interview completed successfully. Full performance evaluation recorded.</span>
+            <strong className="block text-emerald-200">Completion Reason: Completed Successfully</strong>
+            <span>Interview completed all {configuredQuestionsCount} configured questions successfully.</span>
           </div>
         </div>
       )}
+
+      {/* METRICS DASHBOARD CARDS (REQUIREMENT #20) */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 font-mono text-xs">
+        <div className="glass-card p-4 rounded-2xl border border-slate-800 space-y-1">
+          <span className="text-slate-400 block text-[11px]">Configured Time Limit</span>
+          <div className="text-lg font-bold text-amber-400">{formatSecs(confDurationSec)}</div>
+        </div>
+
+        <div className="glass-card p-4 rounded-2xl border border-slate-800 space-y-1">
+          <span className="text-slate-400 block text-[11px]">Actual Elapsed Duration</span>
+          <div className="text-lg font-bold text-cyan-400">{formatSecs(actualDurationSec)}</div>
+        </div>
+
+        <div className="glass-card p-4 rounded-2xl border border-slate-800 space-y-1">
+          <span className="text-slate-400 block text-[11px]">Configured Question Count</span>
+          <div className="text-lg font-bold text-indigo-400">{configuredQuestionsCount} Questions</div>
+        </div>
+
+        <div className="glass-card p-4 rounded-2xl border border-slate-800 space-y-1">
+          <span className="text-slate-400 block text-[11px]">Answered / Unanswered</span>
+          <div className="text-lg font-bold text-emerald-400">
+            {answeredCount} <span className="text-slate-400 font-normal">ans</span> / {unansweredCount} <span className="text-slate-400 font-normal">unans</span>
+          </div>
+        </div>
+      </div>
 
       {/* OVERALL SCORE & SUMMARY CARDS */}
       <div className="grid grid-cols-1 md:grid-cols-12 gap-6">
@@ -210,10 +254,10 @@ export default function InterviewReportPage({ reportData, finalReport, setActive
             <div className="p-3.5 rounded-2xl bg-slate-900/80 border border-slate-800 space-y-1">
               <div className="flex justify-between text-xs font-mono">
                 <span className="text-slate-400">Questions Answered</span>
-                <span className="text-emerald-400 font-bold">{answeredCount} of {history.length || 5}</span>
+                <span className="text-emerald-400 font-bold">{answeredCount} of {configuredQuestionsCount}</span>
               </div>
               <div className="w-full bg-slate-950 h-2 rounded-full overflow-hidden">
-                <div className="bg-emerald-400 h-full rounded-full" style={{ width: `${(answeredCount / max(history.length, 1)) * 100}%` }} />
+                <div className="bg-emerald-400 h-full rounded-full" style={{ width: `${(answeredCount / max(configuredQuestionsCount, 1)) * 100}%` }} />
               </div>
             </div>
 
@@ -221,53 +265,13 @@ export default function InterviewReportPage({ reportData, finalReport, setActive
             <div className="p-3.5 rounded-2xl bg-slate-900/80 border border-slate-800 space-y-1">
               <div className="flex justify-between text-xs font-mono">
                 <span className="text-slate-400">Questions Unanswered</span>
-                <span className="text-amber-400 font-bold">{unansweredCount} of {history.length || 5}</span>
+                <span className="text-amber-400 font-bold">{unansweredCount} of {configuredQuestionsCount}</span>
               </div>
               <div className="w-full bg-slate-950 h-2 rounded-full overflow-hidden">
-                <div className="bg-amber-400 h-full rounded-full" style={{ width: `${(unansweredCount / max(history.length, 1)) * 100}%` }} />
+                <div className="bg-amber-400 h-full rounded-full" style={{ width: `${(unansweredCount / max(configuredQuestionsCount, 1)) * 100}%` }} />
               </div>
             </div>
           </div>
-        </div>
-
-      </div>
-
-      {/* STRENGTHS & WEAKNESSES Breakdown */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        
-        {/* Strong Areas */}
-        <div className="glass-card p-6 rounded-3xl border border-slate-800 space-y-3">
-          <h3 className="text-xs font-bold font-mono text-emerald-400 uppercase tracking-wider flex items-center gap-2">
-            <CheckCircle2 className="w-4 h-4" /> Strong Areas
-          </h3>
-          <ul className="text-xs text-slate-300 space-y-2 font-sans">
-            {(activeReport.strengths && activeReport.strengths.length > 0 ? activeReport.strengths : [
-              `Completed technical interview session in ${activeReport.category || "Software Engineering"}`
-            ]).map((str, idx) => (
-              <li key={idx} className="flex items-start gap-2">
-                <span className="text-emerald-400 font-bold">•</span>
-                <span>{str}</span>
-              </li>
-            ))}
-          </ul>
-        </div>
-
-        {/* Areas Needing Improvement */}
-        <div className="glass-card p-6 rounded-3xl border border-slate-800 space-y-3">
-          <h3 className="text-xs font-bold font-mono text-amber-400 uppercase tracking-wider flex items-center gap-2">
-            <AlertTriangle className="w-4 h-4" /> Areas Needing Improvement
-          </h3>
-          <ul className="text-xs text-slate-300 space-y-2 font-sans">
-            {(activeReport.improvement_tips && activeReport.improvement_tips.length > 0 ? activeReport.improvement_tips : [
-              `Practice detailing architectural trade-offs and code examples out loud`,
-              `Ensure all interview questions receive full verbal responses`
-            ]).map((tip, idx) => (
-              <li key={idx} className="flex items-start gap-2">
-                <span className="text-amber-400 font-bold">•</span>
-                <span>{tip}</span>
-              </li>
-            ))}
-          </ul>
         </div>
 
       </div>
@@ -285,10 +289,9 @@ export default function InterviewReportPage({ reportData, finalReport, setActive
               return (
                 <div key={idx} className="p-5 rounded-2xl bg-slate-900/90 border border-slate-800 space-y-3 text-xs">
                   
-                  {/* Top Bar: Question # & Status Badge */}
                   <div className="flex items-center justify-between">
                     <span className="font-mono text-indigo-400 font-bold text-xs">
-                      Question {idx + 1} of {history.length} • Skill Assessed: <span className="text-cyan-400">{item.skill_focus || activeReport.category || "Technical"}</span>
+                      Question {idx + 1} of {configuredQuestionsCount} • Skill Assessed: <span className="text-cyan-400">{item.skill_focus || activeReport.category || "Technical"}</span>
                     </span>
 
                     <span className={`px-3 py-1 rounded-full text-[10px] font-mono font-bold flex items-center gap-1 ${
@@ -301,18 +304,15 @@ export default function InterviewReportPage({ reportData, finalReport, setActive
                     </span>
                   </div>
 
-                  {/* Question Text */}
                   <p className="text-white font-semibold text-xs leading-relaxed">
                     {item.q_text}
                   </p>
 
-                  {/* Candidate Answer */}
                   <div className="p-3.5 rounded-xl bg-slate-950 border border-slate-800/80 text-slate-300 font-sans italic">
                     <span className="text-amber-400 font-mono not-italic font-bold block text-[11px] mb-1">Candidate Spoken Answer:</span>
                     "{item.user_answer || "Not answered"}"
                   </div>
 
-                  {/* Scores & Feedback */}
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-3 pt-2 border-t border-slate-800/60 font-mono text-[11px]">
                     <div className="p-2.5 rounded-xl bg-slate-950 border border-slate-800">
                       <span className="text-slate-400">Technical Score:</span>{' '}

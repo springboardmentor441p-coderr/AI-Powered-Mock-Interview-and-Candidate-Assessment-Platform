@@ -112,7 +112,13 @@ export async function uploadResumeFile(file, jobDescription = "") {
 }
 
 export async function startInterviewSession(payload) {
-  const { category, difficulty, domain, num_questions = 5, skills = [], duration_seconds = 600, question_time_limit = 90 } = typeof payload === 'object' ? payload : { category: arguments[0], difficulty: arguments[1], domain: arguments[2], num_questions: 5, skills: [] };
+  const category = payload?.category || "Technical Interview";
+  const difficulty = payload?.difficulty || "Medium";
+  const domain = payload?.domain || "Python Developer";
+  const num_questions = payload?.num_questions || 5;
+  const skills = payload?.skills || [];
+  const duration_seconds = payload?.duration_seconds !== undefined ? payload.duration_seconds : 0;
+  const question_time_limit = payload?.question_time_limit !== undefined ? payload.question_time_limit : 0;
 
   try {
     const token = getStoredToken();
@@ -122,17 +128,17 @@ export async function startInterviewSession(payload) {
         "Content-Type": "application/json",
         Authorization: `Bearer ${token}` 
       },
-      body: JSON.stringify({ category: category || "Technical Interview", difficulty: difficulty || "Medium", domain: domain || "Python Developer", num_questions, skills, duration_seconds, question_time_limit })
+      body: JSON.stringify({ category, difficulty, domain, num_questions, skills, duration_seconds, question_time_limit })
     });
     if (res.ok) {
       const data = await res.json();
       return data;
     }
     const errData = await res.json().catch(() => ({}));
-    return { error: errData.detail || "Unable to start the AI interview. Please try again." };
+    return { error: errData.detail || "Unable to start the interview. Please try again." };
   } catch (e) {
     console.warn("Backend API unreachable during interview start:", e);
-    return { error: "Unable to start the AI interview. Please try again." };
+    return { error: "Unable to start the interview. Please try again." };
   }
 }
 

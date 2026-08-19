@@ -61,8 +61,8 @@ class InterviewSession(Base):
     ended_reason = Column(String, default="completed") # completed, time_expired, ended_by_candidate
     started_at = Column(DateTime, default=datetime.utcnow)
     finished_at = Column(DateTime, nullable=True)
-    duration_seconds = Column(Integer, default=600)
-    question_time_limit = Column(Integer, default=90)
+    duration_seconds = Column(Integer, default=0) # 0 means Unlimited
+    question_time_limit = Column(Integer, default=0) # 0 means Unlimited
     questions_data = Column(JSON, nullable=True) # Stored questions list for page refresh recovery
     created_at = Column(DateTime, default=datetime.utcnow)
 

@@ -25,6 +25,31 @@ FALLBACK_QUESTIONS_BANK = {
             "question_text": "In a distributed Python microservices architecture, how do you handle structured logging, error propagation, and central telemetry tracking across services?",
             "sample_answer": "Use correlation IDs in request headers, format logs as structured JSON, and stream metrics to centralized APM platforms like OpenTelemetry.",
             "skill_focus": "Distributed Logging & Microservices"
+        },
+        {
+            "question_text": "Explain the Python Global Interpreter Lock (GIL) and how it affects multi-threaded vs multi-process execution for CPU-bound tasks.",
+            "sample_answer": "The GIL prevents multi-threaded CPython from executing bytecode on multiple CPU cores simultaneously; multiprocessing bypasses this with separate memory spaces.",
+            "skill_focus": "Python Concurrency & GIL"
+        },
+        {
+            "question_text": "How do you implement custom Python decorators to handle authentication, rate limiting, and execution logging cleanly across API endpoints?",
+            "sample_answer": "Use functools.wraps to preserve wrapper metadata and execute pre/post logic around decorated callables.",
+            "skill_focus": "Decorators & Metaprogramming"
+        },
+        {
+            "question_text": "How do you approach database schema migrations in production Python projects using Alembic or Django ORM without causing table locks?",
+            "sample_answer": "Perform non-breaking additive migrations, create indexes concurrently, and execute field deprecations in multi-stage releases.",
+            "skill_focus": "Database Migrations"
+        },
+        {
+            "question_text": "Describe how you optimize Pydantic data validation and serialization overhead in high-performance FastAPI microservices.",
+            "sample_answer": "Utilize Pydantic V2 Rust-backed core validators, reduce nested schema parsing, and leverage direct ORM serialization.",
+            "skill_focus": "FastAPI & Pydantic Optimization"
+        },
+        {
+            "question_text": "What strategies do you use for dependency injection, test mocking, and isolating external HTTP services during pytest unit testing?",
+            "sample_answer": "Use pytest fixtures, dependency overrides in FastAPI, and mock HTTP transport layers with httpx-mock or unittest.mock.",
+            "skill_focus": "Testing & Mocking"
         }
     ],
     "Backend Engineering": [
@@ -48,34 +73,17 @@ FALLBACK_QUESTIONS_BANK = {
             "sample_answer": "Wrap external calls in circuit breaker state machines with exponential backoff and jitter to avoid thundering herd problem.",
             "skill_focus": "Resilience & Circuit Breaker"
         }
-    ],
-    "Data Structures & Algorithms (DSA)": [
-        {
-            "question_text": "How would you design a LRU (Least Recently Used) cache with O(1) time complexity for both get and put operations?",
-            "sample_answer": "Combine a Hash Map for fast key lookup with a Doubly Linked List to maintain access order in O(1) time.",
-            "skill_focus": "LRU Cache & Linked List"
-        },
-        {
-            "question_text": "Can you explain the difference between BFS and DFS traversal algorithms, detailing scenarios where BFS is strictly preferred over DFS?",
-            "sample_answer": "BFS explores level-by-level using a queue, finding shortest path in unweighted graphs; DFS explores depth first using stack/recursion.",
-            "skill_focus": "Graph Algorithms & BFS/DFS"
-        },
-        {
-            "question_text": "What is the time and space complexity of QuickSort versus MergeSort, and why is QuickSort often preferred in practical memory-constrained environments?",
-            "sample_answer": "MergeSort is O(N log N) guaranteed but needs O(N) extra space; QuickSort is O(N log N) average and operates in-place O(log N) stack space.",
-            "skill_focus": "Sorting Algorithms Complexity"
-        },
-        {
-            "question_text": "How would you detect a cycle in a directed graph versus an undirected graph efficiently?",
-            "sample_answer": "For directed graphs use DFS recursion stack state (visited/visiting); for undirected graphs use Union-Find or DFS checking parent pointers.",
-            "skill_focus": "Graph Cycle Detection"
-        }
     ]
 }
 
-def get_fallback_questions(domain: str, num_questions: int = 5) -> List[Dict]:
-    fallback_pool = FALLBACK_QUESTIONS_BANK.get(domain, FALLBACK_QUESTIONS_BANK["Python Developer"])
-    return fallback_pool[:max(num_questions - 1, 1)]
+def get_fallback_questions(domain: str, tech_count: int) -> List[Dict]:
+    pool = FALLBACK_QUESTIONS_BANK.get(domain, FALLBACK_QUESTIONS_BANK["Python Developer"])
+    res = []
+    for i in range(tech_count):
+        item = dict(pool[i % len(pool)])
+        item["id"] = i + 2
+        res.append(item)
+    return res
 
 def generate_interview_questions(
     category: str,
@@ -88,10 +96,9 @@ def generate_interview_questions(
     """
     Dynamic Question Generator:
     Begins naturally with a welcoming self-introduction prompt from Mira (Q1).
-    Subsequent questions (Q2..Q5) are dynamically generated via Groq LLM (openai/gpt-oss-120b)
-    or high-quality domain fallback questions if Groq LLM is unavailable.
+    Subsequent questions are dynamically generated via Groq LLM (openai/gpt-oss-120b)
+    matching the exact configured question count (num_questions).
     """
-    # Q1: Natural Conversational Self-Introduction Opening
     intro_question = {
         "id": 1,
         "question_text": f"Welcome! I'm Mira, your AI technical interviewer today. To get started, could you briefly introduce yourself and highlight your experience relevant to the {domain} role?",
@@ -99,7 +106,7 @@ def generate_interview_questions(
         "skill_focus": "Self Introduction & Background"
     }
 
-    tech_count = max(num_questions - 1, 4)
+    tech_count = max(num_questions - 1, 1)
     llm_questions = None
 
     if is_llm_available():
@@ -115,9 +122,14 @@ def generate_interview_questions(
             logger.error("Exception in generate_llm_questions: %s", err)
             llm_questions = None
 
-    if not llm_questions or len(llm_questions) == 0:
-        logger.info("Using domain fallback questions for %s (%s)", domain, difficulty)
-        llm_questions = get_fallback_questions(domain, tech_count)
+    if not llm_questions or len(llm_questions) < tech_count:
+        logger.info("Supplementing with domain fallback questions for %s (%s)", domain, difficulty)
+        fallback = get_fallback_questions(domain, tech_count)
+        if not llm_questions:
+            llm_questions = fallback
+        else:
+            needed = tech_count - len(llm_questions)
+            llm_questions.extend(fallback[:needed])
 
     for idx, q in enumerate(llm_questions):
         q["id"] = idx + 2
