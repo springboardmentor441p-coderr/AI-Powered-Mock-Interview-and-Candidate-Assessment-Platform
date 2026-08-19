@@ -365,15 +365,15 @@ export default function InterviewRoomPage({ sessionData, setActivePage, setFinal
 
     miraAgent.stopSpeaking();
 
-    let currentText = (candidateAnswerRef.current || candidateAnswer || '').trim();
-
+    let rawText = (candidateAnswerRef.current || candidateAnswer || '').trim();
     stopMicRecording();
-    await handleNextQuestionInternal(currentText.length > 0 ? currentText : "Not answered");
+
+    await handleNextQuestionInternal(rawText);
   };
 
-  const handleNextQuestionInternal = async (answerText) => {
-    const isAnswered = answerText.length > 0 && answerText !== "Not answered";
-    const finalCandidateAnswer = isAnswered ? answerText : "Not answered";
+  const handleNextQuestionInternal = async (rawText) => {
+    const isAnswered = rawText.length > 0 && rawText !== "Not answered";
+    const finalCandidateAnswer = isAnswered ? rawText : "Not answered";
 
     candidateAnswerRef.current = '';
     setCandidateAnswer('');
@@ -386,9 +386,37 @@ export default function InterviewRoomPage({ sessionData, setActivePage, setFinal
       type: 'candidate'
     };
 
-    setChatThread(prev => [...prev, candidateBubble]);
+    // 2. Determine Next Question immediately for seamless UI update
+    const hasMoreQuestions = currentIdx < maxQuestions - 1;
+    let initialNextQ = hasMoreQuestions ? questionsList[currentIdx + 1] : null;
+    if (hasMoreQuestions && (!initialNextQ || !initialNextQ.question_text)) {
+      initialNextQ = {
+        id: currentIdx + 2,
+        question_text: `Could you elaborate on your experience with core architectural design patterns in ${activeDomain}?`,
+        skill_focus: `${activeDomain} Architecture`
+      };
+    }
 
-    // 2. Submit answer to backend API
+    if (hasMoreQuestions && initialNextQ) {
+      const nextInterviewerText = isAnswered 
+        ? miraAgent.generateAdaptivePrompt(finalCandidateAnswer, initialNextQ)
+        : `Okay, let's move on to the next question. ${initialNextQ.question_text}`;
+
+      const interviewerBubble = {
+        id: `mira-${currentIdx + 2}-${Date.now()}`,
+        sender: `Mira (AI Interviewer)`,
+        text: nextInterviewerText,
+        type: 'interviewer'
+      };
+
+      // Append candidate answer and Mira's next question cleanly into conversation thread
+      setChatThread(prev => [...prev, candidateBubble, interviewerBubble]);
+      setCurrentIdx(prev => prev + 1);
+    } else {
+      setChatThread(prev => [...prev, candidateBubble]);
+    }
+
+    // 3. Submit answer to backend API asynchronously
     const backendRes = await submitQuestionAnswer({
       session_id: sessionData?.session_id || 1,
       question_index: currentIdx + 1,
@@ -425,64 +453,29 @@ export default function InterviewRoomPage({ sessionData, setActivePage, setFinal
     const updatedAnswers = [...candidateAnswersList, answerEntry];
     setCandidateAnswersList(updatedAnswers);
 
-    const previousQuestionsAsked = updatedAnswers.map(a => a.q_text);
-
-    // QUESTION COUNT CHECK: Advance to next question if currentIdx < maxQuestions - 1
-    if (currentIdx < maxQuestions - 1) {
-      let nextQObj = null;
-
-      // Try fetching next adaptive question from backend
+    if (hasMoreQuestions) {
+      // Background async call to fetch adaptive question refinement from Groq LLM if desired
+      const previousQuestionsAsked = updatedAnswers.map(a => a.q_text);
       try {
-        nextQObj = await fetchNextAdaptiveQuestion({
+        const nextQObj = await fetchNextAdaptiveQuestion({
           domain: activeDomain,
           difficulty: activeDifficulty,
           skills: sessionData?.skills || [],
           previous_questions: previousQuestionsAsked,
           candidate_answer: isAnswered ? finalCandidateAnswer : ""
         });
+
+        if (nextQObj && nextQObj.question_text) {
+          setQuestionsList(prev => {
+            const copy = [...prev];
+            copy[currentIdx + 1] = nextQObj;
+            return copy;
+          });
+        }
       } catch (err) {
-        console.warn("fetchNextAdaptiveQuestion call failed:", err);
+        console.warn("fetchNextAdaptiveQuestion background call notice:", err);
       }
 
-      // Fallback 1: Use pre-generated question from initial questionsList if API failed or returned empty
-      if (!nextQObj || !nextQObj.question_text) {
-        nextQObj = questionsList[currentIdx + 1];
-      }
-
-      // Fallback 2: Domain default prompt if questionsList entry missing
-      if (!nextQObj || !nextQObj.question_text) {
-        nextQObj = {
-          id: currentIdx + 2,
-          question_text: `Could you elaborate on your experience with core architectural design patterns in ${activeDomain}?`,
-          skill_focus: `${activeDomain} Architecture`
-        };
-      }
-
-      // Update questionsList
-      setQuestionsList(prev => {
-        const copy = [...prev];
-        copy[currentIdx + 1] = nextQObj;
-        return copy;
-      });
-
-      // Append Mira's next question bubble to conversation thread
-      const nextInterviewerText = isAnswered 
-        ? miraAgent.generateAdaptivePrompt(finalCandidateAnswer, nextQObj)
-        : `Okay, let's move on to the next question. ${nextQObj.question_text}`;
-
-      const interviewerBubble = {
-        id: `mira-${currentIdx + 2}-${Date.now()}`,
-        sender: `Mira (AI Interviewer)`,
-        text: nextInterviewerText,
-        type: 'interviewer'
-      };
-
-      setChatThread(prev => [...prev, interviewerBubble]);
-
-      // ALWAYS INCREMENT QUESTION INDEX (Q1 -> Q2 -> Q3)
-      setCurrentIdx(prev => prev + 1);
-
-      // Release submit lock
       submittingRef.current = false;
       setSubmitting(false);
     } else {
