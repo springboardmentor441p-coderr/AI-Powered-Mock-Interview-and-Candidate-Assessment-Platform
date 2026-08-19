@@ -175,8 +175,6 @@ def start_interview(
         )
 
         now_utc = datetime.utcnow()
-        duration_secs = req.duration_seconds if (req.duration_seconds is not None) else 0
-        q_time_limit = req.question_time_limit if (req.question_time_limit is not None) else 0
 
         new_session = models.InterviewSession(
             user_id=current_user.id,
@@ -188,8 +186,6 @@ def start_interview(
             status="active",
             ended_reason="in_progress",
             started_at=now_utc,
-            duration_seconds=duration_secs,
-            question_time_limit=q_time_limit,
             questions_data=questions
         )
         db.add(new_session)
@@ -204,8 +200,6 @@ def start_interview(
             "domain": new_session.domain,
             "status": new_session.status,
             "started_at": new_session.started_at.isoformat(),
-            "duration_seconds": duration_secs,
-            "question_time_limit": q_time_limit,
             "candidate": {
                 "id": current_user.id,
                 "full_name": current_user.full_name,
@@ -255,8 +249,6 @@ def get_interview_session(
         "status": session.status,
         "ended_reason": session.ended_reason,
         "started_at": session.started_at.isoformat() if session.started_at else datetime.utcnow().isoformat(),
-        "duration_seconds": session.duration_seconds or 600,
-        "question_time_limit": session.question_time_limit or 90,
         "overall_score": session.overall_score,
         "performance_rating": session.performance_rating,
         "candidate": {
@@ -494,7 +486,7 @@ def candidate_dashboard(
     sessions = db.query(models.InterviewSession).filter(models.InterviewSession.user_id == current_user.id).all()
     resumes = db.query(models.Resume).filter(models.Resume.user_id == current_user.id).all()
 
-    completed = [s for s in sessions if s.status in ["completed", "time_expired", "ended_by_candidate"]]
+    completed = [s for s in sessions if s.status in ["completed", "ended_by_candidate"]]
     avg_score = round(sum(s.overall_score for s in completed) / len(completed), 1) if completed else 0.0
 
     recent_sessions = [
@@ -539,12 +531,12 @@ def recruiter_analytics(
     candidates = db.query(models.User).filter(models.User.role == "candidate").all()
     sessions = db.query(models.InterviewSession).all()
 
-    completed = [s for s in sessions if s.status in ["completed", "time_expired", "ended_by_candidate"]]
+    completed = [s for s in sessions if s.status in ["completed", "ended_by_candidate"]]
     avg_platform_score = round(sum(s.overall_score for s in completed) / len(completed), 1) if completed else 0.0
 
     candidate_list = []
     for c in candidates:
-        c_sessions = [s for s in sessions if s.user_id == c.id and s.status in ["completed", "time_expired", "ended_by_candidate"]]
+        c_sessions = [s for s in sessions if s.user_id == c.id and s.status in ["completed", "ended_by_candidate"]]
         c_avg = round(sum(s.overall_score for s in c_sessions) / len(c_sessions), 1) if c_sessions else 0.0
         candidate_list.append({
             "id": c.id,

@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { Video, Mic, MicOff, Volume2, Clock, ArrowRight, CheckCircle2, AlertCircle, RefreshCw, Send, Sparkles, VolumeX, Bot, User, MessageSquare, PhoneOff, Bell, AlertTriangle, ShieldAlert, XCircle, Loader2, LogOut } from 'lucide-react';
+import { Video, Mic, MicOff, Volume2, ArrowRight, CheckCircle2, AlertCircle, RefreshCw, Send, Sparkles, VolumeX, Bot, User, MessageSquare, PhoneOff, Bell, AlertTriangle, ShieldAlert, XCircle, Loader2, LogOut } from 'lucide-react';
 import WebcamMonitor from '../components/WebcamMonitor';
 import AudioWaveform from '../components/AudioWaveform';
 import { submitQuestionAnswer, finishInterviewSession, fetchNextAdaptiveQuestion, transcribeAudioBlob, getStoredUser } from '../services/api';
@@ -10,23 +10,8 @@ export default function InterviewRoomPage({ sessionData, setActivePage, setFinal
 
   const activeDomain = sessionData?.domain || sessionData?.category || "Python Developer";
   const activeDifficulty = sessionData?.difficulty || "Medium";
-  const totalInterviewDurationSec = sessionData?.duration_seconds !== undefined ? sessionData.duration_seconds : 0; // 0 means Unlimited
-  const questionTimeLimitSec = sessionData?.question_time_limit !== undefined ? sessionData.question_time_limit : 0; // 0 means Unlimited
-
-  // Dynamic configured question count (e.g., 3, 5, 10, 15)
   const maxQuestions = sessionData?.total_questions || sessionData?.num_questions || (sessionData?.questions ? sessionData.questions.length : 5);
 
-  // Calculate elapsed & remaining total interview time based on starting timestamp (ONLY if limit > 0)
-  const getInitialTotalRemaining = () => {
-    if (!totalInterviewDurationSec || totalInterviewDurationSec <= 0) return 0;
-    const startedAt = sessionData?.started_at ? new Date(sessionData.started_at).getTime() : Date.now();
-    const elapsedSec = Math.max(0, Math.floor((Date.now() - startedAt) / 1000));
-    return Math.max(0, totalInterviewDurationSec - elapsedSec);
-  };
-
-  const [totalRemainingSec, setTotalRemainingSec] = useState(getInitialTotalRemaining);
-  const [questionRemainingSec, setQuestionRemainingSec] = useState(questionTimeLimitSec);
-  
   const [currentIdx, setCurrentIdx] = useState(() => sessionData?.currentIdx || 0);
   const [candidateAnswer, setCandidateAnswer] = useState('');
   const [isRecording, setIsRecording] = useState(true);
@@ -58,7 +43,6 @@ export default function InterviewRoomPage({ sessionData, setActivePage, setFinal
     isRecordingRef.current = isRecording;
   }, [isRecording]);
 
-  // Dynamic questions list
   const defaultQ1 = {
     id: 1,
     question_text: `Welcome! I'm Mira, your AI technical interviewer today. To get started, could you briefly introduce yourself and highlight your experience relevant to the ${activeDomain} role?`,
@@ -71,7 +55,6 @@ export default function InterviewRoomPage({ sessionData, setActivePage, setFinal
   const [questionsList, setQuestionsList] = useState(backendQuestions);
   const currentQ = questionsList[currentIdx] || null;
 
-  // REAL-TIME CONVERSATION CHAT THREAD HISTORY
   const [chatThread, setChatThread] = useState(() => {
     if (sessionData?.chatThread && sessionData.chatThread.length > 0) {
       return sessionData.chatThread;
@@ -127,47 +110,6 @@ export default function InterviewRoomPage({ sessionData, setActivePage, setFinal
     window.addEventListener("beforeunload", handleBeforeUnload);
     return () => window.removeEventListener("beforeunload", handleBeforeUnload);
   }, []);
-
-  // 1. TOTAL INTERVIEW COUNTDOWN TIMER (ONLY ACTIVE IF CONFIGURED LIMIT > 0)
-  useEffect(() => {
-    if (!totalInterviewDurationSec || totalInterviewDurationSec <= 0) {
-      return; // Unlimited time limit selected - DO NOT automatically expire interview!
-    }
-
-    const timerInterval = setInterval(() => {
-      setTotalRemainingSec(prev => {
-        if (prev <= 1) {
-          clearInterval(timerInterval);
-          handleFinalizeSession("time_expired");
-          return 0;
-        }
-        return prev - 1;
-      });
-    }, 1000);
-
-    return () => clearInterval(timerInterval);
-  }, [totalInterviewDurationSec]);
-
-  // 2. PER-QUESTION COUNTDOWN TIMER (ONLY ACTIVE IF CONFIGURED LIMIT > 0)
-  useEffect(() => {
-    if (!questionTimeLimitSec || questionTimeLimitSec <= 0) {
-      return; // Unlimited per-question limit - DO NOT automatically submit/skip
-    }
-
-    setQuestionRemainingSec(questionTimeLimitSec);
-    const qInterval = setInterval(() => {
-      setQuestionRemainingSec(prev => {
-        if (prev <= 1) {
-          clearInterval(qInterval);
-          handleQuestionTimeout();
-          return 0;
-        }
-        return prev - 1;
-      });
-    }, 1000);
-
-    return () => clearInterval(qInterval);
-  }, [currentIdx, questionTimeLimitSec]);
 
   // Auto-scroll chat thread to bottom
   useEffect(() => {
@@ -383,23 +325,6 @@ export default function InterviewRoomPage({ sessionData, setActivePage, setFinal
     return candidateAnswerRef.current || candidateAnswer || "";
   };
 
-  const formatTimer = (secs) => {
-    const m = Math.floor(secs / 60);
-    const s = secs % 60;
-    return `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
-  };
-
-  // QUESTION TIMEOUT HANDLER
-  const handleQuestionTimeout = async () => {
-    if (submitting || finalizingRef.current) return;
-    let currentText = (candidateAnswerRef.current || candidateAnswer || '').trim();
-
-    if (!currentText && audioChunksRef.current.length > 0) {
-      currentText = await processRecordedAudioTranscription();
-    }
-    handleNextQuestionInternal(currentText.length > 0 ? currentText : "Not answered");
-  };
-
   // SUBMIT ANSWER / NEXT QUESTION HANDLER
   const handleNextQuestion = async () => {
     if (!currentQ || submitting || finalizingRef.current) return;
@@ -474,12 +399,8 @@ export default function InterviewRoomPage({ sessionData, setActivePage, setFinal
 
     const previousQuestionsAsked = updatedAnswers.map(a => a.q_text);
 
-    // TIME & QUESTION LIMIT CHECK: Advance ONLY if currentIdx < maxQuestions - 1
-    const isTimeUnlimited = !totalInterviewDurationSec || totalInterviewDurationSec <= 0;
-    const hasTimeRemaining = isTimeUnlimited || totalRemainingSec > 0;
-
-    if (currentIdx < maxQuestions - 1 && hasTimeRemaining) {
-      // FETCH DYNAMIC NEXT QUESTION FROM GROQ LLM BACKEND
+    // QUESTION COUNT CHECK: Advance ONLY if currentIdx < maxQuestions - 1
+    if (currentIdx < maxQuestions - 1) {
       const nextQObj = await fetchNextAdaptiveQuestion({
         domain: activeDomain,
         difficulty: activeDifficulty,
@@ -513,7 +434,7 @@ export default function InterviewRoomPage({ sessionData, setActivePage, setFinal
         setSubmitting(false);
       }
     } else {
-      // Reached configured max questions -> Finalize session as completed
+      // Reached configured max questions -> Finalize session cleanly as completed
       await handleFinalizeSession("completed", updatedAnswers);
     }
   };
@@ -541,12 +462,7 @@ export default function InterviewRoomPage({ sessionData, setActivePage, setFinal
     else if (avgOverallScore >= 80) rating = "Recommended Candidate (Good Hire)";
     else if (avgOverallScore >= 60) rating = "Passable Candidate";
 
-    const isTimeout = reason === "time_expired";
     const isCandidateEnded = reason === "ended_by_candidate";
-
-    // Calculate actual elapsed duration
-    const startedAt = sessionData?.started_at ? new Date(sessionData.started_at).getTime() : Date.now();
-    const actualElapsedSec = Math.max(0, Math.floor((Date.now() - startedAt) / 1000));
 
     const fullCustomReport = {
       ...report,
@@ -556,9 +472,7 @@ export default function InterviewRoomPage({ sessionData, setActivePage, setFinal
       difficulty: activeDifficulty,
       status: reason,
       ended_reason: reason,
-      configured_duration_seconds: totalInterviewDurationSec,
       configured_question_count: maxQuestions,
-      actual_duration_seconds: actualElapsedSec,
       candidate: {
         id: activeUser?.id || 1,
         full_name: activeUser?.full_name || "Candidate User",
@@ -578,14 +492,14 @@ export default function InterviewRoomPage({ sessionData, setActivePage, setFinal
         `Initiated technical interview session with Mira`
       ],
       weaknesses: unansweredCount > 0 ? [
-        isTimeout ? `Interview session ended because the allotted time expired` : (isCandidateEnded ? `Interview session ended early by candidate` : `Candidate skipped ${unansweredCount} prompt(s)`),
+        isCandidateEnded ? `Interview session ended early by candidate` : `Candidate skipped ${unansweredCount} prompt(s)`,
         `Ensure comprehensive verbal answers are provided for all technical prompts`
       ] : [
         `Elaborate further on system architecture and trade-offs in future responses`
       ],
       improvement_tips: [
         `Practice speaking concise, structured technical explanations`,
-        `Manage interview pacing to complete all questions within the allotted duration`
+        `Focus on providing detailed examples for all technical questions`
       ]
     };
 
@@ -617,8 +531,6 @@ export default function InterviewRoomPage({ sessionData, setActivePage, setFinal
     );
   }
 
-  const isLowTime = totalInterviewDurationSec > 0 && totalRemainingSec > 0 && totalRemainingSec <= 120;
-
   return (
     <div className="max-w-7xl mx-auto px-4 py-4 space-y-6 pb-20 relative font-sans">
       
@@ -639,13 +551,13 @@ export default function InterviewRoomPage({ sessionData, setActivePage, setFinal
                 <AlertTriangle className="w-5 h-5" />
               </div>
               <div>
-                <h3 className="text-base font-bold text-white">End Interview Confirmation</h3>
+                <h3 className="text-base font-bold text-white">Finish Interview Confirmation</h3>
                 <p className="text-xs text-slate-400">Save progress and finalize assessment</p>
               </div>
             </div>
 
             <p className="text-xs text-slate-300 leading-relaxed">
-              Are you sure you want to end the interview? Your current progress will be saved and the interview will be finalized.
+              Are you sure you want to finish the interview? Your current progress will be saved and the evaluation report will be generated.
             </p>
 
             <div className="flex items-center justify-end gap-3 pt-2">
@@ -663,7 +575,7 @@ export default function InterviewRoomPage({ sessionData, setActivePage, setFinal
                 }}
                 className="px-5 py-2.5 rounded-xl font-bold text-xs bg-red-600 hover:bg-red-500 text-white shadow-lg shadow-red-600/30 transition-all flex items-center gap-1.5"
               >
-                <PhoneOff className="w-3.5 h-3.5" /> End Interview
+                <PhoneOff className="w-3.5 h-3.5" /> Finish Interview
               </button>
             </div>
           </div>
@@ -673,50 +585,23 @@ export default function InterviewRoomPage({ sessionData, setActivePage, setFinal
       {/* ROOM TOP HEADER */}
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 glass-card p-3 px-6 rounded-2xl border border-slate-800">
         <div className="flex items-center gap-3">
-          <div className="w-3 h-3 rounded-full bg-red-500 animate-ping"></div>
+          <div className="w-3 h-3 rounded-full bg-emerald-500 animate-ping"></div>
           <div>
             <h1 className="text-sm font-bold text-white uppercase tracking-wider flex items-center gap-2">
               Mira AI Interview Room <span className="text-[10px] text-cyan-400 font-mono font-normal">• Live Session</span>
             </h1>
             <span className="text-[11px] text-indigo-300 font-mono">
-              Candidate: <strong className="text-white">{activeUser?.full_name || "Candidate User"}</strong> | Role: <strong className="text-white">{activeDomain}</strong> ({activeDifficulty} Level — Q{currentIdx + 1} of {maxQuestions})
+              Candidate: <strong className="text-white">{activeUser?.full_name || "Candidate User"}</strong> | Role: <strong className="text-white">{activeDomain}</strong> ({activeDifficulty} Level — Question {currentIdx + 1} of {maxQuestions})
             </span>
           </div>
         </div>
 
         <div className="flex items-center gap-3">
-          {/* TOTAL INTERVIEW TIMER BADGE */}
-          {totalInterviewDurationSec > 0 ? (
-            <span className={`px-3.5 py-1.5 rounded-xl border font-mono text-xs font-bold flex items-center gap-1.5 ${
-              isLowTime 
-                ? 'bg-red-500/20 border-red-500/50 text-red-400 animate-pulse' 
-                : 'bg-indigo-500/10 border-indigo-500/30 text-indigo-300'
-            }`}>
-              <Clock className="w-3.5 h-3.5" /> Total Time: {formatTimer(totalRemainingSec)}
-            </span>
-          ) : (
-            <span className="px-3.5 py-1.5 rounded-xl border border-indigo-500/30 bg-indigo-500/10 text-indigo-300 font-mono text-xs font-bold flex items-center gap-1.5">
-              <Clock className="w-3.5 h-3.5 text-cyan-400" /> ⏱️ Unlimited Time
-            </span>
-          )}
-
-          {/* PER-QUESTION TIMER BADGE */}
-          {questionTimeLimitSec > 0 ? (
-            <span className="px-3.5 py-1.5 rounded-xl bg-slate-900 border border-slate-800 text-cyan-400 font-mono text-xs font-bold flex items-center gap-1.5">
-              Q Timer: {formatTimer(questionRemainingSec)}
-            </span>
-          ) : (
-            <span className="px-3.5 py-1.5 rounded-xl bg-slate-900 border border-slate-800 text-slate-400 font-mono text-xs font-bold flex items-center gap-1.5">
-              Q Timer: Unlimited
-            </span>
-          )}
-
-          {/* END INTERVIEW BUTTON */}
           <button
             onClick={() => setShowEndModal(true)}
             className="px-3.5 py-1.5 rounded-xl bg-red-500/15 hover:bg-red-500/30 border border-red-500/40 text-red-400 font-mono text-xs font-bold flex items-center gap-1.5 transition-all"
           >
-            <PhoneOff className="w-3.5 h-3.5" /> End Interview
+            <PhoneOff className="w-3.5 h-3.5" /> Finish Interview
           </button>
         </div>
       </div>

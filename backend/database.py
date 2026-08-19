@@ -30,8 +30,6 @@ def sync_database_schema():
             ("ended_reason", "TEXT DEFAULT 'completed'"),
             ("started_at", "DATETIME"),
             ("finished_at", "DATETIME"),
-            ("duration_seconds", "INTEGER DEFAULT 600"),
-            ("question_time_limit", "INTEGER DEFAULT 90"),
             ("questions_data", "JSON")
         ]
 

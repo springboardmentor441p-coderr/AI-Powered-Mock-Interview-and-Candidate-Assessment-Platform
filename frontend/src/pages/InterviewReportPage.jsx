@@ -1,5 +1,5 @@
 import React from 'react';
-import { Award, CheckCircle2, XCircle, AlertTriangle, Download, ArrowLeft, BarChart3, Eye, ShieldCheck, Sparkles, FileText, Check, HelpCircle, User, Clock, Info, Sliders } from 'lucide-react';
+import { Award, CheckCircle2, XCircle, AlertTriangle, Download, ArrowLeft, BarChart3, Eye, ShieldCheck, Sparkles, FileText, Check, HelpCircle, User, Info } from 'lucide-react';
 import jsPDF from 'jspdf';
 import { getStoredUser } from '../services/api';
 
@@ -42,17 +42,6 @@ export default function InterviewReportPage({ reportData, finalReport, setActive
   const candRole = activeReport.candidate?.role || user?.role || "Candidate";
   const endedReason = activeReport.ended_reason || activeReport.status || "completed";
 
-  // Time metrics
-  const confDurationSec = activeReport.configured_duration_seconds !== undefined ? activeReport.configured_duration_seconds : 0;
-  const actualDurationSec = activeReport.actual_duration_seconds !== undefined ? activeReport.actual_duration_seconds : 0;
-
-  const formatSecs = (sec) => {
-    if (!sec || sec <= 0) return "Unlimited";
-    const m = Math.floor(sec / 60);
-    const s = sec % 60;
-    return `${m}m ${s}s`;
-  };
-
   const handleDownloadPDF = () => {
     const doc = new jsPDF();
     
@@ -68,13 +57,12 @@ export default function InterviewReportPage({ reportData, finalReport, setActive
     doc.text(`Overall Score: ${overallScore}%`, 14, 51);
     doc.text(`Performance Rating: ${rating}`, 14, 58);
     doc.text(`Questions Configured: ${configuredQuestionsCount} | Answered: ${answeredCount} | Unanswered: ${unansweredCount}`, 14, 65);
-    doc.text(`Time Limit Configured: ${formatSecs(confDurationSec)} | Actual Duration: ${formatSecs(actualDurationSec)}`, 14, 72);
-    doc.text(`Completion Status: ${endedReason}`, 14, 79);
+    doc.text(`Completion Status: ${endedReason}`, 14, 72);
 
     doc.setFont("helvetica", "bold");
-    doc.text("Question-by-Question Detailed Assessment:", 14, 91);
+    doc.text("Question-by-Question Detailed Assessment:", 14, 84);
     
-    let yPos = 99;
+    let yPos = 92;
     history.forEach((item, index) => {
       if (yPos > 260) {
         doc.addPage();
@@ -129,28 +117,16 @@ export default function InterviewReportPage({ reportData, finalReport, setActive
         </div>
       </div>
 
-      {/* STATUS BANNERS (REQUIREMENT #20) */}
-      {endedReason === "time_expired" && (
-        <div className="p-4 rounded-2xl bg-amber-500/10 border border-amber-500/30 text-amber-300 text-xs font-mono flex items-center gap-3 shadow-lg">
-          <Clock className="w-5 h-5 text-amber-400 shrink-0" />
-          <div>
-            <strong className="block text-amber-200">Completion Reason: Time Expired</strong>
-            <span>Interview ended because the configured time limit ({formatSecs(confDurationSec)}) expired. Recorded answers were evaluated.</span>
-          </div>
-        </div>
-      )}
-
-      {endedReason === "ended_by_candidate" && (
+      {/* STATUS BANNERS */}
+      {endedReason === "ended_by_candidate" ? (
         <div className="p-4 rounded-2xl bg-cyan-500/10 border border-cyan-500/30 text-cyan-300 text-xs font-mono flex items-center gap-3 shadow-lg">
           <Info className="w-5 h-5 text-cyan-400 shrink-0" />
           <div>
             <strong className="block text-cyan-200">Completion Reason: Ended by Candidate</strong>
-            <span>Interview ended by candidate before completing all questions. Recorded answers were saved and evaluated.</span>
+            <span>Interview ended by candidate before completing all questions. Recorded answers were evaluated.</span>
           </div>
         </div>
-      )}
-
-      {endedReason === "completed" && (
+      ) : (
         <div className="p-4 rounded-2xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-300 text-xs font-mono flex items-center gap-3 shadow-lg">
           <CheckCircle2 className="w-5 h-5 text-emerald-400 shrink-0" />
           <div>
@@ -160,28 +136,21 @@ export default function InterviewReportPage({ reportData, finalReport, setActive
         </div>
       )}
 
-      {/* METRICS DASHBOARD CARDS (REQUIREMENT #20) */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 font-mono text-xs">
-        <div className="glass-card p-4 rounded-2xl border border-slate-800 space-y-1">
-          <span className="text-slate-400 block text-[11px]">Configured Time Limit</span>
-          <div className="text-lg font-bold text-amber-400">{formatSecs(confDurationSec)}</div>
-        </div>
-
-        <div className="glass-card p-4 rounded-2xl border border-slate-800 space-y-1">
-          <span className="text-slate-400 block text-[11px]">Actual Elapsed Duration</span>
-          <div className="text-lg font-bold text-cyan-400">{formatSecs(actualDurationSec)}</div>
-        </div>
-
+      {/* METRICS DASHBOARD CARDS */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 font-mono text-xs">
         <div className="glass-card p-4 rounded-2xl border border-slate-800 space-y-1">
           <span className="text-slate-400 block text-[11px]">Configured Question Count</span>
           <div className="text-lg font-bold text-indigo-400">{configuredQuestionsCount} Questions</div>
         </div>
 
         <div className="glass-card p-4 rounded-2xl border border-slate-800 space-y-1">
-          <span className="text-slate-400 block text-[11px]">Answered / Unanswered</span>
-          <div className="text-lg font-bold text-emerald-400">
-            {answeredCount} <span className="text-slate-400 font-normal">ans</span> / {unansweredCount} <span className="text-slate-400 font-normal">unans</span>
-          </div>
+          <span className="text-slate-400 block text-[11px]">Questions Answered</span>
+          <div className="text-lg font-bold text-emerald-400">{answeredCount} of {configuredQuestionsCount}</div>
+        </div>
+
+        <div className="glass-card p-4 rounded-2xl border border-slate-800 space-y-1">
+          <span className="text-slate-400 block text-[11px]">Questions Unanswered</span>
+          <div className="text-lg font-bold text-amber-400">{unansweredCount} of {configuredQuestionsCount}</div>
         </div>
       </div>
 

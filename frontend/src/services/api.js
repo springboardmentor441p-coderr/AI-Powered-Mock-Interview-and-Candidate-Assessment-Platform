@@ -117,8 +117,6 @@ export async function startInterviewSession(payload) {
   const domain = payload?.domain || "Python Developer";
   const num_questions = payload?.num_questions || 5;
   const skills = payload?.skills || [];
-  const duration_seconds = payload?.duration_seconds !== undefined ? payload.duration_seconds : 0;
-  const question_time_limit = payload?.question_time_limit !== undefined ? payload.question_time_limit : 0;
 
   try {
     const token = getStoredToken();
@@ -128,7 +126,7 @@ export async function startInterviewSession(payload) {
         "Content-Type": "application/json",
         Authorization: `Bearer ${token}` 
       },
-      body: JSON.stringify({ category, difficulty, domain, num_questions, skills, duration_seconds, question_time_limit })
+      body: JSON.stringify({ category, difficulty, domain, num_questions, skills })
     });
     if (res.ok) {
       const data = await res.json();

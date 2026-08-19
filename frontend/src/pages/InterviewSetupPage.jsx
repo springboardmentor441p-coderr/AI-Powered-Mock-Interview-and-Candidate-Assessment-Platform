@@ -1,15 +1,13 @@
 import React, { useState, useEffect } from 'react';
-import { Shield, CheckCircle2, Camera, Mic, ArrowRight, Sparkles, Clock, FileText, AlertCircle, RefreshCw, HelpCircle, Sliders } from 'lucide-react';
+import { Shield, CheckCircle2, Camera, Mic, ArrowRight, Sparkles, FileText, AlertCircle, RefreshCw, HelpCircle } from 'lucide-react';
 import { startInterviewSession, fetchSystemCheck } from '../services/api';
 
 export default function InterviewSetupPage({ setActivePage, setInterviewSession }) {
-  const [step, setStep] = useState(1); // 1: Setup Role, Difficulty & Configuration, 2: Hardware Check & Confirmation
+  const [step, setStep] = useState(1); // 1: Setup Role & Configuration, 2: Hardware Check & Confirmation
   const [category, setCategory] = useState('Technical Interview');
   const [domain, setDomain] = useState('Python Developer');
   const [difficulty, setDifficulty] = useState('Medium');
   const [numQuestions, setNumQuestions] = useState(5);
-  const [durationSeconds, setDurationSeconds] = useState(0); // 0 means Unlimited (Default)
-  const [questionTimeLimit, setQuestionTimeLimit] = useState(0); // 0 means Unlimited (Default)
   const [loading, setLoading] = useState(false);
 
   // Hardware permission states
@@ -66,9 +64,7 @@ export default function InterviewSetupPage({ setActivePage, setInterviewSession 
       category,
       domain,
       difficulty,
-      num_questions: numQuestions,
-      duration_seconds: durationSeconds,
-      question_time_limit: questionTimeLimit
+      num_questions: numQuestions
     });
 
     if (session && !session.error && session.questions && session.questions.length > 0) {
@@ -78,10 +74,7 @@ export default function InterviewSetupPage({ setActivePage, setInterviewSession 
         category: session.category || category,
         difficulty: session.difficulty || difficulty,
         total_questions: session.total_questions || numQuestions,
-        num_questions: session.questions ? session.questions.length : numQuestions,
-        started_at: session.started_at || new Date().toISOString(),
-        duration_seconds: session.duration_seconds !== undefined ? session.duration_seconds : durationSeconds,
-        question_time_limit: session.question_time_limit !== undefined ? session.question_time_limit : questionTimeLimit
+        num_questions: session.questions ? session.questions.length : numQuestions
       });
       setLoading(false);
       setActivePage('interview-room');
@@ -89,17 +82,6 @@ export default function InterviewSetupPage({ setActivePage, setInterviewSession 
       setLoading(false);
       alert(session?.error || "Unable to start the interview. Please try again.");
     }
-  };
-
-  const formatDurationLabel = (sec) => {
-    if (!sec || sec <= 0) return "Unlimited (No Limit)";
-    const mins = Math.floor(sec / 60);
-    return `${mins} Minute${mins > 1 ? 's' : ''}`;
-  };
-
-  const formatQLimitLabel = (sec) => {
-    if (!sec || sec <= 0) return "Unlimited (No Limit)";
-    return `${sec} Seconds`;
   };
 
   return (
@@ -113,7 +95,7 @@ export default function InterviewSetupPage({ setActivePage, setInterviewSession 
               <Sparkles className="w-3.5 h-3.5" /> AI Technical Interview Configuration
             </div>
             <h1 className="text-3xl font-extrabold text-white">Configure Your AI Interview Session</h1>
-            <p className="text-xs text-slate-400 max-w-lg mx-auto">Customize your target domain, difficulty tier, question count, and time limits before starting.</p>
+            <p className="text-xs text-slate-400 max-w-lg mx-auto">Customize your target domain, difficulty tier, and question count before starting.</p>
           </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
@@ -139,7 +121,7 @@ export default function InterviewSetupPage({ setActivePage, setInterviewSession 
               </div>
             </div>
 
-            {/* Right Column: Parameters & Timers (7 COLS) */}
+            {/* Right Column: Parameters (7 COLS) */}
             <div className="lg:col-span-7 glass-card p-6 rounded-3xl border border-slate-800 space-y-6 flex flex-col justify-between">
               <div className="space-y-6">
                 
@@ -182,70 +164,13 @@ export default function InterviewSetupPage({ setActivePage, setInterviewSession 
                   </div>
                 </div>
 
-                {/* 3. Total Interview Time Limit */}
-                <div className="space-y-2">
-                  <div className="flex justify-between items-center">
-                    <h2 className="text-xs font-bold text-slate-300 uppercase font-mono tracking-wider flex items-center gap-1.5">
-                      <Clock className="w-3.5 h-3.5 text-amber-400" /> 3. Total Interview Time Limit
-                    </h2>
-                    <span className="text-xs font-mono font-bold text-amber-400">{formatDurationLabel(durationSeconds)}</span>
-                  </div>
-                  <div className="grid grid-cols-3 gap-2.5">
-                    {[
-                      { label: "Unlimited (No Limit)", sec: 0 },
-                      { label: "5 Minutes", sec: 300 },
-                      { label: "10 Minutes", sec: 600 },
-                      { label: "15 Minutes", sec: 900 },
-                      { label: "20 Minutes", sec: 1200 }
-                    ].map((opt) => (
-                      <button
-                        key={opt.sec}
-                        onClick={() => setDurationSeconds(opt.sec)}
-                        className={`py-2 px-2 rounded-xl text-[11px] font-bold border transition-all text-center ${
-                          durationSeconds === opt.sec ? 'bg-amber-500/20 border-amber-500 text-amber-300 shadow-md' : 'bg-slate-900 border-slate-800 text-slate-400 hover:text-white'
-                        }`}
-                      >
-                        {opt.label}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-                {/* 4. Per-Question Time Limit */}
-                <div className="space-y-2">
-                  <div className="flex justify-between items-center">
-                    <h2 className="text-xs font-bold text-slate-300 uppercase font-mono tracking-wider flex items-center gap-1.5">
-                      <Sliders className="w-3.5 h-3.5 text-cyan-400" /> 4. Per-Question Time Limit
-                    </h2>
-                    <span className="text-xs font-mono font-bold text-cyan-400">{formatQLimitLabel(questionTimeLimit)}</span>
-                  </div>
-                  <div className="grid grid-cols-4 gap-2.5">
-                    {[
-                      { label: "Unlimited", sec: 0 },
-                      { label: "60s", sec: 60 },
-                      { label: "90s", sec: 90 },
-                      { label: "120s", sec: 120 }
-                    ].map((opt) => (
-                      <button
-                        key={opt.sec}
-                        onClick={() => setQuestionTimeLimit(opt.sec)}
-                        className={`py-2 rounded-xl text-[11px] font-bold border transition-all text-center ${
-                          questionTimeLimit === opt.sec ? 'bg-cyan-500/20 border-cyan-500 text-cyan-300 shadow-md' : 'bg-slate-900 border-slate-800 text-slate-400 hover:text-white'
-                        }`}
-                      >
-                        {opt.label}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
               </div>
 
               {/* Summary Bar & Proceed Button */}
               <div className="pt-4 border-t border-slate-800 space-y-3">
                 <div className="p-3 rounded-2xl bg-slate-900 border border-slate-800 text-xs font-mono flex items-center justify-between text-slate-300">
                   <span>Selected: <strong className="text-white">{domain}</strong> ({difficulty})</span>
-                  <span><strong>{numQuestions} Questions</strong> | <strong>{formatDurationLabel(durationSeconds)}</strong></span>
+                  <span><strong>{numQuestions} Questions</strong></span>
                 </div>
 
                 <button
@@ -277,9 +202,6 @@ export default function InterviewSetupPage({ setActivePage, setInterviewSession 
             </div>
             <div>
               <span className="text-slate-400">Questions:</span> <strong className="text-cyan-400">{numQuestions} Questions</strong>
-            </div>
-            <div>
-              <span className="text-slate-400">Interview Timer:</span> <strong className="text-amber-400">{formatDurationLabel(durationSeconds)}</strong>
             </div>
           </div>
 
