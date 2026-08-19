@@ -25,6 +25,7 @@ from services import resume_service, question_service, speech_service, vision_se
 
 # Initialize Database tables
 models.Base.metadata.create_all(bind=database.engine)
+database.sync_database_schema()
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("smarthire")
