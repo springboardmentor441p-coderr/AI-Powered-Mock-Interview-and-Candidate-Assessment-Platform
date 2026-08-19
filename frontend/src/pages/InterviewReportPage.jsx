@@ -1,9 +1,11 @@
 import React from 'react';
-import { Award, CheckCircle2, XCircle, AlertTriangle, Download, ArrowLeft, BarChart3, Eye, ShieldCheck, Sparkles, FileText, Check, HelpCircle } from 'lucide-react';
+import { Award, CheckCircle2, XCircle, AlertTriangle, Download, ArrowLeft, BarChart3, Eye, ShieldCheck, Sparkles, FileText, Check, HelpCircle, User, Clock, Info } from 'lucide-react';
 import jsPDF from 'jspdf';
+import { getStoredUser } from '../services/api';
 
-export default function InterviewReportPage({ reportData, finalReport, setActivePage }) {
+export default function InterviewReportPage({ reportData, finalReport, setActivePage, currentUser }) {
   const activeReport = reportData || finalReport;
+  const user = currentUser || getStoredUser();
 
   if (!activeReport) {
     return (
@@ -28,6 +30,11 @@ export default function InterviewReportPage({ reportData, finalReport, setActive
   const rating = activeReport.performance_rating || (overallScore >= 80 ? "Strong Hire" : (overallScore >= 60 ? "Passable Candidate" : "Needs Improvement"));
   const isMalpractice = activeReport.malpractice_flag || false;
 
+  const candName = activeReport.candidate?.full_name || user?.full_name || "Candidate User";
+  const candEmail = activeReport.candidate?.email || user?.email || "candidate@smarthire.ai";
+  const candRole = activeReport.candidate?.role || user?.role || "Candidate";
+  const endedReason = activeReport.ended_reason || activeReport.status || "completed";
+
   const handleDownloadPDF = () => {
     const doc = new jsPDF();
     
@@ -37,17 +44,18 @@ export default function InterviewReportPage({ reportData, finalReport, setActive
 
     doc.setFontSize(10);
     doc.setFont("helvetica", "normal");
-    doc.text(`AI Interviewer: Mira`, 14, 30);
-    doc.text(`Target Domain: ${activeReport.category || "Software Engineering"} (${activeReport.difficulty || "Medium"} Level)`, 14, 37);
-    doc.text(`Overall Score: ${overallScore}%`, 14, 44);
-    doc.text(`Performance Rating: ${rating}`, 14, 51);
-    doc.text(`Questions Answered: ${answeredCount} | Unanswered: ${unansweredCount}`, 14, 58);
-    doc.text(`Proctoring Status: ${isMalpractice ? "MALPRACTICE DISQUALIFIED" : "SESSION COMPLETED"}`, 14, 65);
+    doc.text(`Candidate Name: ${candName} (${candEmail})`, 14, 30);
+    doc.text(`AI Interviewer: Mira`, 14, 37);
+    doc.text(`Target Domain: ${activeReport.category || "Software Engineering"} (${activeReport.difficulty || "Medium"} Level)`, 14, 44);
+    doc.text(`Overall Score: ${overallScore}%`, 14, 51);
+    doc.text(`Performance Rating: ${rating}`, 14, 58);
+    doc.text(`Questions Answered: ${answeredCount} | Unanswered: ${unansweredCount}`, 14, 65);
+    doc.text(`Session Status: ${endedReason}`, 14, 72);
 
     doc.setFont("helvetica", "bold");
-    doc.text("Question-by-Question Detailed Assessment:", 14, 78);
+    doc.text("Question-by-Question Detailed Assessment:", 14, 84);
     
-    let yPos = 86;
+    let yPos = 92;
     history.forEach((item, index) => {
       if (yPos > 260) {
         doc.addPage();
@@ -64,22 +72,25 @@ export default function InterviewReportPage({ reportData, finalReport, setActive
       yPos += (lines.length * 5) + 6;
     });
 
-    doc.save(`SmartHire_AI_Report_${activeReport.category || "Candidate"}.pdf`);
+    doc.save(`SmartHire_AI_Report_${candName.replace(/\s+/g, '_')}.pdf`);
   };
 
   return (
     <div className="max-w-5xl mx-auto px-4 py-8 space-y-8 pb-24 font-sans">
       
-      {/* HEADER BANNER */}
+      {/* HEADER BANNER WITH CANDIDATE PROFILE INFO */}
       <div className="glass-card p-8 rounded-3xl border border-slate-800 flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
         <div className="space-y-2">
           <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-indigo-500/10 border border-indigo-500/30 text-indigo-400 text-xs font-mono">
             <Sparkles className="w-3.5 h-3.5" /> Official Mira Assessment Report
           </div>
           <h1 className="text-3xl font-extrabold text-white">AI Interview Assessment Report</h1>
-          <p className="text-xs text-slate-400">
-            Domain: <strong className="text-white">{activeReport.category || "Software Engineering"}</strong> ({activeReport.difficulty || "Medium"} Level)
-          </p>
+          
+          <div className="text-xs text-slate-300 flex flex-wrap items-center gap-3 font-mono pt-1">
+            <span>Candidate: <strong className="text-white">{candName}</strong></span>
+            <span>• Email: <strong className="text-cyan-400">{candEmail}</strong></span>
+            <span>• Domain: <strong className="text-white">{activeReport.category || "Software Engineering"}</strong> ({activeReport.difficulty || "Medium"} Level)</span>
+          </div>
         </div>
 
         <div className="flex items-center gap-3">
@@ -98,6 +109,37 @@ export default function InterviewReportPage({ reportData, finalReport, setActive
           </button>
         </div>
       </div>
+
+      {/* REASON FOR ENDING BANNER (REQUIREMENT #10) */}
+      {endedReason === "time_expired" && (
+        <div className="p-4 rounded-2xl bg-amber-500/10 border border-amber-500/30 text-amber-300 text-xs font-mono flex items-center gap-3 shadow-lg">
+          <Clock className="w-5 h-5 text-amber-400 shrink-0" />
+          <div>
+            <strong className="block text-amber-200">Interview Status: Time Expired</strong>
+            <span>Interview ended because the allotted time expired. Previously recorded answers were evaluated.</span>
+          </div>
+        </div>
+      )}
+
+      {endedReason === "ended_by_candidate" && (
+        <div className="p-4 rounded-2xl bg-cyan-500/10 border border-cyan-500/30 text-cyan-300 text-xs font-mono flex items-center gap-3 shadow-lg">
+          <Info className="w-5 h-5 text-cyan-400 shrink-0" />
+          <div>
+            <strong className="block text-cyan-200">Interview Status: Ended by Candidate</strong>
+            <span>Interview ended by candidate. Current progress was saved and evaluated.</span>
+          </div>
+        </div>
+      )}
+
+      {endedReason === "completed" && (
+        <div className="p-4 rounded-2xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-300 text-xs font-mono flex items-center gap-3 shadow-lg">
+          <CheckCircle2 className="w-5 h-5 text-emerald-400 shrink-0" />
+          <div>
+            <strong className="block text-emerald-200">Interview Status: Completed</strong>
+            <span>Interview completed successfully. Full performance evaluation recorded.</span>
+          </div>
+        </div>
+      )}
 
       {/* OVERALL SCORE & SUMMARY CARDS */}
       <div className="grid grid-cols-1 md:grid-cols-12 gap-6">
@@ -200,7 +242,7 @@ export default function InterviewReportPage({ reportData, finalReport, setActive
           </h3>
           <ul className="text-xs text-slate-300 space-y-2 font-sans">
             {(activeReport.strengths && activeReport.strengths.length > 0 ? activeReport.strengths : [
-              `Completed proctored technical interview session in ${activeReport.category || "Software Engineering"}`
+              `Completed technical interview session in ${activeReport.category || "Software Engineering"}`
             ]).map((str, idx) => (
               <li key={idx} className="flex items-start gap-2">
                 <span className="text-emerald-400 font-bold">•</span>
@@ -230,7 +272,7 @@ export default function InterviewReportPage({ reportData, finalReport, setActive
 
       </div>
 
-      {/* QUESTION-BY-QUESTION EVALUATION BREAKDOWN (REQUIREMENT #4) */}
+      {/* QUESTION-BY-QUESTION EVALUATION BREAKDOWN */}
       {history.length > 0 && (
         <div className="glass-card p-6 rounded-3xl border border-slate-800 space-y-6">
           <h2 className="text-sm font-bold text-white uppercase font-mono tracking-wider flex items-center gap-2">

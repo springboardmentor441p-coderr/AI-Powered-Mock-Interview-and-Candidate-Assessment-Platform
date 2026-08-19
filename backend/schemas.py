@@ -40,6 +40,8 @@ class InterviewStartRequest(BaseModel):
     difficulty: str # Easy, Medium, Hard
     domain: str # Full Stack, Data Science, DevOps, HR
     num_questions: Optional[int] = 5
+    duration_seconds: Optional[int] = 600
+    question_time_limit: Optional[int] = 90
 
 class AnswerSubmissionRequest(BaseModel):
     session_id: int
@@ -50,6 +52,9 @@ class AnswerSubmissionRequest(BaseModel):
     filler_word_count: Optional[int] = 0
     eye_contact_ratio: Optional[float] = 0.85
     words_per_minute: Optional[float] = 130.0
+
+class FinishInterviewRequest(BaseModel):
+    reason: Optional[str] = "completed" # completed, time_expired, ended_by_candidate
 
 class AssessmentReport(BaseModel):
     session_id: int

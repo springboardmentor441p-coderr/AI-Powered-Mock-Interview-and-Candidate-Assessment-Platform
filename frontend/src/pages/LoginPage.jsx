@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { Sparkles, Mail, Lock, AlertCircle, ArrowRight } from 'lucide-react';
 import { loginUser } from '../services/api';
 
-export default function LoginPage({ setActivePage }) {
+export default function LoginPage({ setActivePage, onUserLogin }) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
@@ -39,7 +39,17 @@ export default function LoginPage({ setActivePage }) {
     setLoading(false);
 
     if (result && (result.access_token || result.user)) {
-      setActivePage('candidate-dashboard');
+      if (onUserLogin && result.user) {
+        onUserLogin(result.user);
+      }
+      const role = result.user?.role || "candidate";
+      if (role === "admin") {
+        setActivePage('admin-dashboard');
+      } else if (role === "recruiter") {
+        setActivePage('recruiter-dashboard');
+      } else {
+        setActivePage('candidate-dashboard');
+      }
     } else {
       setErrorMessage('Authentication failed. Please check your credentials and try again.');
     }

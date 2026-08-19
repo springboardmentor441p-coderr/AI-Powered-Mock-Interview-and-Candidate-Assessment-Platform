@@ -70,7 +70,9 @@ export default function InterviewSetupPage({ setActivePage, setInterviewSession 
       category,
       domain,
       difficulty,
-      num_questions: numQuestions
+      num_questions: numQuestions,
+      duration_seconds: 600,
+      question_time_limit: 90
     });
 
     setInterviewSession({
@@ -78,7 +80,10 @@ export default function InterviewSetupPage({ setActivePage, setInterviewSession 
       domain,
       category,
       difficulty,
-      num_questions: 5
+      num_questions: 5,
+      started_at: session.started_at || new Date().toISOString(),
+      duration_seconds: session.duration_seconds || 600,
+      question_time_limit: session.question_time_limit || 90
     });
 
     setLoading(false);

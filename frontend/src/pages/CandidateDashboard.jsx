@@ -1,8 +1,19 @@
-import React, { useState } from 'react';
-import { BarChart2, Video, FileText, CheckCircle2, Clock, Sparkles, Award, ArrowRight, Zap, BookOpen, Layers } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { BarChart2, Video, FileText, CheckCircle2, Clock, Sparkles, Award, ArrowRight, Zap, BookOpen, Layers, User } from 'lucide-react';
+import { fetchCandidateDashboard, getStoredUser } from '../services/api';
 
-export default function CandidateDashboard({ setActivePage }) {
+export default function CandidateDashboard({ setActivePage, currentUser }) {
+  const user = currentUser || getStoredUser();
   const [selectedCardIdx, setSelectedCardIdx] = useState(0);
+  const [dashboardData, setDashboardData] = useState(null);
+
+  useEffect(() => {
+    async function loadData() {
+      const data = await fetchCandidateDashboard();
+      setDashboardData(data);
+    }
+    loadData();
+  }, []);
 
   const flashcards = [
     {
@@ -26,14 +37,18 @@ export default function CandidateDashboard({ setActivePage }) {
   ];
 
   return (
-    <div className="max-w-6xl mx-auto px-4 py-8 space-y-8 pb-20">
+    <div className="max-w-6xl mx-auto px-4 py-8 space-y-8 pb-20 font-sans">
       
-      {/* DASHBOARD HEADER */}
+      {/* DASHBOARD HEADER WITH CANDIDATE METADATA */}
       <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 glass-card p-6 rounded-3xl border border-slate-800">
         <div>
           <span className="text-xs font-mono text-cyan-400 uppercase tracking-widest block font-bold">CANDIDATE INTELLIGENCE HUB</span>
-          <h1 className="text-2xl font-bold font-display text-white mt-1">Interview Readiness Analytics</h1>
-          <p className="text-xs text-slate-400 mt-1">Track your speech telemetry, technical domain scores, and practice flashcards.</p>
+          <h1 className="text-2xl font-bold font-display text-white mt-1">
+            Welcome back, {user?.full_name || "Candidate"}!
+          </h1>
+          <p className="text-xs text-slate-400 mt-1 font-mono">
+            Candidate ID: <strong className="text-white">{user?.id || 1}</strong> | Email: <strong className="text-cyan-400">{user?.email || "candidate@smarthire.ai"}</strong> | Role: <strong className="text-indigo-400 uppercase">{user?.role || "candidate"}</strong>
+          </p>
         </div>
 
         <button
@@ -48,8 +63,10 @@ export default function CandidateDashboard({ setActivePage }) {
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <div className="glass-card p-5 rounded-2xl border border-slate-800 space-y-1">
           <span className="text-xs text-slate-400 font-mono block">Overall Readiness Score</span>
-          <div className="text-2xl font-extrabold text-gradient font-mono">87.1 / 100</div>
-          <span className="text-[10px] text-emerald-400 block font-mono">↑ 4.2% from last session</span>
+          <div className="text-2xl font-extrabold text-gradient font-mono">
+            {dashboardData?.average_overall_score !== undefined ? `${dashboardData.average_overall_score}%` : '87.1%'}
+          </div>
+          <span className="text-[10px] text-emerald-400 block font-mono">Evaluated from session history</span>
         </div>
 
         <div className="glass-card p-5 rounded-2xl border border-slate-800 space-y-1">
@@ -66,7 +83,9 @@ export default function CandidateDashboard({ setActivePage }) {
 
         <div className="glass-card p-5 rounded-2xl border border-slate-800 space-y-1">
           <span className="text-xs text-slate-400 font-mono block">Interviews Completed</span>
-          <div className="text-2xl font-extrabold text-purple-400 font-mono">12 Sessions</div>
+          <div className="text-2xl font-extrabold text-purple-400 font-mono">
+            {dashboardData?.completed_interviews !== undefined ? `${dashboardData.completed_interviews} Sessions` : '12 Sessions'}
+          </div>
           <span className="text-[10px] text-purple-400 block font-mono">Verified assessment history</span>
         </div>
       </div>

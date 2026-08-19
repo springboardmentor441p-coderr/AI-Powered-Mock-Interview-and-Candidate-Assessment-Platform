@@ -112,7 +112,7 @@ export async function uploadResumeFile(file, jobDescription = "") {
 }
 
 export async function startInterviewSession(payload) {
-  const { category, difficulty, domain, num_questions = 5, skills = [] } = typeof payload === 'object' ? payload : { category: arguments[0], difficulty: arguments[1], domain: arguments[2], num_questions: 5, skills: [] };
+  const { category, difficulty, domain, num_questions = 5, skills = [], duration_seconds = 600, question_time_limit = 90 } = typeof payload === 'object' ? payload : { category: arguments[0], difficulty: arguments[1], domain: arguments[2], num_questions: 5, skills: [] };
 
   try {
     const token = getStoredToken();
@@ -122,7 +122,7 @@ export async function startInterviewSession(payload) {
         "Content-Type": "application/json",
         Authorization: `Bearer ${token}` 
       },
-      body: JSON.stringify({ category: category || "Technical Interview", difficulty: difficulty || "Medium", domain: domain || "Python Developer", num_questions, skills })
+      body: JSON.stringify({ category: category || "Technical Interview", difficulty: difficulty || "Medium", domain: domain || "Python Developer", num_questions, skills, duration_seconds, question_time_limit })
     });
     if (res.ok) {
       const data = await res.json();
@@ -134,6 +134,19 @@ export async function startInterviewSession(payload) {
     console.warn("Backend API unreachable during interview start:", e);
     return { error: "Unable to start the AI interview. Please try again." };
   }
+}
+
+export async function fetchActiveSession(sessionId) {
+  try {
+    const token = getStoredToken();
+    const res = await fetch(`${API_BASE_URL}/interview/session/${sessionId}`, {
+      headers: { Authorization: `Bearer ${token}` }
+    });
+    if (res.ok) return await res.json();
+  } catch (e) {
+    console.warn("Backend API unreachable during session fetch:", e);
+  }
+  return null;
 }
 
 export async function fetchNextAdaptiveQuestion(payload) {
@@ -212,10 +225,10 @@ export async function submitQuestionAnswer(payload) {
   };
 }
 
-export async function finishInterviewSession(sessionId) {
+export async function finishInterviewSession(sessionId, reason = "completed") {
   try {
     const token = getStoredToken();
-    const res = await fetch(`${API_BASE_URL}/interview/finish/${sessionId}`, {
+    const res = await fetch(`${API_BASE_URL}/interview/finish/${sessionId}?reason=${encodeURIComponent(reason)}`, {
       method: "POST",
       headers: { Authorization: `Bearer ${token}` }
     });
@@ -226,6 +239,8 @@ export async function finishInterviewSession(sessionId) {
 
   return {
     session_id: sessionId,
+    status: reason,
+    ended_reason: reason,
     communication_score: 80.0,
     technical_score: 80.0,
     overall_score: 80.0,
@@ -248,6 +263,8 @@ export async function fetchCandidateDashboard() {
   }
   return {
     user_name: getStoredUser().full_name,
+    user_email: getStoredUser().email,
+    user_role: getStoredUser().role,
     total_interviews: 0,
     completed_interviews: 0,
     average_overall_score: 0.0,
@@ -289,6 +306,6 @@ export async function fetchAdminMetrics() {
     total_sessions: 0,
     total_resumes_parsed: 0,
     system_status: "Operational",
-    ai_engine_version: "SmartHire v3.1 (Groq openai/gpt-oss-120b + Mira)"
+    ai_engine_version: "SmartHire v3.2 (Groq openai/gpt-oss-120b + Mira)"
   };
 }
