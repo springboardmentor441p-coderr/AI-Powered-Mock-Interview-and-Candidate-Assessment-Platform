@@ -25,16 +25,15 @@ export default function InterviewRoomPage({ sessionData, setActivePage, setFinal
   const [candidateAnswersList, setCandidateAnswersList] = useState(() => sessionData?.candidateAnswersList || []);
   const [speechError, setSpeechError] = useState(null);
   const [micPermissionGranted, setMicPermissionGranted] = useState(true);
-  const [speechEngineStatus, setSpeechEngineStatus] = useState("Microphone Ready");
+  const [speechEngineSupported, setSpeechEngineSupported] = useState(true);
+  const [speechEngineStatus, setSpeechEngineStatus] = useState("Initializing...");
 
   const chatScrollRef = useRef(null);
   const recognitionRef = useRef(null);
   const mediaRecorderRef = useRef(null);
   const audioChunksRef = useRef([]);
-  const micStreamRef = useRef(null);
   
   const isRecordingRef = useRef(true);
-  const isStartingRef = useRef(false);
   const candidateAnswerRef = useRef('');
   const finalTranscriptRef = useRef('');
   const finalizingRef = useRef(false);
@@ -177,148 +176,167 @@ export default function InterviewRoomPage({ sessionData, setActivePage, setFinal
     }
   }, [currentIdx]);
 
+  // REAL SPEECH-TO-TEXT IMPLEMENTATION VIA WEB SPEECH RECOGNITION API
   const startMicRecording = async () => {
-    if (isStartingRef.current) return;
-    isStartingRef.current = true;
+    setSpeechError(null);
+
+    // 1. Verify Microphone Permission & Immediately Release Check Stream
+    try {
+      const permStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      permStream.getTracks().forEach(t => t.stop()); // Immediately release stream so SpeechRecognition owns mic
+      setMicPermissionGranted(true);
+    } catch (err) {
+      console.warn("[Microphone] Permission denied:", err);
+      setMicPermissionGranted(false);
+      setSpeechEngineStatus("Microphone Permission Denied");
+      setSpeechError("Microphone access is required. Please un-block your microphone in browser settings.");
+      setIsRecording(false);
+      return;
+    }
+
+    // 2. Instantiate Browser Web SpeechRecognition
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!SpeechRecognition) {
+      setSpeechEngineSupported(false);
+      setSpeechEngineStatus("Web Speech Unsupported");
+      setSpeechError("Browser speech recognition unavailable in this browser. Please use Google Chrome/Microsoft Edge or type your answer.");
+      setIsRecording(false);
+      return;
+    }
+
+    setSpeechEngineSupported(true);
+
+    if (recognitionRef.current) {
+      try { recognitionRef.current.abort(); } catch (e) {}
+      recognitionRef.current = null;
+    }
 
     try {
-      setSpeechError(null);
+      const recognition = new SpeechRecognition();
+      recognition.continuous = true;
+      recognition.interimResults = true;
+      recognition.lang = 'en-US';
 
-      try {
-        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-        micStreamRef.current = stream;
-        setMicPermissionGranted(true);
-        
-        audioChunksRef.current = [];
-        if (window.MediaRecorder) {
-          const recorder = new MediaRecorder(stream);
-          recorder.ondataavailable = (e) => {
-            if (e.data && e.data.size > 0) {
-              audioChunksRef.current.push(e.data);
-            }
-          };
-          recorder.start(500);
-          mediaRecorderRef.current = recorder;
-        }
-      } catch (err) {
-        console.warn("[Microphone] Access permission notice:", err);
-        setMicPermissionGranted(false);
-        setSpeechEngineStatus("Microphone Permission Required");
-        setSpeechError("Microphone access is required for live speech-to-text. Please un-block your microphone.");
-        setIsRecording(false);
-        isStartingRef.current = false;
-        return;
-      }
+      recognition.onstart = () => {
+        setIsRecording(true);
+        isRecordingRef.current = true;
+        setSpeechEngineStatus("Listening...");
+        setSpeechError(null);
+      };
 
-      const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-      if (SpeechRecognition) {
-        if (recognitionRef.current) {
-          try { recognitionRef.current.abort(); } catch (e) {}
+      recognition.onresult = (event) => {
+        let interimText = '';
+        for (let i = event.resultIndex; i < event.results.length; i++) {
+          const chunk = event.results[i][0].transcript;
+          if (event.results[i].isFinal) {
+            finalTranscriptRef.current += chunk + ' ';
+          } else {
+            interimText += chunk + ' ';
+          }
         }
 
-        const recognition = new SpeechRecognition();
-        recognition.continuous = true;
-        recognition.interimResults = true;
-        recognition.lang = 'en-US';
-
-        recognition.onstart = () => {
-          setIsRecording(true);
-          isRecordingRef.current = true;
-          isStartingRef.current = false;
-          setSpeechEngineStatus("Listening...");
+        const fullText = (finalTranscriptRef.current + ' ' + interimText).trim();
+        if (fullText) {
+          candidateAnswerRef.current = fullText;
+          setCandidateAnswer(fullText);
+          setSpeechEngineStatus("Receiving Live Speech...");
           setSpeechError(null);
-        };
+        }
+      };
 
-        recognition.onresult = (event) => {
-          let currentInterim = '';
-          for (let i = event.resultIndex; i < event.results.length; i++) {
-            const chunk = event.results[i][0].transcript;
-            if (event.results[i].isFinal) {
-              finalTranscriptRef.current += chunk + ' ';
-            } else {
-              currentInterim += chunk + ' ';
+      recognition.onerror = (event) => {
+        console.warn("[SpeechRecognition Error]", event.error);
+        if (event.error === 'no-speech') {
+          setSpeechEngineStatus("Listening for speech...");
+          return;
+        }
+        if (event.error === 'aborted') return;
+
+        if (event.error === 'network') {
+          setSpeechEngineStatus("Speech Error: network");
+          setSpeechError("Browser speech recognition network error. Ensure internet connection is active, or use Chrome/Edge or type your response.");
+        } else if (event.error === 'not-allowed' || event.error === 'service-not-allowed') {
+          setSpeechEngineStatus("Speech Error: permission denied");
+          setSpeechError("Microphone permission denied by browser. Please un-block microphone access in browser address bar.");
+        } else {
+          setSpeechEngineStatus(`Speech Error: ${event.error}`);
+          setSpeechError(`Speech recognition error (${event.error}). Speak again or type your answer.`);
+        }
+      };
+
+      recognition.onend = () => {
+        if (isRecordingRef.current && !finalizingRef.current) {
+          setTimeout(() => {
+            if (isRecordingRef.current && !finalizingRef.current && recognitionRef.current === recognition) {
+              try { recognition.start(); } catch (e) {}
             }
-          }
+          }, 300);
+        }
+      };
 
-          const fullText = (finalTranscriptRef.current + ' ' + currentInterim).trim();
-          if (fullText) {
-            candidateAnswerRef.current = fullText;
-            setCandidateAnswer(fullText);
-            setSpeechEngineStatus("Transcript Ready");
-            setSpeechError(null);
-          }
-        };
-
-        recognition.onerror = (event) => {
-          isStartingRef.current = false;
-          if (event.error === 'no-speech' || event.error === 'aborted') return;
-          if (event.error === 'network') {
-            setSpeechEngineStatus("Whisper Backend Audio Active");
-            setSpeechError("Speech-to-Text active via Whisper backend. Speak into your microphone.");
-          }
-        };
-
-        recognition.onend = () => {
-          isStartingRef.current = false;
-          if (isRecordingRef.current) {
-            setTimeout(() => {
-              if (isRecordingRef.current) {
-                try { recognitionRef.current?.start(); } catch (e) {}
-              }
-            }, 200);
-          }
-        };
-
-        recognitionRef.current = recognition;
-        try { recognition.start(); } catch (e) {}
-      } else {
-        isStartingRef.current = false;
-        setSpeechEngineStatus("Whisper Backend Audio Active");
+      recognitionRef.current = recognition;
+      try {
+        recognition.start();
+      } catch (e) {
+        console.warn("Failed to start SpeechRecognition:", e);
       }
+
     } catch (err) {
-      isStartingRef.current = false;
+      console.warn("SpeechRecognition initialization exception:", err);
+      setSpeechEngineStatus("Initialization Error");
+      setSpeechError("Unable to start browser speech recognition. Please use Google Chrome or type your answer.");
     }
   };
 
   const stopMicRecording = () => {
     setIsRecording(false);
     isRecordingRef.current = false;
-    isStartingRef.current = false;
 
     if (recognitionRef.current) {
       try { recognitionRef.current.stop(); } catch (e) {}
     }
 
-    if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
-      try { mediaRecorderRef.current.stop(); } catch (e) {}
-    }
-
-    if (micStreamRef.current) {
-      try { micStreamRef.current.getTracks().forEach(t => t.stop()); } catch (e) {}
-      micStreamRef.current = null;
-    }
-
-    setSpeechEngineStatus("Microphone Ready");
+    setSpeechEngineStatus("Microphone Off");
   };
 
+  // FALLBACK AUDIO RECORDER FOR WHISPER BACKEND TRANSCRIPTION (ON DEMAND ONLY)
   const processRecordedAudioTranscription = async () => {
-    if (audioChunksRef.current.length === 0) return "";
     try {
       setTranscribingAudio(true);
-      setSpeechEngineStatus("Transcribing Real Audio...");
-      const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
-      if (audioBlob.size > 200) {
-        const realTranscript = await transcribeAudioBlob(audioBlob);
-        setTranscribingAudio(false);
-        if (realTranscript && realTranscript.trim()) {
-          const clean = realTranscript.trim();
-          candidateAnswerRef.current = clean;
-          setCandidateAnswer(clean);
-          setSpeechEngineStatus("Transcript Ready");
-          return clean;
-        }
+      setSpeechEngineStatus("Recording Voice Audio...");
+      
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const recorder = new MediaRecorder(stream);
+      const chunks = [];
+
+      recorder.ondataavailable = (e) => {
+        if (e.data && e.data.size > 0) chunks.push(e.data);
+      };
+
+      recorder.start();
+
+      await new Promise(resolve => setTimeout(resolve, 4000)); // Record 4 seconds of audio
+
+      recorder.stop();
+      stream.getTracks().forEach(t => t.stop());
+
+      setSpeechEngineStatus("Transcribing via Whisper...");
+      const audioBlob = new Blob(chunks, { type: 'audio/webm' });
+      const realTranscript = await transcribeAudioBlob(audioBlob);
+
+      setTranscribingAudio(false);
+      if (realTranscript && realTranscript.trim()) {
+        const clean = realTranscript.trim();
+        finalTranscriptRef.current += ' ' + clean;
+        candidateAnswerRef.current = finalTranscriptRef.current.trim();
+        setCandidateAnswer(finalTranscriptRef.current.trim());
+        setSpeechEngineStatus("Transcript Ready");
+        return clean;
+      } else {
+        setSpeechError("No clear speech detected in recorded audio. Please speak louder or type your response.");
       }
     } catch (err) {
+      console.warn("Recorded audio transcription error:", err);
       setTranscribingAudio(false);
     }
     setTranscribingAudio(false);
@@ -333,10 +351,6 @@ export default function InterviewRoomPage({ sessionData, setActivePage, setFinal
     setSubmitting(true);
 
     let currentText = (candidateAnswerRef.current || candidateAnswer || '').trim();
-
-    if (!currentText && audioChunksRef.current.length > 0) {
-      currentText = await processRecordedAudioTranscription();
-    }
 
     stopMicRecording();
     await handleNextQuestionInternal(currentText.length > 0 ? currentText : "Not answered");
@@ -696,8 +710,8 @@ export default function InterviewRoomPage({ sessionData, setActivePage, setFinal
             </div>
 
             {speechError && (
-              <div className="p-2 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-300 text-[11px] font-mono">
-                💡 {speechError}
+              <div className="p-2.5 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-300 text-[11px] font-mono">
+                ⚠️ {speechError}
               </div>
             )}
           </div>
@@ -717,7 +731,7 @@ export default function InterviewRoomPage({ sessionData, setActivePage, setFinal
             <div className="flex items-center justify-between border-b border-slate-800 pb-2">
               <span className="text-xs font-mono text-slate-300 font-bold uppercase">Device & Speech Monitoring</span>
               <span className="text-[10px] font-mono text-emerald-400 flex items-center gap-1">
-                <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping"></span> STATUS
+                <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping"></span> REAL-TIME STATUS
               </span>
             </div>
 
@@ -730,14 +744,21 @@ export default function InterviewRoomPage({ sessionData, setActivePage, setFinal
               </div>
 
               <div className="flex justify-between p-2.5 rounded-xl bg-slate-900 border border-slate-800">
-                <span className="text-slate-400">Microphone Status:</span>
+                <span className="text-slate-400">Microphone Permission:</span>
                 <span className={micPermissionGranted ? "text-emerald-400 font-bold" : "text-amber-400"}>
-                  {micPermissionGranted ? "Microphone Stream Active" : "Permission Required"}
+                  {micPermissionGranted ? "Permission Granted" : "Permission Denied"}
                 </span>
               </div>
 
               <div className="flex justify-between p-2.5 rounded-xl bg-slate-900 border border-slate-800">
-                <span className="text-slate-400">Speech-to-Text Engine:</span>
+                <span className="text-slate-400">Speech Recognition API:</span>
+                <span className={speechEngineSupported ? "text-emerald-400 font-bold" : "text-amber-400"}>
+                  {speechEngineSupported ? "Supported (Web Speech)" : "Unsupported"}
+                </span>
+              </div>
+
+              <div className="flex justify-between p-2.5 rounded-xl bg-slate-900 border border-slate-800">
+                <span className="text-slate-400">Speech Engine Status:</span>
                 <span className="text-cyan-400 font-bold truncate max-w-[130px]">
                   {speechEngineStatus}
                 </span>
@@ -799,8 +820,8 @@ export default function InterviewRoomPage({ sessionData, setActivePage, setFinal
             </button>
 
             <span className="text-xs text-slate-400 font-mono ml-1">
-              Camera: <span className={cameraMetrics.streamActive ? "text-emerald-400 font-bold" : "text-amber-400"}>
-                {cameraMetrics.streamActive ? "Active" : "Off"}
+              Mic Status: <span className={isRecording ? "text-emerald-400 font-bold" : "text-slate-500"}>
+                {isRecording ? "Listening Active" : "Muted"}
               </span>
             </span>
           </div>
