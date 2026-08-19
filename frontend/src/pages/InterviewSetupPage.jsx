@@ -75,19 +75,23 @@ export default function InterviewSetupPage({ setActivePage, setInterviewSession 
       question_time_limit: 90
     });
 
-    setInterviewSession({
-      ...session,
-      domain,
-      category,
-      difficulty,
-      num_questions: 5,
-      started_at: session.started_at || new Date().toISOString(),
-      duration_seconds: session.duration_seconds || 600,
-      question_time_limit: session.question_time_limit || 90
-    });
-
-    setLoading(false);
-    setActivePage('interview-room');
+    if (session && !session.error && session.questions && session.questions.length > 0) {
+      setInterviewSession({
+        ...session,
+        domain: session.domain || domain,
+        category: session.category || category,
+        difficulty: session.difficulty || difficulty,
+        num_questions: session.questions ? session.questions.length : 5,
+        started_at: session.started_at || new Date().toISOString(),
+        duration_seconds: session.duration_seconds || 600,
+        question_time_limit: session.question_time_limit || 90
+      });
+      setLoading(false);
+      setActivePage('interview-room');
+    } else {
+      setLoading(false);
+      alert(session?.error || "Unable to start the interview. Please try again.");
+    }
   };
 
   return (

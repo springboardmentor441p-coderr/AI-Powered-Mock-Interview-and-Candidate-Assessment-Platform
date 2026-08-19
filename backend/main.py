@@ -155,64 +155,70 @@ def start_interview(
     db: Session = Depends(database.get_db),
     current_user: models.User = Depends(auth.get_current_user)
 ):
-    latest_resume = db.query(models.Resume).filter(models.Resume.user_id == current_user.id).order_by(models.Resume.id.desc()).first()
-    skills = latest_resume.parsed_skills if (latest_resume and latest_resume.parsed_skills) else None
+    try:
+        category = req.category or "Technical Interview"
+        difficulty = req.difficulty or "Medium"
+        domain = req.domain or "Python Developer"
+        num_questions = req.num_questions or 5
 
-    # Call dynamic LLM question generator
-    questions = question_service.generate_interview_questions(
-        category=req.category,
-        difficulty=req.difficulty,
-        domain=req.domain,
-        num_questions=req.num_questions,
-        skills=skills
-    )
+        latest_resume = db.query(models.Resume).filter(models.Resume.user_id == current_user.id).order_by(models.Resume.id.desc()).first()
+        skills = latest_resume.parsed_skills if (latest_resume and latest_resume.parsed_skills) else None
 
-    if not questions:
-        raise HTTPException(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail="Unable to start the AI interview. Please try again."
+        # Call dynamic LLM question generator (guaranteed to return list starting with Q1 self-introduction)
+        questions = question_service.generate_interview_questions(
+            category=category,
+            difficulty=difficulty,
+            domain=domain,
+            num_questions=num_questions,
+            skills=skills
         )
 
-    now_utc = datetime.utcnow()
-    duration_secs = req.duration_seconds or 600
-    q_time_limit = req.question_time_limit or 90
+        now_utc = datetime.utcnow()
+        duration_secs = getattr(req, "duration_seconds", 600) or 600
+        q_time_limit = getattr(req, "question_time_limit", 90) or 90
 
-    new_session = models.InterviewSession(
-        user_id=current_user.id,
-        title=f"{req.category} Interview with Mira ({req.domain})",
-        category=req.category,
-        difficulty=req.difficulty,
-        domain=req.domain,
-        total_questions=len(questions),
-        status="active",
-        ended_reason="in_progress",
-        started_at=now_utc,
-        duration_seconds=duration_secs,
-        question_time_limit=q_time_limit,
-        questions_data=questions
-    )
-    db.add(new_session)
-    db.commit()
-    db.refresh(new_session)
+        new_session = models.InterviewSession(
+            user_id=current_user.id,
+            title=f"{category} Interview with Mira ({domain})",
+            category=category,
+            difficulty=difficulty,
+            domain=domain,
+            total_questions=len(questions),
+            status="active",
+            ended_reason="in_progress",
+            started_at=now_utc,
+            duration_seconds=duration_secs,
+            question_time_limit=q_time_limit,
+            questions_data=questions
+        )
+        db.add(new_session)
+        db.commit()
+        db.refresh(new_session)
 
-    return {
-        "session_id": new_session.id,
-        "title": new_session.title,
-        "category": req.category,
-        "difficulty": req.difficulty,
-        "domain": req.domain,
-        "status": new_session.status,
-        "started_at": new_session.started_at.isoformat(),
-        "duration_seconds": duration_secs,
-        "question_time_limit": q_time_limit,
-        "candidate": {
-            "id": current_user.id,
-            "full_name": current_user.full_name,
-            "email": current_user.email,
-            "role": current_user.role
-        },
-        "questions": questions
-    }
+        return {
+            "session_id": new_session.id,
+            "title": new_session.title,
+            "category": new_session.category,
+            "difficulty": new_session.difficulty,
+            "domain": new_session.domain,
+            "status": new_session.status,
+            "started_at": new_session.started_at.isoformat(),
+            "duration_seconds": duration_secs,
+            "question_time_limit": q_time_limit,
+            "candidate": {
+                "id": current_user.id,
+                "full_name": current_user.full_name,
+                "email": current_user.email,
+                "role": current_user.role
+            },
+            "questions": questions
+        }
+    except Exception as exc:
+        logger.exception("Error in start_interview endpoint: %s", exc)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Unable to start the interview. Please try again."
+        )
 
 @app.get("/api/interview/session/{session_id}")
 def get_interview_session(
