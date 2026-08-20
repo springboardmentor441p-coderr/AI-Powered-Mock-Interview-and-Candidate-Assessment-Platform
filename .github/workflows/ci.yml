@@ -2,9 +2,9 @@ name: SmartHire AI CI/CD Pipeline
 
 on:
   push:
-    branches: [ main, master ]
+    branches: [ main, master, final-smart-hire-submission, janitha-submission, project-main ]
   pull_request:
-    branches: [ main, master ]
+    branches: [ main, master, final-smart-hire-submission, janitha-submission, project-main ]
 
 jobs:
   build-and-test:
@@ -18,7 +18,7 @@ jobs:
       - name: Set up Python 3.10 Runtime Environment
         uses: actions/setup-python@v4
         with:
-          python-python-version: '3.10'
+          python-version: '3.10'
 
       - name: Install Backend Dependencies & Validate FastAPI API Gateway
         run: |
