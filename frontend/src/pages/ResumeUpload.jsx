@@ -64,7 +64,15 @@ export default function ResumeUpload() {
     }
   };
 
+  // UPDATED: 50MB file size validation limit
   const validateAndSetFile = (file) => {
+    const MAX_FILE_SIZE = 50 * 1024 * 1024; // 50MB limit in bytes
+
+    if (file.size > MAX_FILE_SIZE) {
+      alert("File is too large! Please upload a resume under 50MB.");
+      return;
+    }
+
     if (file.type === "application/pdf" || file.name.endsWith(".docx")) {
       setSelectedFile(file);
       setUploadStatus(null);
@@ -154,7 +162,8 @@ export default function ResumeUpload() {
             <p style={styles.dropText}>
               <span style={styles.browseText}>Click to browse</span> or drag and drop your file here
             </p>
-            <p style={styles.formatText}>Supported formats: PDF, DOCX (Max 5MB)</p>
+            {/* UPDATED: UI Text now says 50MB */}
+            <p style={styles.formatText}>Supported formats: PDF, DOCX (Max 50MB)</p>
           </div>
 
           {selectedFile && (

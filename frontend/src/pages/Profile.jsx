@@ -1,29 +1,59 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { 
-  ArrowLeft, User, Mail, Lock, Briefcase, GraduationCap, Save, Shield
-} from "lucide-react";
+import axios from "axios";
+import { ArrowLeft, User, Mail, Lock, Briefcase, GraduationCap, Save, Shield } from "lucide-react";
 
 export default function Profile() {
   const navigate = useNavigate();
   const [isLoading, setIsLoading] = useState(false);
+  const userId = localStorage.getItem("smartHireUserId");
 
-  // State for user details (In a real app, you fetch this from FastAPI)
   const [profileData, setProfileData] = useState({
-    fullName: "", // Ready for user input
-    emailOrMobile: "user@example.com", // This would pull from your Login session
+    fullName: "",
+    emailOrMobile: "", 
     college: "",
-    targetRole: "Software Engineer",
+    targetRole: "",
   });
 
-  const handleSave = (e) => {
+  useEffect(() => {
+    if (!userId) {
+      navigate("/");
+      return;
+    }
+    const fetchProfile = async () => {
+      try {
+        const response = await axios.get(`http://127.0.0.1:8000/api/user/profile?user_id=${userId}`);
+        if (!response.data.error) {
+          setProfileData({
+            fullName: response.data.full_name || "",
+            emailOrMobile: response.data.email_or_mobile || "",
+            college: response.data.college || "",
+            targetRole: response.data.target_role || "",
+          });
+        }
+      } catch (error) {
+        console.error("Failed to fetch profile");
+      }
+    };
+    fetchProfile();
+  }, [navigate, userId]);
+
+  const handleSave = async (e) => {
     e.preventDefault();
     setIsLoading(true);
-    // Simulate an API call to save data
-    setTimeout(() => {
-      setIsLoading(false);
+    try {
+      await axios.put("http://127.0.0.1:8000/api/user/profile", {
+        user_id: parseInt(userId),
+        full_name: profileData.fullName,
+        college: profileData.college,
+        target_role: profileData.targetRole
+      });
       alert("Profile updated successfully!");
-    }, 1000);
+    } catch (error) {
+      alert("Failed to update profile.");
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -48,65 +78,25 @@ export default function Profile() {
 
           <form style={styles.form} onSubmit={handleSave}>
             <div style={styles.grid}>
-              {/* Full Name */}
               <div style={styles.inputGroup}>
                 <label style={styles.label}><User size={16} color="#64748b"/> Full Name</label>
-                <input 
-                  type="text" 
-                  value={profileData.fullName}
-                  onChange={(e) => setProfileData({...profileData, fullName: e.target.value})}
-                  placeholder="Enter your full name"
-                  style={styles.input} 
-                />
+                <input type="text" value={profileData.fullName} onChange={(e) => setProfileData({...profileData, fullName: e.target.value})} placeholder="e.g. John Doe" style={styles.input} />
               </div>
-
-              {/* Email / Mobile (Read-Only from Auth) */}
               <div style={styles.inputGroup}>
                 <label style={styles.label}><Mail size={16} color="#64748b"/> Email / Mobile</label>
-                <input 
-                  type="text" 
-                  value={profileData.emailOrMobile}
-                  disabled
-                  style={{...styles.input, backgroundColor: "#f1f5f9", color: "#94a3b8", cursor: "not-allowed"}} 
-                />
+                <input type="text" value={profileData.emailOrMobile} disabled style={{...styles.input, backgroundColor: "#f1f5f9", color: "#94a3b8", cursor: "not-allowed"}} />
               </div>
-
-              {/* College / University */}
               <div style={styles.inputGroup}>
                 <label style={styles.label}><GraduationCap size={16} color="#64748b"/> College / University</label>
-                <input 
-                  type="text" 
-                  value={profileData.college}
-                  onChange={(e) => setProfileData({...profileData, college: e.target.value})}
-                  placeholder="e.g. Arya College of Engineering"
-                  style={styles.input} 
-                />
+                <input type="text" value={profileData.college} onChange={(e) => setProfileData({...profileData, college: e.target.value})} placeholder="Enter your college" style={styles.input} />
               </div>
-
-              {/* Primary Target Role */}
               <div style={styles.inputGroup}>
                 <label style={styles.label}><Briefcase size={16} color="#64748b"/> Primary Target Role</label>
-                <input 
-                  type="text" 
-                  value={profileData.targetRole}
-                  onChange={(e) => setProfileData({...profileData, targetRole: e.target.value})}
-                  style={styles.input} 
-                />
+                <input type="text" value={profileData.targetRole} onChange={(e) => setProfileData({...profileData, targetRole: e.target.value})} placeholder="e.g. Software Engineer" style={styles.input} />
               </div>
             </div>
 
             <div style={styles.divider}></div>
-
-            <div style={styles.securitySection}>
-              <div style={{display: "flex", alignItems: "center", gap: "8px", marginBottom: "16px"}}>
-                <Shield size={18} color="#0f172a" />
-                <h3 style={styles.sectionTitle}>Security</h3>
-              </div>
-              <button type="button" style={styles.secondaryButton}>
-                <Lock size={16} /> Change Password
-              </button>
-            </div>
-
             <button type="submit" disabled={isLoading} style={styles.submitButton}>
               {isLoading ? "Saving Changes..." : "Save Profile"} <Save size={18} />
             </button>
@@ -134,8 +124,5 @@ const styles = {
   label: { display: "flex", alignItems: "center", gap: "8px", fontSize: "14px", fontWeight: "600", color: "#475569" },
   input: { width: "100%", padding: "12px 16px", borderRadius: "8px", border: "1px solid #cbd5e1", fontSize: "15px", outline: "none", boxSizing: "border-box" },
   divider: { height: "1px", backgroundColor: "#e2e8f0", margin: "32px 0" },
-  securitySection: { marginBottom: "32px" },
-  sectionTitle: { margin: 0, fontSize: "16px", fontWeight: "600", color: "#0f172a" },
-  secondaryButton: { display: "inline-flex", alignItems: "center", gap: "8px", padding: "10px 16px", backgroundColor: "#f1f5f9", border: "1px solid #e2e8f0", borderRadius: "8px", color: "#0f172a", fontSize: "14px", fontWeight: "600", cursor: "pointer" },
-  submitButton: { display: "flex", justifyContent: "center", alignItems: "center", gap: "8px", backgroundColor: "#007BFF", color: "white", padding: "16px", borderRadius: "8px", border: "none", fontSize: "16px", fontWeight: "600", cursor: "pointer", transition: "all 0.2s" }
+  submitButton: { display: "flex", justifyContent: "center", alignItems: "center", gap: "8px", backgroundColor: "#007BFF", color: "white", padding: "16px", borderRadius: "8px", border: "none", fontSize: "16px", fontWeight: "600", cursor: "pointer" }
 };

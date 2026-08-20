@@ -2,6 +2,7 @@ import os
 import shutil
 import PyPDF2
 import json
+import re
 import google.generativeai as genai
 from dotenv import load_dotenv
 from fastapi import FastAPI, UploadFile, File, Depends
@@ -34,6 +35,8 @@ class InterviewResult(BaseModel):
     eye_contact: int
     confidence: int
     posture: str
+    duration: str
+    transcript: str
 
 class UserAuth(BaseModel):
     email_or_mobile: str
@@ -156,7 +159,6 @@ def analyze_resume(resume_id: int, db: Session = Depends(get_db)):
     prompt = f"Extract a comma-separated list of the top 10 technical skills from this candidate's resume text. Only return the skills, nothing else: {raw_text[:3000]}"
     
     try:
-        # Kept the model exactly as you requested
         model = genai.GenerativeModel('gemini-3.6-flash')
         response = model.generate_content(prompt)
         extracted_skills = response.text.strip()
@@ -175,7 +177,6 @@ def analyze_resume(resume_id: int, db: Session = Depends(get_db)):
 @app.post("/api/interview/start")
 def start_interview(data: InterviewStart):
     try:
-        # Kept the model exactly as you requested
         model = genai.GenerativeModel('gemini-3.6-flash')
         
         prompt = f"""
@@ -197,61 +198,69 @@ def start_interview(data: InterviewStart):
         
     except Exception as e:
         return {"error": f"Failed to generate opening question: {str(e)}"}
-
+    
 @app.post("/api/interview/chat")
 def process_interview_chat(chat_data: InterviewChat):
     try:
-        # Kept the model exactly as you requested
         model = genai.GenerativeModel('gemini-3.6-flash')
 
-        # FIX: Added strict JSON formatting instructions so Python doesn't crash when decoding
         prompt = f"""
-        You are an expert technical interviewer for a {chat_data.difficulty} level {chat_data.role_domain} position.
+        You are a technical interviewer for a {chat_data.difficulty} {chat_data.role_domain} position.
+        Previous question: "{chat_data.current_question}"
+        Candidate answer: "{chat_data.user_answer}"
         
-        The candidate was just asked: "{chat_data.current_question}"
-        The candidate answered: "{chat_data.user_answer}"
+        RESPOND INSTANTLY. Return ONLY a raw JSON object. NO markdown formatting. NO conversational text before or after.
         
-        Your task is to provide a single JSON response with EXACTLY these three keys:
-        1. "feedback": A brief, conversational response to their answer.
-        2. "score": A score out of 10 for their answer (integer only).
-        3. "next_question": Generate the next relevant interview question.
-        
-        Return ONLY valid JSON. No markdown, no conversational filler outside the JSON.
+        Format exactly like this:
+        {{
+            "feedback": "Maximum 1 short sentence of feedback.",
+            "score": 8,
+            "next_question": "Maximum 1 short sentence."
+        }}
         """
         
-        response = model.generate_content(prompt)
+        generation_config = genai.types.GenerationConfig(
+            max_output_tokens=800, 
+            temperature=0.7,
+        )
+        
+        response = model.generate_content(prompt, generation_config=generation_config)
         ai_response_text = response.text.strip()
         
+        # AGGRESSIVE CLEANUP: Strips markdown if present
         if ai_response_text.startswith("```json"):
             ai_response_text = ai_response_text[7:-3].strip()
         elif ai_response_text.startswith("```"):
             ai_response_text = ai_response_text[3:-3].strip()
             
-        parsed_response = json.loads(ai_response_text)
-        return parsed_response
+        # REGEX ISOLATION: Finds the first { and last } to ignore extra chatty text
+        json_match = re.search(r'\{.*\}', ai_response_text, re.DOTALL)
+        if json_match:
+            ai_response_text = json_match.group(0)
+            
+        return json.loads(ai_response_text)
         
     except Exception as e:
+        # Prints the exact crash reason to your VS Code terminal
+        print(f"CRITICAL BACKEND ERROR: {str(e)}") 
         return {"error": f"Failed to process chat: {str(e)}"}
 
 @app.post("/api/interview/finish")
 def save_interview_results(result: InterviewResult, db: Session = Depends(get_db)):
     try:
-        # FIX: Corrected column names to match standard database models
         new_session = models.InterviewSession(
             user_id=result.user_id,
             role=result.role_domain, 
             score=result.score,
             interview_type="Live",
             difficulty="Unknown",
-            topic_count=len(result.feedback_summary)
+            topic_count=len(result.feedback_summary),
+            duration=result.duration,
+            transcript=result.transcript
         )
-        
         db.add(new_session)
         db.commit()
-        db.refresh(new_session)
-        
-        return {"message": "Interview results safely stored in the database!"}
-        
+        return {"message": "Interview results safely stored!"}
     except Exception as e:
         return {"error": f"Failed to save results: {str(e)}"}
 
@@ -289,17 +298,69 @@ def get_dashboard_stats(user_id: int = 1, db: Session = Depends(get_db)):
 @app.get("/api/user/history")
 def get_user_history(user_id: int = 1, db: Session = Depends(get_db)):
     sessions = db.query(models.InterviewSession).filter(models.InterviewSession.user_id == user_id).order_by(models.InterviewSession.id.desc()).all()
-    
     history_list = []
+    
     for s in sessions:
-        score = s.score if hasattr(s, 'score') and s.score is not None else 0
+        score = s.score if s.score else 0
+        convo = json.loads(s.transcript) if s.transcript else []
+        
         history_list.append({
             "id": s.id,
             "role": getattr(s, 'role', 'Unknown'),
             "date": "Recently Completed", 
-            "duration": "15m 00s",
+            "duration": s.duration or "0m 00s",
             "score": score,
-            "status": "Completed" if score > 0 else "Aborted"
+            "status": "Completed" if score > 0 else "Incomplete",
+            "conversation": convo
         })
         
     return {"history": history_list}
+
+# ==========================================
+# PROFILES & NOTIFICATIONS ENDPOINTS
+# ==========================================
+class ProfileUpdate(BaseModel):
+    user_id: int
+    full_name: str
+    college: str
+    target_role: str
+
+@app.get("/api/user/profile")
+def get_profile(user_id: int = 1, db: Session = Depends(get_db)):
+    user = db.query(models.User).filter(models.User.id == user_id).first()
+    if not user:
+        return {"error": "User not found"}
+    return {
+        "email_or_mobile": user.email_or_mobile,
+        "full_name": user.full_name,
+        "college": user.college,
+        "target_role": user.target_role
+    }
+
+@app.put("/api/user/profile")
+def update_profile(profile_data: ProfileUpdate, db: Session = Depends(get_db)):
+    user = db.query(models.User).filter(models.User.id == profile_data.user_id).first()
+    if user:
+        user.full_name = profile_data.full_name
+        user.college = profile_data.college
+        user.target_role = profile_data.target_role
+        db.commit()
+        return {"message": "Profile updated successfully!"}
+    return {"error": "User not found"}
+
+@app.get("/api/user/notifications")
+def get_notifications(user_id: int = 1, db: Session = Depends(get_db)):
+    existing = db.query(models.Notification).filter(models.Notification.user_id == user_id).all()
+    if not existing:
+        welcome = models.Notification(user_id=user_id, title="Account Created", message="Welcome to SmartHire!", type="system")
+        db.add(welcome)
+        db.commit()
+        
+    notifications = db.query(models.Notification).filter(models.Notification.user_id == user_id).order_by(models.Notification.id.desc()).all()
+    return {"notifications": [{"id": n.id, "title": n.title, "message": n.message, "type": n.type, "isRead": n.is_read} for n in notifications]}
+
+@app.put("/api/user/notifications/read")
+def mark_notifications_read(user_id: int = 1, db: Session = Depends(get_db)):
+    db.query(models.Notification).filter(models.Notification.user_id == user_id).update({"is_read": True})
+    db.commit()
+    return {"message": "All marked as read"}

@@ -109,6 +109,19 @@ export default function SessionHistory() {
                   <div style={{...styles.colItem, flex: 1}}>
                     <button 
                       disabled={session.status !== "Completed"}
+                      onClick={() => {
+                        navigate("/summary", {
+                          state: {
+                            role: session.role,
+                            score: session.score,
+                            conversation: session.conversation, 
+                            feedbacks: ["Historical feedback unavailable"], 
+                            eyeContact: 85, 
+                            confidence: 80,
+                            posture: "Good"
+                          }
+                        });
+                      }}
                       style={{
                         ...styles.actionButton,
                         opacity: session.status === "Completed" ? 1 : 0.5,

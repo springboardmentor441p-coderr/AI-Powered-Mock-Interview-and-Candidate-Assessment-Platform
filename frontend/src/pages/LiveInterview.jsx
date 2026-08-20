@@ -14,6 +14,9 @@ export default function LiveInterview() {
   const videoRef = useRef(null);
   const chatEndRef = useRef(null);
   const recognitionRef = useRef(null);
+  const silenceTimerRef = useRef(null); 
+  const transcriptRef = useRef(""); 
+  const isMutedRef = useRef(false); 
   
   const [isMuted, setIsMuted] = useState(false);
   const [isVideoOff, setIsVideoOff] = useState(false);
@@ -21,11 +24,9 @@ export default function LiveInterview() {
   const [isAiThinking, setIsAiThinking] = useState(true);
   const [mediaStream, setMediaStream] = useState(null); 
   
-  // States for dynamic conversation
   const [currentQuestion, setCurrentQuestion] = useState("Preparing your customized interview...");
   const [userTranscript, setUserTranscript] = useState("");
   const [isAiSpeaking, setIsAiSpeaking] = useState(false);
-  
   const [conversation, setConversation] = useState([
     { role: "ai", text: "Preparing your customized interview..." }
   ]);
@@ -36,12 +37,16 @@ export default function LiveInterview() {
   const [eyeContact, setEyeContact] = useState(85);
   const [confidence, setConfidence] = useState(78);
   const [posture, setPosture] = useState("Good");
+  const [timeLeft, setTimeLeft] = useState(900);
 
-  const [timeLeft, setTimeLeft] = useState(900); // 15 Minutes
+  useEffect(() => {
+    isMutedRef.current = isMuted;
+  }, [isMuted]);
 
-  // 1. DYNAMIC START: Fetch a unique opening question from the AI
   useEffect(() => {
     const fetchInitialQuestion = async () => {
+      const fallbackQuestion = `Hello! Let's begin your ${setupData.role || "Software Engineer"} interview. Could you please introduce yourself and walk me through your background?`;
+      
       try {
         const skills = localStorage.getItem("userSkills") || "General Skills";
         const response = await axios.post("http://127.0.0.1:8000/api/interview/start", {
@@ -51,25 +56,24 @@ export default function LiveInterview() {
         });
 
         if (response.data.error) {
-          const errorText = `⚠️ AI Error: ${response.data.error}`;
-          setCurrentQuestion(errorText);
-          setConversation([{ role: "ai", text: errorText }]);
+          console.error("Backend Error (Hidden from User):", response.data.error);
+          setCurrentQuestion(fallbackQuestion);
+          setConversation([{ role: "ai", text: fallbackQuestion }]);
         } else {
           setCurrentQuestion(response.data.question);
           setConversation([{ role: "ai", text: response.data.question }]);
         }
       } catch (error) {
-        console.error("Start error:", error);
-        setConversation([{ role: "ai", text: "⚠️ Failed to connect to the backend. Is Python running?" }]);
+        console.error("Start error (Hidden from User):", error);
+        setCurrentQuestion(fallbackQuestion);
+        setConversation([{ role: "ai", text: fallbackQuestion }]);
       } finally {
         setIsAiThinking(false);
       }
     };
-    
     fetchInitialQuestion();
   }, [setupData.role, setupData.difficulty]);
 
-  // Timer Countdown
   useEffect(() => {
     const timerInterval = setInterval(() => {
       setTimeLeft((prev) => {
@@ -89,7 +93,6 @@ export default function LiveInterview() {
     return `${m}:${s}`;
   };
 
-  // Initialize Webcam
   useEffect(() => {
     let currentStream;
     const enableWebcam = async () => {
@@ -107,6 +110,7 @@ export default function LiveInterview() {
       if (currentStream) currentStream.getTracks().forEach((track) => track.stop());
       window.speechSynthesis.cancel();
       if (recognitionRef.current) recognitionRef.current.stop();
+      if (silenceTimerRef.current) clearTimeout(silenceTimerRef.current);
     };
   }, []);
 
@@ -116,19 +120,79 @@ export default function LiveInterview() {
 
   useEffect(() => {
     if (mediaStream) mediaStream.getAudioTracks().forEach(track => track.enabled = !isMuted);
+    if (isMuted && recognitionRef.current) {
+      recognitionRef.current.stop();
+      setIsListening(false);
+    }
   }, [isMuted, mediaStream]);
 
-  // AI Voice
+  const startListening = () => {
+    if (isMutedRef.current) return; 
+
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!SpeechRecognition) {
+      console.warn("Browser not supported for voice recognition.");
+      return;
+    }
+
+    if (recognitionRef.current) {
+      try { recognitionRef.current.stop(); } catch(e) {}
+    }
+
+    const recognition = new SpeechRecognition();
+    recognition.continuous = true;
+    recognition.interimResults = true;
+
+    recognition.onresult = (event) => {
+      let fullText = Array.from(event.results).map(res => res[0].transcript).join("");
+      setUserTranscript(fullText);
+      transcriptRef.current = fullText;
+
+      if (silenceTimerRef.current) clearTimeout(silenceTimerRef.current);
+      
+      silenceTimerRef.current = setTimeout(() => {
+        if (transcriptRef.current.trim().length > 2) {
+          recognition.stop();
+          setIsListening(false);
+          submitAnswerToAI(transcriptRef.current);
+        }
+      }, 3000); 
+    };
+
+    recognition.onstart = () => setIsListening(true);
+    recognition.onend = () => setIsListening(false);
+
+    recognitionRef.current = recognition;
+    try {
+      recognition.start();
+    } catch (err) {
+      console.error("Mic error:", err);
+    }
+  };
+
   useEffect(() => {
-    if ('speechSynthesis' in window && currentQuestion && !currentQuestion.includes("⚠️")) {
+    if ('speechSynthesis' in window && currentQuestion) {
       window.speechSynthesis.cancel();
       const utterance = new SpeechSynthesisUtterance(currentQuestion);
       const voices = window.speechSynthesis.getVoices();
       const preferredVoice = voices.find(v => v.lang.includes('en') && v.name.includes('Female')) || voices[0];
       if (preferredVoice) utterance.voice = preferredVoice;
       utterance.rate = 0.95;
-      utterance.onstart = () => setIsAiSpeaking(true);
-      utterance.onend = () => setIsAiSpeaking(false);
+      
+      utterance.onstart = () => {
+        setIsAiSpeaking(true);
+        if (recognitionRef.current) {
+          try { recognitionRef.current.stop(); } catch(e) {}
+        }
+        setIsListening(false);
+        if (silenceTimerRef.current) clearTimeout(silenceTimerRef.current);
+      };
+
+      utterance.onend = () => {
+        setIsAiSpeaking(false);
+        startListening();
+      };
+
       window.speechSynthesis.speak(utterance);
     }
   }, [currentQuestion]);
@@ -145,83 +209,80 @@ export default function LiveInterview() {
     return () => clearInterval(interval);
   }, []);
 
-  // Web Speech API Trigger
-  const toggleListening = () => {
-    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-    if (!SpeechRecognition) return alert("Browser not supported. Please use Google Chrome.");
-
-    if (isListening && recognitionRef.current) {
-      recognitionRef.current.stop();
-      setIsListening(false);
-    } else {
-      const recognition = new SpeechRecognition();
-      recognition.continuous = true;
-      recognition.interimResults = true;
-
-      recognition.onresult = (event) => {
-        let fullTranscript = Array.from(event.results).map(res => res[0].transcript).join("");
-        setUserTranscript(fullTranscript);
-      };
-
-      recognition.onend = () => setIsListening(false);
-      
-      recognitionRef.current = recognition;
-      recognition.start();
-      setIsListening(true);
-    }
-  };
-
-  const submitAnswerToAI = async () => {
-    if (!userTranscript.trim()) return;
-    if (isListening && recognitionRef.current) {
-      recognitionRef.current.stop();
-      setIsListening(false);
-    }
+  const submitAnswerToAI = async (answerText) => {
+    if (!answerText.trim()) return;
     
+    if (silenceTimerRef.current) clearTimeout(silenceTimerRef.current);
+    if (recognitionRef.current) {
+      try { recognitionRef.current.stop(); } catch(e) {}
+    }
+    setIsListening(false);
     setIsAiThinking(true);
-    const answerToSend = userTranscript;
-    setConversation(prev => [...prev, { role: "user", text: answerToSend }]);
+    
+    setConversation(prev => [...prev, { role: "user", text: answerText }]);
     setUserTranscript(""); 
+    transcriptRef.current = "";
+
+    // FIX: Invisible random spaces ensure React always sees this as a 'new' string and doesn't freeze
+    const invisibleSpaces = "\u200B".repeat(Math.floor(Math.random() * 10) + 1);
+    const retryQuestion = `I apologize, I didn't quite catch that. Could you please repeat your answer?${invisibleSpaces}`;
 
     try {
       const response = await axios.post("http://127.0.0.1:8000/api/interview/chat", {
-        role_domain: setupData.role || "Backend Engineering",
+        role_domain: setupData.role || "Software Engineer",
         difficulty: setupData.difficulty || "Medium",
         current_question: currentQuestion,
-        user_answer: answerToSend
+        user_answer: answerText
       });
 
       const aiData = response.data;
-      
-      // 2. UI ERROR VISIBILITY: Show the exact Python crash on screen if it fails
       if (aiData.error) {
-        setConversation(prev => [
-          ...prev, 
-          { role: "ai", text: `⚠️ Error processing answer: ${aiData.error}. Please try again.` }
-        ]);
+        setConversation(prev => [...prev, { role: "ai", text: retryQuestion }]);
+        setCurrentQuestion(retryQuestion);
         setIsAiThinking(false);
-        return;
+        return; 
       }
 
-      if (aiData.feedback && aiData.next_question) {
+      // FIX: Case-insensitive extraction prevents freezing if Gemini formats JSON unpredictably
+      const feedbackText = aiData.feedback || aiData.Feedback || aiData.FEEDBACK || "";
+      const nextQText = aiData.next_question || aiData.Next_Question || aiData.nextQuestion || aiData.question || "";
+      const scoreValue = aiData.score || aiData.Score || 0;
+
+      if (feedbackText && nextQText) {
         setConversation(prev => [
           ...prev, 
-          { role: "ai", text: `Feedback: ${aiData.feedback}` },
-          { role: "ai", text: aiData.next_question }
+          { role: "ai", text: `Feedback: ${feedbackText}` },
+          { role: "ai", text: nextQText }
         ]);
-        
-        setSessionScores(prev => [...prev, aiData.score]);
-        setSessionFeedback(prev => [...prev, aiData.feedback]);
-        setCurrentQuestion(aiData.next_question);
+        setSessionScores(prev => [...prev, scoreValue]);
+        setSessionFeedback(prev => [...prev, feedbackText]);
+        setCurrentQuestion(nextQText);
+      } else {
+        // Triggers the safe retry if Gemini returns completely broken data instead of freezing UI
+        setConversation(prev => [...prev, { role: "ai", text: retryQuestion }]);
+        setCurrentQuestion(retryQuestion);
       }
     } catch (error) {
-      console.error("Error connecting to AI:", error);
-      setConversation(prev => [
-        ...prev, 
-        { role: "ai", text: "⚠️ Network Error: Could not reach the backend." }
-      ]);
+      console.error("Network error (Hidden):", error);
+      setConversation(prev => [...prev, { role: "ai", text: retryQuestion }]);
+      setCurrentQuestion(retryQuestion);
     } finally {
       setIsAiThinking(false);
+    }
+  };
+
+  const toggleListeningManual = () => {
+    if (isListening) {
+      if (recognitionRef.current) {
+        try { recognitionRef.current.stop(); } catch(e) {}
+      }
+      setIsListening(false);
+      if (silenceTimerRef.current) clearTimeout(silenceTimerRef.current);
+      if (transcriptRef.current.trim()) {
+        submitAnswerToAI(transcriptRef.current);
+      }
+    } else {
+      startListening();
     }
   };
 
@@ -229,6 +290,7 @@ export default function LiveInterview() {
     if (autoEnd || window.confirm("End the interview? Your analytics will be saved.")) {
       window.speechSynthesis.cancel();
       if (recognitionRef.current) recognitionRef.current.stop();
+      if (silenceTimerRef.current) clearTimeout(silenceTimerRef.current);
       
       const avgScore = sessionScores.length > 0 
         ? Math.round((sessionScores.reduce((a, b) => a + Number(b), 0) / sessionScores.length) * 10) 
@@ -236,6 +298,9 @@ export default function LiveInterview() {
       
       const finalEyeContact = Math.round(eyeContact);
       const finalConfidence = Math.round(confidence);
+
+      const timeSpent = 900 - timeLeft;
+      const formattedDuration = `${Math.floor(timeSpent / 60)}m ${timeSpent % 60}s`;
 
       try {
         const userId = localStorage.getItem("smartHireUserId") || 1;
@@ -246,7 +311,9 @@ export default function LiveInterview() {
           feedback_summary: sessionFeedback,
           eye_contact: finalEyeContact,
           confidence: finalConfidence,
-          posture: posture
+          posture: posture,
+          duration: formattedDuration,
+          transcript: JSON.stringify(conversation)
         });
       } catch (error) {
         console.error("Failed to save session to DB:", error);
@@ -264,8 +331,6 @@ export default function LiveInterview() {
       }); 
     }
   };
-
-  // Auto-end if timer hits zero
   useEffect(() => {
     if (timeLeft === 0) {
       handleEndInterview(true);
@@ -305,7 +370,7 @@ export default function LiveInterview() {
             <div style={styles.chatArea}>
               {conversation.map((msg, index) => (
                 <div key={index} style={msg.role === "ai" ? styles.chatRowAi : styles.chatRowUser}>
-                  <div style={msg.role === "ai" ? (msg.text.includes("⚠️") ? styles.chatBubbleError : styles.chatBubbleAi) : styles.chatBubbleUser}>
+                  <div style={msg.role === "ai" ? styles.chatBubbleAi : styles.chatBubbleUser}>
                     <p style={styles.chatText}>{msg.text}</p>
                   </div>
                 </div>
@@ -319,11 +384,22 @@ export default function LiveInterview() {
             </div>
             
             <div style={styles.inputArea}>
-              <button onClick={toggleListening} style={{...styles.recordButton, backgroundColor: isListening ? "#ef4444" : "#334155"}}>
+              <button onClick={toggleListeningManual} style={{...styles.recordButton, backgroundColor: isListening ? "#ef4444" : "#334155"}}>
                 {isListening ? <MicOff size={16} color="white" /> : <Mic size={16} color="white" />}
               </button>
-              <input type="text" value={userTranscript} onChange={(e) => setUserTranscript(e.target.value)} placeholder={isListening ? "Listening to your voice..." : "Type or dictate your answer..."} style={styles.textInput} />
-              <button onClick={submitAnswerToAI} style={styles.sendButton} disabled={isAiThinking || !userTranscript}>
+              <input 
+                type="text" 
+                value={userTranscript} 
+                onChange={(e) => setUserTranscript(e.target.value)} 
+                placeholder={isListening ? "Listening... (Pause for 3s to send)" : "Waiting for AI..."} 
+                style={styles.textInput} 
+                disabled={true}
+              />
+              <button 
+                onClick={() => submitAnswerToAI(userTranscript)} 
+                style={styles.sendButton} 
+                disabled={isAiThinking || !userTranscript.trim()}
+              >
                 <Send size={16} color="white" />
               </button>
             </div>
@@ -421,7 +497,6 @@ const styles = {
   chatRowUser: { display: "flex", justifyContent: "flex-end" },
   chatBubbleAi: { backgroundColor: "#334155", padding: "10px 14px", borderRadius: "12px", borderBottomLeftRadius: "4px", maxWidth: "85%" },
   chatBubbleUser: { backgroundColor: "#007BFF", padding: "10px 14px", borderRadius: "12px", borderBottomRightRadius: "4px", maxWidth: "85%" },
-  chatBubbleError: { backgroundColor: "#7f1d1d", padding: "10px 14px", borderRadius: "12px", borderBottomLeftRadius: "4px", maxWidth: "85%", border: "1px solid #ef4444" },
   chatText: { margin: 0, fontSize: "13px", lineHeight: "1.4", color: "#f8fafc" },
   
   inputArea: { display: "flex", gap: "8px", alignItems: "center", backgroundColor: "#0f172a", padding: "8px", borderRadius: "12px", border: "1px solid #334155" },
