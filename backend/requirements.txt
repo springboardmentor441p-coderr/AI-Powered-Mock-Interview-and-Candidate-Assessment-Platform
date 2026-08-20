@@ -1,0 +1,11 @@
+fastapi==0.115.6
+uvicorn[standard]==0.34.0
+sqlalchemy==2.0.36
+psycopg[binary]==3.2.3
+pydantic[email]==2.10.4
+pwdlib[argon2]==0.2.1
+PyJWT==2.10.1
+python-multipart==0.0.20
+pypdf==5.1.0
+websockets==13.1
+reportlab==4.2.5

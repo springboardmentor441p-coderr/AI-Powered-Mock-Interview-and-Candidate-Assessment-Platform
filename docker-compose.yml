@@ -1,0 +1,40 @@
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: smarthire
+      POSTGRES_USER: smarthire
+      POSTGRES_PASSWORD: smarthire
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U smarthire -d smarthire"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  api:
+    build: ./backend
+    environment:
+      DATABASE_URL: postgresql+psycopg://smarthire:smarthire@db:5432/smarthire
+      JWT_SECRET: change-this-in-production
+      UPLOAD_DIR: /app/uploads
+      ULTRAVOX_API_KEY: "${ULTRAVOX_API_KEY:-}"
+      DEEPGRAM_API_KEY: "${DEEPGRAM_API_KEY:-}"
+      LLM_PROVIDER: "${LLM_PROVIDER:-disabled}"
+      LLM_MODEL: "${LLM_MODEL:-gemini-2.5-flash}"
+      LLM_TIMEOUT_SECONDS: "${LLM_TIMEOUT_SECONDS:-30}"
+      GEMINI_API_KEY: "${GEMINI_API_KEY:-}"
+    ports:
+      - "8000:8000"
+    volumes:
+      - "./backend/uploads:/app/uploads"
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: on-failure
+
+  web:
+    build: ./frontend
+    ports:
+      - "5173:80"
+    depends_on:
+      - api

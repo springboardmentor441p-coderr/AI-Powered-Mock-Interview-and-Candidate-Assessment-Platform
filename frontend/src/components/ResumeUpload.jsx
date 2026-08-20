@@ -1,0 +1,3 @@
+import {api} from '../api/client';
+import {useAuth} from '../context/AuthContext';
+export default function ResumeUpload({onUploaded}) { const {auth}=useAuth(); async function upload(e){const file=e.target.files[0];if(!file)return;const fd=new FormData();fd.append('file',file);try{await api('/resumes',{method:'POST',body:fd},auth.access_token);onUploaded();}catch(err){alert(err.message)}} return <label className="upload-control"><span className="upload-icon">↑</span><span><b>Upload PDF resume</b><small>Text-based PDF, securely processed</small></span><input type="file" accept="application/pdf" onChange={upload}/></label>; }
