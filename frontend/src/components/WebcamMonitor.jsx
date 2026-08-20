@@ -1,15 +1,39 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { Camera, AlertCircle } from 'lucide-react';
+import * as faceapi from 'face-api.js';
 
 export default function WebcamMonitor({ onMetricsUpdate }) {
   const videoRef = useRef(null);
   const [streamActive, setStreamActive] = useState(false);
   const [permissionDenied, setPermissionDenied] = useState(false);
+  const [modelsLoaded, setModelsLoaded] = useState(false);
 
   const onMetricsUpdateRef = useRef(onMetricsUpdate);
   useEffect(() => {
     onMetricsUpdateRef.current = onMetricsUpdate;
   }, [onMetricsUpdate]);
+
+  // Load face-api.js neural net models from /models directory
+  useEffect(() => {
+    let isMounted = true;
+    const loadModels = async () => {
+      try {
+        const MODEL_URL = '/models';
+        await Promise.all([
+          faceapi.nets.tinyFaceDetector.loadFromUri(MODEL_URL),
+          faceapi.nets.faceLandmark68Net.loadFromUri(MODEL_URL),
+          faceapi.nets.faceExpressionNet.loadFromUri(MODEL_URL)
+        ]);
+        if (isMounted) {
+          setModelsLoaded(true);
+        }
+      } catch (err) {
+        console.warn("[face-api.js] Model loading exception:", err);
+      }
+    };
+    loadModels();
+    return () => { isMounted = false; };
+  }, []);
 
   const startCamera = async () => {
     try {
@@ -40,20 +64,105 @@ export default function WebcamMonitor({ onMetricsUpdate }) {
     };
   }, []);
 
+  // Face detection interval effect — strictly depends on stable booleans [streamActive, modelsLoaded] to prevent infinite render loops
   useEffect(() => {
-    if (onMetricsUpdateRef.current) {
-      onMetricsUpdateRef.current({
-        streamActive: streamActive,
-        faceDetected: streamActive ? "Detected" : "Not Detected",
-        cameraStatus: streamActive ? "Camera Stream Active (720p HD)" : (permissionDenied ? "Permission Denied" : "Initializing Camera...")
-      });
+    if (!streamActive || !modelsLoaded) {
+      if (onMetricsUpdateRef.current) {
+        onMetricsUpdateRef.current({
+          streamActive,
+          faceDetected: streamActive ? "Initializing Models..." : "Not Detected",
+          eyeContactRatio: 0.0,
+          eyeContactPct: 0,
+          attentionPct: 0,
+          confidencePct: 0,
+          emotion: "Neutral",
+          cameraStatus: streamActive ? "Loading Neural Models..." : (permissionDenied ? "Permission Denied" : "Initializing Camera...")
+        });
+      }
+      return;
     }
-  }, [streamActive, permissionDenied]);
+
+    const intervalId = setInterval(async () => {
+      if (!videoRef.current || videoRef.current.paused || videoRef.current.ended) return;
+
+      try {
+        const detection = await faceapi
+          .detectSingleFace(videoRef.current, new faceapi.TinyFaceDetectorOptions({ inputSize: 224, scoreThreshold: 0.4 }))
+          .withFaceLandmarks()
+          .withFaceExpressions();
+
+        if (detection) {
+          const box = detection.detection.box;
+          const score = detection.detection.score;
+
+          // 1. Extract Dominant Expression
+          const expressions = detection.expressions;
+          let dominantEmotion = "neutral";
+          let maxScore = 0;
+          if (expressions) {
+            Object.entries(expressions).forEach(([expr, val]) => {
+              if (val > maxScore) {
+                maxScore = val;
+                dominantEmotion = expr;
+              }
+            });
+          }
+          const emotionLabel = dominantEmotion.charAt(0).toUpperCase() + dominantEmotion.slice(1);
+
+          // 2. Compute Eye Contact & Gaze Alignment Heuristic
+          // Nose tip landmark (point 30) relative to bounding box center
+          const landmarks = detection.landmarks;
+          const nose = landmarks.getNose()[3]; // Tip of nose
+          
+          const boxCenterX = box.x + (box.width / 2);
+          const devX = Math.abs(nose.x - boxCenterX) / (box.width / 2); // 0 when nose is centered horizontally
+          
+          const rawEyeContact = Math.max(0, 1.0 - (devX * 1.8));
+          const eyeContactPct = Math.round(rawEyeContact * 100);
+          const eyeContactRatio = Math.round(rawEyeContact * 100) / 100;
+
+          // 3. Attention & Confidence Percentages
+          const attentionPct = Math.min(100, Math.round((eyeContactPct * 0.7) + (score * 30)));
+          const confidencePct = Math.round(score * 100);
+
+          if (onMetricsUpdateRef.current) {
+            onMetricsUpdateRef.current({
+              streamActive: true,
+              faceDetected: "Face Detected",
+              eyeContactRatio,
+              eyeContactPct,
+              attentionPct,
+              confidencePct,
+              emotion: emotionLabel,
+              cameraStatus: "AI Eye-Contact & Emotion Tracking Active"
+            });
+          }
+        } else {
+          if (onMetricsUpdateRef.current) {
+            onMetricsUpdateRef.current({
+              streamActive: true,
+              faceDetected: "Searching Face...",
+              eyeContactRatio: 0.0,
+              eyeContactPct: 0,
+              attentionPct: 0,
+              confidencePct: 0,
+              emotion: "Searching",
+              cameraStatus: "Camera Stream Active (Searching Face...)"
+            });
+          }
+        }
+      } catch (err) {
+        console.warn("Face detection processing error:", err);
+      }
+    }, 700);
+
+    return () => clearInterval(intervalId);
+  }, [streamActive, modelsLoaded]);
 
   return (
     <div className="relative rounded-2xl overflow-hidden glass-card border border-slate-800 bg-slate-950 aspect-video shadow-2xl group">
       
-      {/* Clean Unobstructed Video Stream */}
+      {/* Clean Video Stream */}
       <video 
         ref={videoRef} 
         autoPlay 
@@ -74,7 +183,7 @@ export default function WebcamMonitor({ onMetricsUpdate }) {
             <p className="text-xs text-slate-400 max-w-xs mt-1">
               {permissionDenied 
                 ? "Camera permission denied or camera device unavailable. Click below to retry camera access." 
-                : "Initializing Live Webcam Stream..."}
+                : "Initializing Live Webcam Stream & AI Models..."}
             </p>
           </div>
 

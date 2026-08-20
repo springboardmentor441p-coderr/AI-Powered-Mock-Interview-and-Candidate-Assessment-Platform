@@ -84,7 +84,12 @@ export default function InterviewRoomPage({ sessionData, setActivePage, setFinal
   const [cameraMetrics, setCameraMetrics] = useState({
     streamActive: false,
     faceDetected: "Initializing...",
-    cameraStatus: "Camera Active"
+    cameraStatus: "Camera Active",
+    eyeContactRatio: 0.0,
+    eyeContactPct: 0,
+    attentionPct: 0,
+    confidencePct: 0,
+    emotion: "Neutral"
   });
 
   const handleCameraMetricsUpdate = useCallback((m) => {
@@ -416,14 +421,18 @@ export default function InterviewRoomPage({ sessionData, setActivePage, setFinal
       setChatThread(prev => [...prev, candidateBubble]);
     }
 
-    // 3. Submit answer to backend API asynchronously
+    // 3. Submit answer to backend API asynchronously with REAL eyeContactRatio
+    const actualEyeContactRatio = cameraMetrics.eyeContactRatio !== undefined 
+      ? cameraMetrics.eyeContactRatio 
+      : (cameraMetrics.streamActive ? 1.0 : 0.0);
+
     const backendRes = await submitQuestionAnswer({
       session_id: sessionData?.session_id || 1,
       question_index: currentIdx + 1,
       question_text: currentQ?.question_text || currentQ?.q || "",
       candidate_answer: finalCandidateAnswer,
       transcript: finalCandidateAnswer,
-      eye_contact_ratio: cameraMetrics.streamActive ? 1.0 : 0.0
+      eye_contact_ratio: actualEyeContactRatio
     });
 
     const llmEval = backendRes?.llm_evaluation || {
@@ -769,9 +778,23 @@ export default function InterviewRoomPage({ sessionData, setActivePage, setFinal
 
             <div className="space-y-2 text-xs font-mono">
               <div className="flex justify-between p-2.5 rounded-xl bg-slate-900 border border-slate-800">
-                <span className="text-slate-400">Camera Feed:</span>
+                <span className="text-slate-400">Camera Feed & Track:</span>
                 <span className={cameraMetrics.streamActive ? "text-emerald-400 font-bold" : "text-red-400 font-bold"}>
-                  {cameraMetrics.streamActive ? "Camera Active" : "Camera Off"}
+                  {cameraMetrics.streamActive ? (cameraMetrics.faceDetected || "Active") : "Camera Off"}
+                </span>
+              </div>
+
+              <div className="flex justify-between p-2.5 rounded-xl bg-slate-900 border border-slate-800">
+                <span className="text-slate-400">Eye-Contact & Gaze:</span>
+                <span className={cameraMetrics.eyeContactPct > 50 ? "text-emerald-400 font-bold" : "text-amber-400 font-bold"}>
+                  {cameraMetrics.streamActive ? `${cameraMetrics.eyeContactPct || 0}% (${cameraMetrics.eyeContactRatio || 0.0})` : "0% (0.0)"}
+                </span>
+              </div>
+
+              <div className="flex justify-between p-2.5 rounded-xl bg-slate-900 border border-slate-800">
+                <span className="text-slate-400">Attention & Emotion:</span>
+                <span className="text-cyan-400 font-bold">
+                  {cameraMetrics.streamActive ? `${cameraMetrics.attentionPct || 0}% • ${cameraMetrics.emotion || "Neutral"}` : "Off"}
                 </span>
               </div>
 
