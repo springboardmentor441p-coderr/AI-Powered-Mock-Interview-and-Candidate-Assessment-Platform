@@ -3,11 +3,14 @@ import { useNavigate, useLocation } from "react-router-dom";
 import axios from "axios";
 import { 
   Mic, MicOff, Video as VideoIcon, VideoOff, Phone, 
-  Activity, Eye, UserCheck, Sparkles, Send, Loader2
+  Activity, Eye, UserCheck, Sparkles, Send, Loader2, Clock
 } from "lucide-react";
 
 export default function LiveInterview() {
   const navigate = useNavigate();
+  const location = useLocation();
+  const setupData = location.state || {}; 
+
   const videoRef = useRef(null);
   const chatEndRef = useRef(null);
   const recognitionRef = useRef(null);
@@ -15,75 +18,98 @@ export default function LiveInterview() {
   const [isMuted, setIsMuted] = useState(false);
   const [isVideoOff, setIsVideoOff] = useState(false);
   const [isListening, setIsListening] = useState(false);
-  const [isAiThinking, setIsAiThinking] = useState(false);
+  const [isAiThinking, setIsAiThinking] = useState(true);
   const [mediaStream, setMediaStream] = useState(null); 
+  
+  // States for dynamic conversation
+  const [currentQuestion, setCurrentQuestion] = useState("Preparing your customized interview...");
   const [userTranscript, setUserTranscript] = useState("");
   const [isAiSpeaking, setIsAiSpeaking] = useState(false);
   
-   // Remove the hardcoded initialQuestion!
-  const [currentQuestion, setCurrentQuestion] = useState("Analyzing your resume and generating your first question...");
-  const [conversation, setConversation] = useState([]); // Start empty
+  const [conversation, setConversation] = useState([
+    { role: "ai", text: "Preparing your customized interview..." }
+  ]);
   
-  // NEW: State to store the real AI scores and feedback over the session
   const [sessionScores, setSessionScores] = useState([]);
   const [sessionFeedback, setSessionFeedback] = useState([]);
   
   const [eyeContact, setEyeContact] = useState(85);
   const [confidence, setConfidence] = useState(78);
   const [posture, setPosture] = useState("Good");
-  
-const location = useLocation();
 
-const interviewType = location.state?.interviewType || "Technical";
-const role = location.state?.role || "Software Engineer";
-const difficulty = location.state?.difficulty || "Medium";
+  const [timeLeft, setTimeLeft] = useState(900); // 15 Minutes
 
-  // 1. Initialize Webcam AND Fetch First Question
+  // 1. DYNAMIC START: Fetch a unique opening question from the AI
+  useEffect(() => {
+    const fetchInitialQuestion = async () => {
+      try {
+        const skills = localStorage.getItem("userSkills") || "General Skills";
+        const response = await axios.post("http://127.0.0.1:8000/api/interview/start", {
+          role_domain: setupData.role || "Software Engineer",
+          difficulty: setupData.difficulty || "Medium",
+          resume_skills: skills
+        });
+
+        if (response.data.error) {
+          const errorText = `⚠️ AI Error: ${response.data.error}`;
+          setCurrentQuestion(errorText);
+          setConversation([{ role: "ai", text: errorText }]);
+        } else {
+          setCurrentQuestion(response.data.question);
+          setConversation([{ role: "ai", text: response.data.question }]);
+        }
+      } catch (error) {
+        console.error("Start error:", error);
+        setConversation([{ role: "ai", text: "⚠️ Failed to connect to the backend. Is Python running?" }]);
+      } finally {
+        setIsAiThinking(false);
+      }
+    };
+    
+    fetchInitialQuestion();
+  }, [setupData.role, setupData.difficulty]);
+
+  // Timer Countdown
+  useEffect(() => {
+    const timerInterval = setInterval(() => {
+      setTimeLeft((prev) => {
+        if (prev <= 1) {
+          clearInterval(timerInterval);
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+    return () => clearInterval(timerInterval);
+  }, []);
+
+  const formatTime = (seconds) => {
+    const m = Math.floor(seconds / 60).toString().padStart(2, '0');
+    const s = (seconds % 60).toString().padStart(2, '0');
+    return `${m}:${s}`;
+  };
+
+  // Initialize Webcam
   useEffect(() => {
     let currentStream;
-
-    // Start Webcam
     const enableWebcam = async () => {
       try {
         const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
         currentStream = stream;
-        setMediaStream(stream);
+        setMediaStream(stream); 
         if (videoRef.current) videoRef.current.srcObject = stream;
       } catch (err) {
         console.error("Camera access denied:", err);
       }
     };
-
-    // Fetch Custom First Question
-       const fetchFirstQuestion = async () => {
-  try {
-    const response = await axios.post("http://127.0.0.1:8000/api/interview/start", {
-  role_domain: role,       // Changed from 'role' to match backend
-  resume_skills: interviewType, // Changed to match your backend model's expected field name
-  difficulty: difficulty
-});
-    // ... rest of the code
-        
-        const customQuestion = response.data.question;
-        setCurrentQuestion(customQuestion);
-        setConversation([{ role: "ai", text: customQuestion }]);
-      } catch (error) {
-        console.error("Failed to load first question", error);
-      }
-    };
-
-    // Execute both functions
     enableWebcam();
-    fetchFirstQuestion();
-
-    // Cleanup when the component unmounts
     return () => {
-      if (currentStream) currentStream.getTracks().forEach(track => track.stop());
+      if (currentStream) currentStream.getTracks().forEach((track) => track.stop());
       window.speechSynthesis.cancel();
       if (recognitionRef.current) recognitionRef.current.stop();
     };
-  }, []); // <-- This empty dependency array ensures it only runs once
-  
+  }, []);
+
   useEffect(() => {
     if (mediaStream) mediaStream.getVideoTracks().forEach(track => track.enabled = !isVideoOff);
   }, [isVideoOff, mediaStream]);
@@ -92,26 +118,9 @@ const difficulty = location.state?.difficulty || "Medium";
     if (mediaStream) mediaStream.getAudioTracks().forEach(track => track.enabled = !isMuted);
   }, [isMuted, mediaStream]);
 
-
-  // Web Speech API
-  useEffect(() => {
-    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-    if (SpeechRecognition) {
-      const recognition = new SpeechRecognition();
-      recognition.continuous = true;
-      recognition.interimResults = true;
-      recognition.onresult = (event) => {
-        let fullTranscript = Array.from(event.results).map(res => res[0].transcript).join("");
-        setUserTranscript(fullTranscript);
-      };
-      recognition.onend = () => setIsListening(false);
-      recognitionRef.current = recognition;
-    }
-  }, []);
-
   // AI Voice
   useEffect(() => {
-    if ('speechSynthesis' in window && currentQuestion) {
+    if ('speechSynthesis' in window && currentQuestion && !currentQuestion.includes("⚠️")) {
       window.speechSynthesis.cancel();
       const utterance = new SpeechSynthesisUtterance(currentQuestion);
       const voices = window.speechSynthesis.getVoices();
@@ -136,14 +145,28 @@ const difficulty = location.state?.difficulty || "Medium";
     return () => clearInterval(interval);
   }, []);
 
+  // Web Speech API Trigger
   const toggleListening = () => {
-    if (!recognitionRef.current) return alert("Browser not supported. Use Chrome.");
-    if (isListening) {
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!SpeechRecognition) return alert("Browser not supported. Please use Google Chrome.");
+
+    if (isListening && recognitionRef.current) {
       recognitionRef.current.stop();
       setIsListening(false);
     } else {
-      setUserTranscript("");
-      recognitionRef.current.start();
+      const recognition = new SpeechRecognition();
+      recognition.continuous = true;
+      recognition.interimResults = true;
+
+      recognition.onresult = (event) => {
+        let fullTranscript = Array.from(event.results).map(res => res[0].transcript).join("");
+        setUserTranscript(fullTranscript);
+      };
+
+      recognition.onend = () => setIsListening(false);
+      
+      recognitionRef.current = recognition;
+      recognition.start();
       setIsListening(true);
     }
   };
@@ -162,16 +185,21 @@ const difficulty = location.state?.difficulty || "Medium";
 
     try {
       const response = await axios.post("http://127.0.0.1:8000/api/interview/chat", {
-        role_domain: "Backend Engineering",
-        difficulty: "Medium",
+        role_domain: setupData.role || "Backend Engineering",
+        difficulty: setupData.difficulty || "Medium",
         current_question: currentQuestion,
         user_answer: answerToSend
       });
 
       const aiData = response.data;
       
+      // 2. UI ERROR VISIBILITY: Show the exact Python crash on screen if it fails
       if (aiData.error) {
-        console.error("Backend Error:", aiData.error);
+        setConversation(prev => [
+          ...prev, 
+          { role: "ai", text: `⚠️ Error processing answer: ${aiData.error}. Please try again.` }
+        ]);
+        setIsAiThinking(false);
         return;
       }
 
@@ -182,74 +210,80 @@ const difficulty = location.state?.difficulty || "Medium";
           { role: "ai", text: aiData.next_question }
         ]);
         
-        // NEW: Save the AI's score and feedback to our arrays
         setSessionScores(prev => [...prev, aiData.score]);
         setSessionFeedback(prev => [...prev, aiData.feedback]);
-        
         setCurrentQuestion(aiData.next_question);
       }
     } catch (error) {
-      console.error("Error:", error);
+      console.error("Error connecting to AI:", error);
+      setConversation(prev => [
+        ...prev, 
+        { role: "ai", text: "⚠️ Network Error: Could not reach the backend." }
+      ]);
     } finally {
       setIsAiThinking(false);
     }
   };
 
-  // 15 minutes in seconds (15 * 60 = 900)
-const [timeLeft, setTimeLeft] = useState(900);
-
-useEffect(() => {
-  if (timeLeft <= 0) {
-    handleEndInterview(); // Automatically end when timer reaches 00:00:00
-    return;
-  }
-
-  const timer = setInterval(() => {
-    setTimeLeft((prev) => prev - 1);
-  }, 1000);
-
-  return () => clearInterval(timer);
-}, [timeLeft]);
-
-// Helper to format seconds into HH:MM:SS
-const formatTime = (seconds) => {
-  const hrs = String(Math.floor(seconds / 3600)).padStart(2, '0');
-  const mins = String(Math.floor((seconds % 3600) / 60)).padStart(2, '0');
-  const secs = String(seconds % 60).padStart(2, '0');
-  return `${hrs}:${mins}:${secs}`;
-};
-  // NEW: Calculate averages and pass real data to the Summary page
-  const handleEndInterview = () => {
-    if (window.confirm("End the interview? Your analytics will be saved.")) {
+  const handleEndInterview = async (autoEnd = false) => {
+    if (autoEnd || window.confirm("End the interview? Your analytics will be saved.")) {
       window.speechSynthesis.cancel();
+      if (recognitionRef.current) recognitionRef.current.stop();
       
-      // Calculate average score (backend returns out of 10, multiply by 10 for percentage)
       const avgScore = sessionScores.length > 0 
         ? Math.round((sessionScores.reduce((a, b) => a + Number(b), 0) / sessionScores.length) * 10) 
         : 0;
+      
+      const finalEyeContact = Math.round(eyeContact);
+      const finalConfidence = Math.round(confidence);
 
-      // Navigate and pass the dynamic data through React state
+      try {
+        const userId = localStorage.getItem("smartHireUserId") || 1;
+        await axios.post("http://127.0.0.1:8000/api/interview/finish", {
+          user_id: parseInt(userId),
+          role_domain: setupData.role || "Software Engineer",
+          score: avgScore,
+          feedback_summary: sessionFeedback,
+          eye_contact: finalEyeContact,
+          confidence: finalConfidence,
+          posture: posture
+        });
+      } catch (error) {
+        console.error("Failed to save session to DB:", error);
+      }
+
       navigate("/summary", { 
         state: { 
           score: avgScore,
           feedbacks: sessionFeedback,
-          eyeContact: Math.round(eyeContact),
-          confidence: Math.round(confidence),
-          posture: posture
+          eyeContact: finalEyeContact,
+          confidence: finalConfidence,
+          posture: posture,
+          conversation: conversation 
         } 
       }); 
     }
   };
+
+  // Auto-end if timer hits zero
+  useEffect(() => {
+    if (timeLeft === 0) {
+      handleEndInterview(true);
+    }
+  }, [timeLeft]);
 
   return (
     <div style={styles.container}>
       <header style={styles.header}>
         <div style={styles.headerLeft}>
           <div style={styles.liveBadge}><span style={styles.pulseDot}></span> LIVE</div>
-         <h2 style={styles.title}>{role} - {interviewType} Round</h2>
+          <h2 style={styles.title}>{setupData.role || "Software Engineer"} - {setupData.interviewType || "Technical"} Round</h2>
         </div>
-        {/* With this: */}
-      <div style={styles.timer}>{formatTime(timeLeft)}</div>
+        
+        <div style={{...styles.timer, color: timeLeft <= 60 ? "#ef4444" : "#94a3b8"}}>
+          <Clock size={16} style={{marginRight: "6px"}} />
+          {formatTime(timeLeft)}
+        </div>
       </header>
 
       <main style={styles.mainArea}>
@@ -271,7 +305,7 @@ const formatTime = (seconds) => {
             <div style={styles.chatArea}>
               {conversation.map((msg, index) => (
                 <div key={index} style={msg.role === "ai" ? styles.chatRowAi : styles.chatRowUser}>
-                  <div style={msg.role === "ai" ? styles.chatBubbleAi : styles.chatBubbleUser}>
+                  <div style={msg.role === "ai" ? (msg.text.includes("⚠️") ? styles.chatBubbleError : styles.chatBubbleAi) : styles.chatBubbleUser}>
                     <p style={styles.chatText}>{msg.text}</p>
                   </div>
                 </div>
@@ -340,7 +374,7 @@ const formatTime = (seconds) => {
         <button onClick={() => setIsVideoOff(!isVideoOff)} style={{...styles.controlBtn, ...(isVideoOff ? styles.controlBtnOff : {})}}>
           {isVideoOff ? <VideoOff size={24} /> : <VideoIcon size={24} />}
         </button>
-        <button onClick={handleEndInterview} style={styles.endButton}>
+        <button onClick={() => handleEndInterview(false)} style={styles.endButton}>
           <Phone size={24} /> End Interview
         </button>
       </footer>
@@ -356,7 +390,6 @@ const formatTime = (seconds) => {
   );
 }
 
-// Ensure your styles object remains exactly the same as previously defined here at the bottom.
 const styles = {
   container: { display: "flex", flexDirection: "column", height: "100vh", backgroundColor: "#0f172a", color: "white", fontFamily: "'Inter', sans-serif" },
   header: { display: "flex", justifyContent: "space-between", alignItems: "center", padding: "12px 32px", backgroundColor: "#1e293b", borderBottom: "1px solid #334155" },
@@ -364,7 +397,7 @@ const styles = {
   liveBadge: { display: "flex", alignItems: "center", gap: "6px", backgroundColor: "rgba(239, 68, 68, 0.1)", color: "#ef4444", padding: "6px 12px", borderRadius: "20px", fontSize: "12px", fontWeight: "bold", border: "1px solid rgba(239, 68, 68, 0.2)" },
   pulseDot: { width: "8px", height: "8px", backgroundColor: "#ef4444", borderRadius: "50%", animation: "pulse 1.5s infinite" },
   title: { margin: 0, fontSize: "16px", fontWeight: "600" },
-  timer: { fontFamily: "monospace", fontSize: "18px", fontWeight: "bold", color: "#94a3b8" },
+  timer: { display: "flex", alignItems: "center", fontFamily: "monospace", fontSize: "18px", fontWeight: "bold" },
   
   mainArea: { flex: 1, display: "flex", gap: "24px", padding: "24px", overflow: "hidden" },
   column: { flex: 1, display: "flex", flexDirection: "column", gap: "24px" },
@@ -388,6 +421,7 @@ const styles = {
   chatRowUser: { display: "flex", justifyContent: "flex-end" },
   chatBubbleAi: { backgroundColor: "#334155", padding: "10px 14px", borderRadius: "12px", borderBottomLeftRadius: "4px", maxWidth: "85%" },
   chatBubbleUser: { backgroundColor: "#007BFF", padding: "10px 14px", borderRadius: "12px", borderBottomRightRadius: "4px", maxWidth: "85%" },
+  chatBubbleError: { backgroundColor: "#7f1d1d", padding: "10px 14px", borderRadius: "12px", borderBottomLeftRadius: "4px", maxWidth: "85%", border: "1px solid #ef4444" },
   chatText: { margin: 0, fontSize: "13px", lineHeight: "1.4", color: "#f8fafc" },
   
   inputArea: { display: "flex", gap: "8px", alignItems: "center", backgroundColor: "#0f172a", padding: "8px", borderRadius: "12px", border: "1px solid #334155" },

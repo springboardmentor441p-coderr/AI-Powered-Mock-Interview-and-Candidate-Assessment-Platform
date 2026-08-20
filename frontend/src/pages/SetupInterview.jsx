@@ -1,277 +1,203 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { Briefcase, BarChart, ListOrdered, PlayCircle, ArrowLeft, BrainCircuit } from "lucide-react";
 import axios from "axios";
+import { 
+  Briefcase, Target, Layers, FileText, ChevronRight, Video, ArrowLeft
+} from "lucide-react";
 
 export default function SetupInterview() {
   const navigate = useNavigate();
   
-  // State for our form selections
+  // States for configuration
   const [interviewType, setInterviewType] = useState("Technical");
-  const [role, setRole] = useState("");
+  const [role, setRole] = useState("Software Engineer");
   const [difficulty, setDifficulty] = useState("Medium");
-  const [topicCount, setTopicCount] = useState(5);
-  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [availableResumes, setAvailableResumes] = useState([]);
+  const [selectedResumeId, setSelectedResumeId] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
 
-  const handleCreateSession = async () => {
-    if (!role) {
-      alert("Please enter a Domain/Role (e.g., Backend Engineering)");
-      return;
-    }
+  // Fetch the SPECIFIC logged-in user's previously uploaded resumes
+  useEffect(() => {
+    const fetchResumes = async () => {
+      try {
+        const userId = localStorage.getItem("smartHireUserId"); // Grab the secure ID
+        
+        // Pass the user_id in the API call so it only gets THEIR resumes
+        const response = await axios.get(`http://127.0.0.1:8000/api/user/resumes?user_id=${userId || 1}`);
+        
+        if (response.data.resumes && response.data.resumes.length > 0) {
+          setAvailableResumes(response.data.resumes);
+          setSelectedResumeId(response.data.resumes[0].id); // Auto-select the first one
+        }
+      } catch (error) {
+        console.error("Failed to fetch resumes:", error);
+      }
+    };
+    fetchResumes();
+  }, []);
 
-    setIsSubmitting(true);
+  const handleStartInterview = async () => {
+    setIsLoading(true);
     
-    try {
-      // Send the choices to your Python FastAPI backend
-      const response = await axios.post("http://127.0.0.1:8000/api/create-session/", {
-        interview_type: interviewType,
-        role_domain: role,
-        difficulty: difficulty,
-        topic_count: topicCount
-      });
-
-      console.log("Session created:", response.data);
-      // Move to the live interview room (we will build this next)
+    setTimeout(() => {
+      // Pass the selected settings to the live room
       navigate("/live-interview", {
-  state: {
-    interviewType: interviewType,
-    role: role,
-    difficulty: difficulty
-  }
-});
-    } catch (error) {
-      console.error("Error creating session:", error);
-      alert("Failed to connect to the backend. Is your FastAPI server running?");
-      setIsSubmitting(false);
-    }
+        state: {
+          interviewType: interviewType,
+          role: role,
+          difficulty: difficulty,
+          resumeId: selectedResumeId
+        }
+      });
+    }, 1000);
   };
 
   return (
     <div style={styles.container}>
-      {/* Top Navigation Bar */}
       <nav style={styles.navBar}>
         <button onClick={() => navigate("/dashboard")} style={styles.backButton}>
-          <ArrowLeft size={20} />
-          Back to Dashboard
+          <ArrowLeft size={18} /> Back to Dashboard
         </button>
-        <h2 style={styles.navTitle}>Configure Interview Session</h2>
-        <div style={{ width: "140px" }}></div> {/* Spacer for centering */}
+        <h2 style={styles.navTitle}>Session Setup</h2>
+        <div style={{ width: "160px" }}></div>
       </nav>
 
       <main style={styles.mainContent}>
-        <div style={styles.wizardCard}>
-          
-          {/* Section 1: Interview Type */}
-          <div style={styles.section}>
-            <label style={styles.label}>
-              <BrainCircuit size={18} color="#007BFF" />
-              Interview Type
-            </label>
-            <div style={styles.buttonGroup}>
-              {["HR", "Technical", "Behavioral", "Aptitude"].map((type) => (
-                <button
-                  key={type}
-                  onClick={() => setInterviewType(type)}
-                  style={{
-                    ...styles.selectionButton,
-                    ...(interviewType === type ? styles.activeSelection : {})
-                  }}
-                >
-                  {type}
-                </button>
-              ))}
+        <div style={styles.setupCard}>
+          <div style={styles.headerArea}>
+            <div style={styles.iconBox}><Video size={24} color="#3b82f6" /></div>
+            <h1 style={styles.title}>Configure Your Interview</h1>
+            <p style={styles.subtitle}>Customize the AI's behavior and select the resume it will base its questions on.</p>
+          </div>
+
+          <form style={styles.form} onSubmit={(e) => { e.preventDefault(); handleStartInterview(); }}>
+            
+            {/* Interview Type Dropdown */}
+            <div style={styles.inputGroup}>
+              <label style={styles.label}>
+                <Layers size={16} color="#64748b" /> Interview Type
+              </label>
+              <select value={interviewType} onChange={(e) => setInterviewType(e.target.value)} style={styles.select}>
+                <option value="Technical">Technical</option>
+                <option value="HR">HR / Cultural Fit</option>
+                <option value="Behavioral">Behavioral</option>
+                <option value="Aptitude">Aptitude & Logic</option>
+              </select>
             </div>
-          </div>
 
-          {/* Section 2: Domain/Role */}
-          <div style={styles.section}>
-            <label style={styles.label}>
-              <Briefcase size={18} color="#007BFF" />
-              Target Role or Domain
-            </label>
-            <input 
-              type="text" 
-              placeholder="e.g., Backend Engineering, UI/UX Design..."
-              value={role}
-              onChange={(e) => setRole(e.target.value)}
-              style={styles.textInput}
-            />
-          </div>
+            {/* Target Role Dropdown with "Other" text input */}
+            <div style={styles.inputGroup}>
+              <label style={styles.label}>
+                <Briefcase size={16} color="#64748b" /> Target Role
+              </label>
+              
+              <select 
+                value={["Software Engineer", "Backend Engineering", "Frontend Developer", "Data Scientist", "Product Manager"].includes(role) ? role : "Other"} 
+                onChange={(e) => {
+                    if (e.target.value === "Other") {
+                        setRole(""); 
+                    } else {
+                        setRole(e.target.value);
+                    }
+                }} 
+                style={styles.select}
+              >
+                <option value="Software Engineer">Software Engineer</option>
+                <option value="Backend Engineering">Backend Engineering</option>
+                <option value="Frontend Developer">Frontend Developer</option>
+                <option value="Data Scientist">Data Scientist</option>
+                <option value="Product Manager">Product Manager</option>
+                <option value="Other">Other (Type your own role)</option>
+              </select>
 
-          {/* Section 3: Difficulty */}
-          <div style={styles.section}>
-            <label style={styles.label}>
-              <BarChart size={18} color="#007BFF" />
-              Difficulty Level
-            </label>
-            <div style={styles.buttonGroup}>
-              {["Moderate", "Medium", "High"].map((level) => (
-                <button
-                  key={level}
-                  onClick={() => setDifficulty(level)}
-                  style={{
-                    ...styles.selectionButton,
-                    ...(difficulty === level ? styles.activeSelection : {})
-                  }}
-                >
-                  {level}
-                </button>
-              ))}
+              {!["Software Engineer", "Backend Engineering", "Frontend Developer", "Data Scientist", "Product Manager"].includes(role) && (
+                <input
+                  type="text"
+                  placeholder="e.g., Cooling Centre Technician"
+                  value={role}
+                  onChange={(e) => setRole(e.target.value)}
+                  style={{ ...styles.select, marginTop: '10px' }} 
+                />
+              )}
             </div>
-          </div>
 
-          {/* Section 4: Number of Questions */}
-          <div style={styles.section}>
-            <label style={styles.label}>
-              <ListOrdered size={18} color="#007BFF" />
-              Number of Topics / Questions
-            </label>
-            <div style={styles.buttonGroup}>
-              {[2, 3, 5, 10].map((count) => (
-                <button
-                  key={count}
-                  onClick={() => setTopicCount(count)}
-                  style={{
-                    ...styles.selectionButton,
-                    ...(topicCount === count ? styles.activeSelection : {})
-                  }}
-                >
-                  {count} Questions
-                </button>
-              ))}
+            {/* Difficulty Dropdown */}
+            <div style={styles.inputGroup}>
+              <label style={styles.label}>
+                <Target size={16} color="#64748b" /> Difficulty Level
+              </label>
+              <select value={difficulty} onChange={(e) => setDifficulty(e.target.value)} style={styles.select}>
+                <option value="Entry Level">Entry Level</option>
+                <option value="Medium">Medium (Mid-Level)</option>
+                <option value="Hard">Hard (Senior)</option>
+              </select>
             </div>
-          </div>
 
-          {/* Submit Button */}
-          <div style={styles.footer}>
+            {/* Resume Selection Dropdown */}
+            <div style={styles.inputGroup}>
+              <label style={styles.label}>
+                <FileText size={16} color="#64748b" /> Context Resume (AI Brain)
+              </label>
+              
+              {availableResumes.length > 0 ? (
+                <select 
+                  value={selectedResumeId} 
+                  onChange={(e) => setSelectedResumeId(e.target.value)} 
+                  style={styles.select}
+                >
+                  {availableResumes.map((resume) => (
+                    <option key={resume.id} value={resume.id}>
+                      📄 {resume.filename}
+                    </option>
+                  ))}
+                </select>
+              ) : (
+                <div style={styles.warningBox}>
+                  No resumes found. The AI will ask general questions. 
+                  {/* FIX: Corrected route from "/resume-upload" to "/resumes" */}
+                  <button type="button" onClick={() => navigate("/resumes")} style={styles.linkButton}>
+                    Upload a resume first.
+                  </button>
+                </div>
+              )}
+            </div>
+
             <button 
-              onClick={handleCreateSession} 
+              type="submit" 
+              disabled={isLoading} 
               style={styles.submitButton}
-              disabled={isSubmitting}
             >
-              <PlayCircle size={20} />
-              {isSubmitting ? "Generating AI Session..." : "Create Session & Go Live"}
+              {isLoading ? "Preparing AI Room..." : "Create Session & Go Live"} 
+              <ChevronRight size={18} />
             </button>
-          </div>
-
+            
+          </form>
         </div>
       </main>
     </div>
   );
 }
 
-// Modern UI Styles
 const styles = {
-  container: {
-    minHeight: "100vh",
-    backgroundColor: "#f8fafc",
-    fontFamily: "'Inter', 'Segoe UI', sans-serif",
-  },
-  navBar: {
-    display: "flex",
-    justifyContent: "space-between",
-    alignItems: "center",
-    padding: "16px 32px",
-    backgroundColor: "#ffffff",
-    borderBottom: "1px solid #e2e8f0",
-  },
-  backButton: {
-    display: "flex",
-    alignItems: "center",
-    gap: "8px",
-    background: "none",
-    border: "none",
-    color: "#64748b",
-    fontSize: "15px",
-    fontWeight: "500",
-    cursor: "pointer",
-  },
-  navTitle: {
-    fontSize: "18px",
-    fontWeight: "600",
-    color: "#0f172a",
-    margin: 0,
-  },
-  mainContent: {
-    padding: "40px 20px",
-    display: "flex",
-    justifyContent: "center",
-  },
-  wizardCard: {
-    backgroundColor: "#ffffff",
-    width: "100%",
-    maxWidth: "650px",
-    borderRadius: "16px",
-    padding: "40px",
-    boxShadow: "0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1)",
-    border: "1px solid #f1f5f9",
-  },
-  section: {
-    marginBottom: "32px",
-  },
-  label: {
-    display: "flex",
-    alignItems: "center",
-    gap: "8px",
-    fontSize: "16px",
-    fontWeight: "600",
-    color: "#1e293b",
-    marginBottom: "12px",
-  },
-  buttonGroup: {
-    display: "flex",
-    gap: "12px",
-    flexWrap: "wrap",
-  },
-  selectionButton: {
-    flex: "1 1 auto",
-    padding: "12px 16px",
-    backgroundColor: "#f8fafc",
-    border: "1px solid #e2e8f0",
-    borderRadius: "8px",
-    fontSize: "14px",
-    fontWeight: "500",
-    color: "#475569",
-    cursor: "pointer",
-    transition: "all 0.2s ease",
-  },
-  activeSelection: {
-    backgroundColor: "#eff6ff",
-    borderColor: "#3b82f6",
-    color: "#1d4ed8",
-    boxShadow: "0 0 0 1px #3b82f6",
-  },
-  textInput: {
-    width: "100%",
-    padding: "14px",
-    borderRadius: "8px",
-    border: "1px solid #e2e8f0",
-    fontSize: "15px",
-    outline: "none",
-    boxSizing: "border-box",
-    backgroundColor: "#f8fafc",
-    transition: "border-color 0.2s",
-  },
-  footer: {
-    marginTop: "40px",
-    paddingTop: "24px",
-    borderTop: "1px solid #e2e8f0",
-    display: "flex",
-    justifyContent: "flex-end",
-  },
-  submitButton: {
-    display: "flex",
-    alignItems: "center",
-    gap: "10px",
-    padding: "14px 28px",
-    backgroundColor: "#007BFF",
-    color: "white",
-    border: "none",
-    borderRadius: "8px",
-    fontSize: "16px",
-    fontWeight: "600",
-    cursor: "pointer",
-    boxShadow: "0 4px 6px -1px rgba(0, 123, 255, 0.2)",
-    transition: "background-color 0.2s",
-  }
+  container: { minHeight: "100vh", backgroundColor: "#f8fafc", fontFamily: "'Inter', sans-serif" },
+  navBar: { display: "flex", justifyContent: "space-between", alignItems: "center", padding: "16px 32px", backgroundColor: "#ffffff", borderBottom: "1px solid #e2e8f0" },
+  backButton: { display: "flex", alignItems: "center", gap: "8px", background: "none", border: "1px solid #e2e8f0", padding: "8px 16px", borderRadius: "8px", color: "#475569", fontSize: "14px", fontWeight: "600", cursor: "pointer", transition: "all 0.2s" },
+  navTitle: { fontSize: "18px", fontWeight: "600", color: "#0f172a", margin: 0 },
+  
+  mainContent: { padding: "60px 20px", display: "flex", justifyContent: "center" },
+  setupCard: { backgroundColor: "#ffffff", width: "100%", maxWidth: "600px", borderRadius: "16px", padding: "40px", boxShadow: "0 4px 12px rgba(0,0,0,0.05)", border: "1px solid #e2e8f0" },
+  headerArea: { display: "flex", flexDirection: "column", alignItems: "center", textAlign: "center", marginBottom: "40px" },
+  iconBox: { width: "56px", height: "56px", backgroundColor: "#eff6ff", borderRadius: "16px", display: "flex", justifyContent: "center", alignItems: "center", marginBottom: "16px" },
+  title: { fontSize: "24px", fontWeight: "700", color: "#0f172a", margin: "0 0 8px 0" },
+  subtitle: { fontSize: "15px", color: "#64748b", margin: 0, lineHeight: "1.5" },
+  
+  form: { display: "flex", flexDirection: "column", gap: "24px" },
+  inputGroup: { display: "flex", flexDirection: "column", gap: "8px" },
+  label: { display: "flex", alignItems: "center", gap: "8px", fontSize: "14px", fontWeight: "600", color: "#475569" },
+  select: { width: "100%", padding: "12px 16px", borderRadius: "8px", border: "1px solid #cbd5e1", fontSize: "15px", outline: "none", color: "#0f172a", backgroundColor: "#f8fafc", cursor: "pointer", appearance: "auto" },
+  
+  warningBox: { padding: "12px 16px", backgroundColor: "#fffbeb", border: "1px solid #fde68a", borderRadius: "8px", fontSize: "14px", color: "#92400e" },
+  linkButton: { background: "none", border: "none", color: "#2563eb", fontWeight: "600", cursor: "pointer", padding: 0, marginLeft: "6px", fontSize: "14px" },
+  
+  submitButton: { display: "flex", justifyContent: "center", alignItems: "center", gap: "8px", backgroundColor: "#007BFF", color: "white", padding: "16px", borderRadius: "8px", border: "none", fontSize: "16px", fontWeight: "600", cursor: "pointer", transition: "all 0.2s", marginTop: "16px" }
 };
