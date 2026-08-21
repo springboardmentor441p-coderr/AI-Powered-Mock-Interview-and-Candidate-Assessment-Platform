@@ -78,3 +78,58 @@ def login(login_data: UserLogin, db: Session = Depends(get_db)):
         "token_type": "bearer",
         "user": user_dict
     }
+
+
+GOOGLE_CLIENT_ID = "435399712429-9aqp9sn322e1iivqac2ke58pi2tgbin5.apps.googleusercontent.com"
+
+from pydantic import BaseModel
+
+class GoogleTokenSchema(BaseModel):
+    token: str
+
+@router.post("/google", response_model=Token)
+def google_login(payload: GoogleTokenSchema, db: Session = Depends(get_db)):
+    try:
+        from google.oauth2 import id_token
+        from google.auth.transport import requests
+        id_info = id_token.verify_oauth2_token(
+            payload.token,
+            requests.Request(),
+            GOOGLE_CLIENT_ID
+        )
+        email = id_info.get("email")
+        full_name = id_info.get("name", "Google User")
+        picture = id_info.get("picture", "")
+
+        if not email:
+            raise HTTPException(status_code=400, detail="Invalid Google Profile")
+
+        user = db.query(User).filter(User.email == email).first()
+        if not user:
+            user = User(
+                email=email,
+                full_name=full_name,
+                hashed_password=get_password_hash("google_oauth_user_secret"),
+                target_role="Senior Software Engineer",
+                experience_level="Mid-Level"
+            )
+            db.add(user)
+            db.commit()
+            db.refresh(user)
+
+        user_dict = {
+            "id": user.id,
+            "email": user.email,
+            "full_name": user.full_name,
+            "target_role": user.target_role,
+            "experience_level": user.experience_level,
+            "avatar": picture
+        }
+        return {
+            "access_token": f"smarthire_jwt_token_google_{user.id}",
+            "token_type": "bearer",
+            "user": user_dict
+        }
+    except Exception as e:
+        print("Google OAuth verification error:", e)
+        raise HTTPException(status_code=400, detail="Google authentication failed")

@@ -1,5 +1,6 @@
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { GoogleOAuthProvider } from '@react-oauth/google';
 import { AppProvider } from './context/AppContext';
 import { Sidebar } from './components/Sidebar';
 import { Footer } from './components/Footer';
@@ -19,6 +20,8 @@ import { InterviewHistory } from './pages/InterviewHistory';
 import { PerformanceDashboard } from './pages/PerformanceDashboard';
 import { Profile } from './pages/Profile';
 import { Settings } from './pages/Settings';
+
+const GOOGLE_CLIENT_ID = "435399712429-9aqp9sn322e1iivqac2ke58pi2tgbin5.apps.googleusercontent.com";
 
 class ErrorBoundary extends React.Component {
   constructor(props) {
@@ -63,36 +66,38 @@ class ErrorBoundary extends React.Component {
 export default function App() {
   return (
     <ErrorBoundary>
-      <AppProvider>
-        <Router>
-          <div className="min-h-screen flex flex-row bg-[#0B0F19] text-white selection:bg-cyan-500 selection:text-black">
-            <Sidebar />
-            <div className="flex-1 min-w-0 flex flex-col min-h-screen">
-              <main className="flex-1">
-                <Routes>
-                  <Route path="/" element={<Dashboard />} />
-                  <Route path="/landing" element={<LandingPage />} />
-                  <Route path="/login" element={<LoginPage />} />
-                  <Route path="/signup" element={<SignupPage />} />
-                  <Route path="/dashboard" element={<Dashboard />} />
-                  <Route path="/create-interview" element={<CreateInterview />} />
-                  <Route path="/assessment" element={<Assessment />} />
-                  <Route path="/assessment-result" element={<AssessmentResult />} />
-                  <Route path="/interview-setup" element={<InterviewSetup />} />
-                  <Route path="/interview-room" element={<InterviewRoom />} />
-                  <Route path="/interview-result" element={<InterviewResult />} />
-                  <Route path="/interview-history" element={<InterviewHistory />} />
-                  <Route path="/performance" element={<PerformanceDashboard />} />
-                  <Route path="/profile" element={<Profile />} />
-                  <Route path="/settings" element={<Settings />} />
-                  <Route path="*" element={<Navigate to="/" replace />} />
-                </Routes>
-              </main>
-              <Footer />
+      <GoogleOAuthProvider clientId={GOOGLE_CLIENT_ID}>
+        <AppProvider>
+          <Router>
+            <div className="min-h-screen flex flex-row bg-[#0B0F19] text-white selection:bg-cyan-500 selection:text-black">
+              <Sidebar />
+              <div className="flex-1 min-w-0 flex flex-col min-h-screen">
+                <main className="flex-1">
+                  <Routes>
+                    <Route path="/" element={<Dashboard />} />
+                    <Route path="/landing" element={<LandingPage />} />
+                    <Route path="/login" element={<LoginPage />} />
+                    <Route path="/signup" element={<SignupPage />} />
+                    <Route path="/dashboard" element={<Dashboard />} />
+                    <Route path="/create-interview" element={<CreateInterview />} />
+                    <Route path="/assessment" element={<Assessment />} />
+                    <Route path="/assessment-result" element={<AssessmentResult />} />
+                    <Route path="/interview-setup" element={<InterviewSetup />} />
+                    <Route path="/interview-room" element={<InterviewRoom />} />
+                    <Route path="/interview-result" element={<InterviewResult />} />
+                    <Route path="/interview-history" element={<InterviewHistory />} />
+                    <Route path="/performance" element={<PerformanceDashboard />} />
+                    <Route path="/profile" element={<Profile />} />
+                    <Route path="/settings" element={<Settings />} />
+                    <Route path="*" element={<Navigate to="/" replace />} />
+                  </Routes>
+                </main>
+                <Footer />
+              </div>
             </div>
-          </div>
-        </Router>
-      </AppProvider>
+          </Router>
+        </AppProvider>
+      </GoogleOAuthProvider>
     </ErrorBoundary>
   );
 }
