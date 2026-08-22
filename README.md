@@ -24,7 +24,6 @@
 - [Installation & Setup](#-installation--setup)
 - [Environment Variables](#-environment-variables)
 - [Usage Guide](#-usage-guide)
-- [Screenshots & Demo](#-screenshots--demo)
 - [Practical Use Cases](#-practical-use-cases)
 - [Future Enhancements](#-future-enhancements)
 - [Contributing](#-contributing)
@@ -260,19 +259,7 @@ npm run build:backend
 
 ---
 
-## 🖼️ Screenshots & Demo
 
-| Candidate Dashboard | AI Voice Studio |
-| :---: | :---: |
-| ![Candidate Dashboard Placeholder](https://via.placeholder.com/600x350/0f172a/ffffff?text=InterVio+AI+Dashboard+UI) | ![Voice Studio Placeholder](https://via.placeholder.com/600x350/0f172a/ffffff?text=AI+Voice+Studio+Interface) |
-
-| AI Resume Analysis | Evaluation Analytics Report |
-| :---: | :---: |
-| ![Resume Analysis Placeholder](https://via.placeholder.com/600x350/0f172a/ffffff?text=AI+Resume+Parser+Screen) | ![Analytics Report Placeholder](https://via.placeholder.com/600x350/0f172a/ffffff?text=Evaluation+Report+%26+Charts) |
-
-> *(Note: Replace placeholder images with actual application screenshots in `docs/images/`)*
-
----
 
 ## 🎯 Practical Use Cases
 
