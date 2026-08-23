@@ -377,8 +377,8 @@ export const InterviewRoom = () => {
 
   // Natural Speech Synthesis Voice Engine (Echo Filter Guarded)
   const speakAIText = (text, onEndCallback = null) => {
-    if (ultravoxMode || !ultravoxFailed) {
-      // Ultravox WebRTC is active or initializing — suppress browser SpeechSynthesis to prevent 2 AI voices speaking simultaneously!
+    if (ultravoxMode) {
+      // Ultravox WebRTC is active — suppress browser SpeechSynthesis to prevent 2 AI voices speaking simultaneously!
       if ('speechSynthesis' in window) window.speechSynthesis.cancel();
       setLiveSubtitles(`[AI Interviewer]: "${text}"`);
       if (onEndCallback) setTimeout(onEndCallback, 100);
@@ -401,7 +401,7 @@ export const InterviewRoom = () => {
       setLiveSubtitles(`[AI Interviewer]: "${text}"`);
 
       const utterance = new SpeechSynthesisUtterance(text);
-      utterance.rate = 0.75;
+      utterance.rate = 0.85; // Natural realistic speaking speed
       utterance.pitch = 1.05;
 
       const voices = window.speechSynthesis.getVoices();
@@ -429,7 +429,7 @@ export const InterviewRoom = () => {
           if (recognitionRef.current && isMicOn && !speakingRef.current) {
             try { recognitionRef.current.start(); } catch (e) { }
           }
-        }, 300);
+        }, 200);
         if (onEndCallback) onEndCallback();
       };
 
@@ -442,10 +442,10 @@ export const InterviewRoom = () => {
       };
 
       window.speechSynthesis.speak(utterance);
-    }, 60);
+    }, 30);
   };
 
-  // 0. ULTRAVOX SESSION INIT — fires once on mount, replaces Web Speech API TTS+STT
+  // 0. ULTRAVOX SESSION INIT — fires once on mount
   useEffect(() => {
     if ('speechSynthesis' in window) window.speechSynthesis.cancel();
 
@@ -463,9 +463,9 @@ export const InterviewRoom = () => {
 
     const connectionTimer = setTimeout(() => {
       if (!ultravoxMode) {
-        console.warn('[Ultravox] Connection timer threshold reached. Ensuring speech engine active...');
+        setUltravoxFailed(true);
       }
-    }, 4500);
+    }, 1500);
 
     return () => {
       clearTimeout(connectionTimer);
@@ -475,9 +475,9 @@ export const InterviewRoom = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // 1. INITIAL WELCOME & SELF-INTRODUCTION ON ROOM ENTRY (Web Speech API fallback only)
+  // 1. INITIAL WELCOME & SELF-INTRODUCTION ON ROOM ENTRY
   useEffect(() => {
-    if (ultravoxMode || !ultravoxFailed) return; // Ultravox is primary — suppress browser speech synthesis unless Ultravox explicitly failed!
+    if (ultravoxMode) return;
     if (!isWelcomePhase) return;
     if (welcomeSpokenRef.current) return;
     welcomeSpokenRef.current = true;
@@ -488,11 +488,11 @@ export const InterviewRoom = () => {
     return () => {
       if ('speechSynthesis' in window) window.speechSynthesis.cancel();
     };
-  }, [isWelcomePhase, ultravoxMode, ultravoxFailed]);
+  }, [isWelcomePhase, ultravoxMode]);
 
-  // 2. QUESTION SPEECH SYNTHESIS (Web Speech API fallback only — Ultravox handles this natively)
+  // 2. QUESTION SPEECH SYNTHESIS — speaks questions instantly
   useEffect(() => {
-    if (ultravoxMode || !ultravoxFailed) return; // Ultravox is primary — suppress browser speech synthesis unless Ultravox explicitly failed!
+    if (ultravoxMode) return;
     if (isWelcomePhase) return;
     if (lastSpokenQIndexRef.current === qIndex) return;
     lastSpokenQIndexRef.current = qIndex;
@@ -507,7 +507,7 @@ export const InterviewRoom = () => {
     return () => {
       if ('speechSynthesis' in window) window.speechSynthesis.cancel();
     };
-  }, [qIndex, isWelcomePhase, ultravoxMode, ultravoxFailed]);
+  }, [qIndex, isWelcomePhase, ultravoxMode]);
 
   const speakCurrentQuestion = (indexToSpeak = qIndex) => {
     const targetQ = questions[indexToSpeak];
