@@ -10,18 +10,22 @@ export const InterviewResult = () => {
   const userData = user || {};
   const [activeTab, setActiveTab] = useState('report'); // 'report' or 'pdf'
 
-  const overallScoreNum = report.overallScore ? Number(report.overallScore).toFixed(1) : (report.overallScorePct ? (report.overallScorePct / 10).toFixed(1) : '8.2');
-  const overallScorePct = report.overallScorePct || Math.round(Number(overallScoreNum) * 10);
-  const performanceLevel = report.performanceLevel || 'Strong Performance';
+  const isDisqualified = !!(report.isDisqualified || report.isTerminated || (report.performanceLevel && report.performanceLevel.toLowerCase().includes('disqualified')) || (report.overallScorePct === 0));
 
-  const categoryScores = report.categoryScores || {
-    technical_skills: report.scores?.technical || 8.2,
-    problem_solving: report.scores?.problem_solving || 8.0,
-    communication: report.scores?.communication || 7.8,
-    behavioral: report.scores?.behavioral || 8.4,
-    resume_knowledge: report.scores?.resume_knowledge || 8.5,
-    jd_capabilities: report.scores?.jd_capability || 8.1
-  };
+  const overallScoreNum = isDisqualified ? '0.0' : (report.overallScore ? Number(report.overallScore).toFixed(1) : (report.overallScorePct ? (report.overallScorePct / 10).toFixed(1) : '8.2'));
+  const overallScorePct = isDisqualified ? 0 : (report.overallScorePct !== undefined ? report.overallScorePct : Math.round(Number(overallScoreNum) * 10));
+  const performanceLevel = isDisqualified ? 'DISQUALIFIED / TERMINATED EARLY' : (report.performanceLevel || 'Strong Performance');
+
+  const categoryScores = isDisqualified
+    ? { technical_skills: 0, problem_solving: 0, communication: 0, behavioral: 0, resume_knowledge: 0, jd_capabilities: 0 }
+    : (report.categoryScores || {
+        technical_skills: report.scores?.technical || 8.2,
+        problem_solving: report.scores?.problem_solving || 8.0,
+        communication: report.scores?.communication || 7.8,
+        behavioral: report.scores?.behavioral || 8.4,
+        resume_knowledge: report.scores?.resume_knowledge || 8.5,
+        jd_capabilities: report.scores?.jd_capability || 8.1
+      });
 
   const skillsDemonstrated = Array.isArray(report.skillsDemonstrated) ? report.skillsDemonstrated : ['Python', 'React', 'FastAPI', 'REST API', 'JWT', 'Problem Solving'];
   const needsImprovement = Array.isArray(report.needsImprovement) ? report.needsImprovement : ['Advanced SQL', 'System Design', 'Communication structure'];
@@ -194,25 +198,29 @@ export const InterviewResult = () => {
             </div>
 
             {/* Overall Score Badge */}
-            <div className="flex items-center gap-6 bg-slate-900/90 px-6 py-4 rounded-2xl border border-slate-800 text-center shadow-lg">
+            <div className={`flex items-center gap-6 px-6 py-4 rounded-2xl border text-center shadow-lg ${
+              isDisqualified ? 'bg-red-950/80 border-red-500/60' : 'bg-slate-900/90 border-slate-800'
+            }`}>
               <div>
                 <span className="text-[10px] text-slate-400 font-mono uppercase block">Overall Assessment</span>
-                <div className="text-3xl font-black text-emerald-400 font-mono mt-0.5">
+                <div className={`text-3xl font-black font-mono mt-0.5 ${isDisqualified ? 'text-red-400' : 'text-emerald-400'}`}>
                   {overallScoreNum} <span className="text-lg text-slate-500">/ 10</span>
                 </div>
-                <span className="text-xs font-bold text-emerald-300 block mt-0.5 px-2.5 py-0.5 rounded bg-emerald-950 border border-emerald-500/30">
+                <span className={`text-xs font-bold block mt-0.5 px-2.5 py-0.5 rounded border ${
+                  isDisqualified ? 'text-red-300 bg-red-950 border-red-500/50 font-mono' : 'text-emerald-300 bg-emerald-950 border-emerald-500/30'
+                }`}>
                   {performanceLevel} ({overallScorePct}%)
                 </span>
               </div>
             </div>
           </div>
           {/* Terminated Notice Banner if applicable */}
-          {report.isTerminated && (
-            <div className="p-4 rounded-2xl bg-red-950/90 border border-red-500/50 text-red-200 flex items-center gap-3 font-mono text-xs shadow-xl animate-fade-in">
+          {(isDisqualified || report.isTerminated) && (
+            <div className="p-4 rounded-2xl bg-red-950/90 border-2 border-red-500/70 text-red-200 flex items-center gap-3 font-mono text-xs shadow-2xl animate-fade-in">
               <AlertTriangle className="w-6 h-6 text-red-400 shrink-0 animate-bounce" />
               <div>
                 <strong className="block text-red-100 font-bold text-sm">INTERVIEW SESSION DISQUALIFIED & TERMINATED EARLY</strong>
-                <span>Reason: {report.terminationReason || "Candidate exited full screen or violated proctoring rules."}</span>
+                <span>Proctoring Security Violation: {report.terminationReason || "Candidate exited full screen mode, switched browser tabs, or left the room."} (Zero Score Awarded).</span>
               </div>
             </div>
           )}

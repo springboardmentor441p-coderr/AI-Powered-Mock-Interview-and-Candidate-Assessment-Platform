@@ -848,7 +848,7 @@ export const InterviewRoom = () => {
         const nextAns = { ...prev, [qIndex]: rawText };
         try {
           localStorage.setItem('smarthire_session_qa', JSON.stringify({ questions, candidateAnswers: nextAns }));
-        } catch (e) {}
+        } catch (e) { }
         return nextAns;
       });
     }
@@ -1138,7 +1138,7 @@ export const InterviewRoom = () => {
               if (uploadData && uploadData.video_recording_url) {
                 try {
                   localStorage.setItem('smarthire_video_url', uploadData.video_recording_url);
-                } catch (e) {}
+                } catch (e) { }
               }
             } else {
               console.error("Webcam recording upload failed:", await uploadResp.text());
@@ -1160,33 +1160,53 @@ export const InterviewRoom = () => {
 
   const handleTerminateInterview = async (reason) => {
     if ('speechSynthesis' in window) window.speechSynthesis.cancel();
+    uvEndSession();
 
     const selectedRole = candidate?.targetRole || jdData?.title || resumeData?.targetRole || 'Software Engineer';
     const terminatedReport = {
       id: `report-${Date.now()}`,
-      candidateName: candidate?.name || 'Candidate',
+      candidateName: candidate?.name || resumeData?.name || user?.name || 'Candidate',
       targetRole: selectedRole,
       company: 'Target Enterprise',
+      overallScore: 0.0,
       overallScorePct: 0,
-      performanceLevel: 'Disqualified / Terminated',
-      technicalSkills: { Python: '0/10', React: '0/10', SQL: '0/10' },
-      behavioralSkills: { Leadership: '0/10', Communication: '0/10', Confidence: '0/10' },
+      performanceLevel: 'DISQUALIFIED',
+      isDisqualified: true,
+      isTerminated: true,
+      terminationReason: reason,
+      summary: `INTERVIEW SESSION DISQUALIFIED & TERMINATED EARLY: Candidate committed a proctoring security violation (${reason}). Zero score awarded.`,
+      categoryScores: {
+        technical_skills: 0,
+        problem_solving: 0,
+        communication: 0,
+        behavioral: 0,
+        resume_knowledge: 0,
+        jd_capabilities: 0
+      },
+      technicalSkillsAssessment: { 'Technical Skills': '0/10', 'System Architecture': '0/10', 'Security Compliance': '0/10' },
+      skillsDemonstrated: [],
+      needsImprovement: ['Proctoring & Security Compliance'],
       resumeValidation: [],
-      jdCoverage: [],
-      strengths: ['None - Interview Terminated due to Security Compliance Violation'],
+      jdCapabilities: [],
+      behavioralSkills: { Compliance: '0/10' },
+      strengths: ['None - Disqualified for Proctoring Security Violation'],
       areasForImprovement: [reason],
       questionPerformance: [],
       aiRecommendations: [
-        'Ensure a private room with no third-party presence',
-        'Maintain continuous eye contact with the camera',
-        'Do not turn your head or look away from the screen during proctored sessions'
+        'Do not exit full-screen mode or switch browser tabs during proctored assessments.',
+        'Maintain continuous camera presence and center face in frame.'
       ],
-      terminationReason: reason,
-      isTerminated: true
+      interviewIntegrity: {
+        face_presence_pct: 0,
+        single_face_pct: 0,
+        face_missing_events: 2,
+        looking_away_events: 2,
+        multiple_faces: 0
+      }
     };
 
     setFinalReport(terminatedReport);
-    addCompletedInterview(selectedRole, 'Target Enterprise', 0);
+    addCompletedInterview(terminatedReport.id, selectedRole, 'Target Enterprise', 0);
     await saveInterviewDetailsToBackend(true, reason);
     if (document.fullscreenElement || document.webkitFullscreenElement) {
       if (document.exitFullscreen) document.exitFullscreen().catch(() => { });
@@ -1260,17 +1280,17 @@ export const InterviewRoom = () => {
             questionPerformance: (detail.question_performance && detail.question_performance.length > 0)
               ? detail.question_performance
               : questions.map((q, idx) => {
-                  const ansText = candidateAnswers[idx] || 'No response recorded.';
-                  return {
-                    q_num: idx + 1,
-                    topic: q.topic || 'General Concept',
-                    question_text: q.questionText || q.question_text || '',
-                    question_type: q.category || q.question_type || 'Technical',
-                    candidate_answer: ansText,
-                    score: ansText !== 'No response recorded.' ? '8.5/10' : '0/10',
-                    feedback: ansText !== 'No response recorded.' ? 'Response matches core concepts.' : 'Candidate did not respond.'
-                  };
-                }),
+                const ansText = candidateAnswers[idx] || 'No response recorded.';
+                return {
+                  q_num: idx + 1,
+                  topic: q.topic || 'General Concept',
+                  question_text: q.questionText || q.question_text || '',
+                  question_type: q.category || q.question_type || 'Technical',
+                  candidate_answer: ansText,
+                  score: ansText !== 'No response recorded.' ? '8.5/10' : '0/10',
+                  feedback: ansText !== 'No response recorded.' ? 'Response matches core concepts.' : 'Candidate did not respond.'
+                };
+              }),
             aiRecommendations: detail.ai_recommendations || detail.recommendations || ['Review SQL JOIN types and indexing strategies.'],
             interviewIntegrity: detail.interview_integrity || {
               face_presence_pct: 98,
@@ -1426,24 +1446,6 @@ export const InterviewRoom = () => {
         </div>
       </div>
 
-      {/* 1.5 RECOMMENDED INTERVIEW FLOW STATE CONTROLLER BAR */}
-      <div className="glass-card rounded-xl p-2.5 border border-slate-800 bg-slate-950/90 flex flex-wrap items-center justify-between gap-2 font-mono text-xs shadow-md">
-        <div className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg font-bold transition-all ${interviewState === INTERVIEW_STATES.SPEAKING ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/40 shadow-sm shadow-cyan-500/20' : 'text-slate-500 opacity-60'}`}>
-          <span>🔊 1. SPEAKING</span>
-        </div>
-        <span className="text-slate-700 hidden sm:inline">➔</span>
-        <div className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg font-bold transition-all ${interviewState === INTERVIEW_STATES.LISTENING ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 shadow-sm shadow-emerald-500/20' : 'text-slate-500 opacity-60'}`}>
-          <span>🎤 2. LISTENING</span>
-        </div>
-        <span className="text-slate-700 hidden sm:inline">➔</span>
-        <div className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg font-bold transition-all ${interviewState === INTERVIEW_STATES.ANALYZING ? 'bg-purple-500/20 text-purple-300 border border-purple-500/40 shadow-sm shadow-purple-500/20' : 'text-slate-500 opacity-60'}`}>
-          <span>🤖 3. ANALYZING</span>
-        </div>
-        <span className="text-slate-700 hidden sm:inline">➔</span>
-        <div className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg font-bold transition-all ${interviewState === INTERVIEW_STATES.GENERATING ? 'bg-amber-500/20 text-amber-300 border border-amber-500/40 shadow-sm shadow-amber-500/20' : 'text-slate-500 opacity-60'}`}>
-          <span>🤖 4. GENERATING</span>
-        </div>
-      </div>
 
       {/* 2. DUAL-PANE SIDE-BY-SIDE VIDEO CALL STAGE */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 items-stretch min-h-[520px]">
