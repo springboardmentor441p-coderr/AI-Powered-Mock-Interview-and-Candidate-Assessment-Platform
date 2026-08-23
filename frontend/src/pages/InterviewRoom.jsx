@@ -627,20 +627,37 @@ export const InterviewRoom = () => {
     }
   };
 
-  // 1. INITIAL WELCOME & SELF-INTRODUCTION ON ROOM ENTRY (Guaranteed Female Voice & No Echo Loop)
+  // 1. AUTOMATIC INSTANT WELCOME & SELF-INTRODUCTION ON ROOM ENTRY
   useEffect(() => {
     if (!isWelcomePhase) return;
     if (welcomeSpokenRef.current) return;
-    welcomeSpokenRef.current = true; // Lock immediately on mount to prevent double execution!
+    welcomeSpokenRef.current = true;
 
-    const welcomeTimer = setTimeout(() => {
+    const welcomeIntro = "Welcome to Smart AI Interview! I am Advika, your Virtual Presenter, and I will be conducting your technical assessment today. Shall we start the interview?";
+
+    const triggerAutomaticSpeech = () => {
       resolveFemaleVoice();
-      const welcomeIntro = "Welcome to Smart AI Interview! I am Advika, your Virtual Presenter, and I will be conducting your technical assessment today. Shall we start the interview?";
+      if ('speechSynthesis' in window) {
+        try {
+          window.speechSynthesis.cancel();
+          window.speechSynthesis.resume();
+        } catch (e) {}
+      }
       speakAIText(welcomeIntro);
+    };
+
+    // Fire immediately on room entry
+    const timer1 = setTimeout(triggerAutomaticSpeech, 50);
+    // Instant fallback check at 350ms if audio paused
+    const timer2 = setTimeout(() => {
+      if ('speechSynthesis' in window && !window.speechSynthesis.speaking) {
+        triggerAutomaticSpeech();
+      }
     }, 350);
 
     return () => {
-      clearTimeout(welcomeTimer);
+      clearTimeout(timer1);
+      clearTimeout(timer2);
     };
   }, [isWelcomePhase]);
 
