@@ -1561,15 +1561,6 @@ export const InterviewRoom = () => {
             <strong className="text-sm font-bold text-cyan-300">{formatTime(timerSeconds)}</strong>
           </div>
 
-          <button
-            type="button"
-            onClick={handleReplayQuestion}
-            className="bg-indigo-600/90 hover:bg-indigo-500 text-white px-3.5 py-2 rounded-xl text-xs font-mono font-bold flex items-center gap-1.5 transition-all cursor-pointer shadow-md"
-            title="Click to hear question aloud or unlock audio sound"
-          >
-            <Volume2 className="w-4 h-4 text-cyan-300" />
-            <span>Hear Question</span>
-          </button>
 
           <button
             type="button"
