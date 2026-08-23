@@ -446,28 +446,26 @@ export const InterviewRoom = () => {
 
   const audioEchoGuardRef = useRef(0);
 
-  // Natural Speech Synthesis Voice Engine (Echo Filter Guarded)
+  // Natural Speech Synthesis Voice Engine (Echo Filter Guarded & Autoplay Unlocked)
   const speakAIText = (text, onEndCallback = null) => {
-    if (ultravoxMode) {
-      // Ultravox WebRTC is active — suppress browser SpeechSynthesis to prevent 2 AI voices speaking simultaneously!
-      if ('speechSynthesis' in window) window.speechSynthesis.cancel();
-      setLiveSubtitles(`[AI Interviewer]: "${text}"`);
-      if (onEndCallback) setTimeout(onEndCallback, 100);
-      return;
-    }
-
     if (!('speechSynthesis' in window)) return;
 
     if (recognitionRef.current) {
       try { recognitionRef.current.abort(); } catch (e) { }
     }
 
+    if (window.speechSynthesis.paused) {
+      window.speechSynthesis.resume();
+    }
     window.speechSynthesis.cancel();
     setIsSpeaking(false);
 
     setTimeout(() => {
       if (!('speechSynthesis' in window)) return;
       window.speechSynthesis.cancel();
+      if (window.speechSynthesis.paused) {
+        window.speechSynthesis.resume();
+      }
 
       setLiveSubtitles(`[AI Interviewer]: "${text}"`);
 
@@ -503,17 +501,31 @@ export const InterviewRoom = () => {
         if (onEndCallback) onEndCallback();
       };
 
-      utterance.onerror = () => {
+      utterance.onerror = (err) => {
+        console.warn("Speech synthesis audio engine notice:", err);
         setIsSpeaking(false);
         speakingRef.current = false;
-        audioEchoGuardRef.current = Date.now() + 500;
+        audioEchoGuardRef.current = Date.now() + 300;
         if (recognitionRef.current && isMicOn) {
           try { recognitionRef.current.start(); } catch (e) { }
         }
       };
 
       window.speechSynthesis.speak(utterance);
-    }, 20);
+      // Immediately call resume() to bypass Chrome auto-pause bug!
+      window.speechSynthesis.resume();
+    }, 50);
+  };
+
+  const handleReplayQuestion = () => {
+    if (!('speechSynthesis' in window)) return;
+    if (window.speechSynthesis.paused) window.speechSynthesis.resume();
+    const textToSpeak = isWelcomePhase
+      ? "Welcome to Smart AI Interview! I am Advika, your Virtual Presenter, and I will be conducting your technical assessment today. Shall we start the interview?"
+      : (currentQ ? (currentQ.questionText || currentQ.question_text) : '');
+    if (textToSpeak) {
+      speakAIText(textToSpeak);
+    }
   };
 
   // 0. ULTRAVOX SESSION INIT — fires once on mount
@@ -1477,6 +1489,16 @@ export const InterviewRoom = () => {
             <span className="text-slate-400 uppercase text-[10px] hidden sm:block">Time Left:</span>
             <strong className="text-sm font-bold text-cyan-300">{formatTime(timerSeconds)}</strong>
           </div>
+
+          <button
+            type="button"
+            onClick={handleReplayQuestion}
+            className="bg-indigo-600/90 hover:bg-indigo-500 text-white px-3.5 py-2 rounded-xl text-xs font-mono font-bold flex items-center gap-1.5 transition-all cursor-pointer shadow-md"
+            title="Click to hear question aloud or unlock audio sound"
+          >
+            <Volume2 className="w-4 h-4 text-cyan-300" />
+            <span>Hear Question</span>
+          </button>
 
           <button
             type="button"
