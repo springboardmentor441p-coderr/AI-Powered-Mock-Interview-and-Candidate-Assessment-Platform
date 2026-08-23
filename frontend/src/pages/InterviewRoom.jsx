@@ -425,6 +425,11 @@ export const InterviewRoom = () => {
             name.includes('steffan') ||
             name.includes('liam') ||
             name.includes('thomas') ||
+            name.includes('paul') ||
+            name.includes('richard') ||
+            name.includes('john') ||
+            name.includes('mike') ||
+            name.includes('brian') ||
             name.includes('male') && !name.includes('female')
           );
           return !isMale;
@@ -468,7 +473,7 @@ export const InterviewRoom = () => {
           if (recognitionRef.current && isMicOn && !speakingRef.current) {
             try { recognitionRef.current.start(); } catch (e) { }
           }
-        }, 200);
+        }, 150);
         if (onEndCallback) onEndCallback();
       };
 
@@ -481,7 +486,7 @@ export const InterviewRoom = () => {
       };
 
       window.speechSynthesis.speak(utterance);
-    }, 30);
+    }, 20);
   };
 
   // 0. ULTRAVOX SESSION INIT — fires once on mount
@@ -621,13 +626,13 @@ export const InterviewRoom = () => {
               }));
             }
 
-            // Trigger AI response after 2500ms of candidate silence (gives full time to think & complete answer)
+            // Trigger AI response after 800ms of candidate silence (fast, responsive speech listening)
             if (silenceTimerRef.current) clearTimeout(silenceTimerRef.current);
             silenceTimerRef.current = setTimeout(() => {
               if (currentFullText.trim()) {
                 handleCandidateSpeechResponse(currentFullText.trim());
               }
-            }, 2500);
+            }, 800);
           }
         };
 
