@@ -309,11 +309,7 @@ export const InterviewRoom = () => {
       }
     },
     onStatusChange: (s) => {
-      if (s === 'connected') {
-        setUltravoxMode(true);
-        if ('speechSynthesis' in window) window.speechSynthesis.cancel(); // Mute browser SpeechSynthesis immediately when Ultravox connects!
-        setLiveSubtitles('Advika connected — real-time voice active...');
-      } else if (s === 'ended' || s === 'error') {
+      if (s === 'ended' || s === 'error') {
         setUltravoxMode(false);
       }
     },
@@ -598,36 +594,6 @@ export const InterviewRoom = () => {
       speakAIText(textToSpeak);
     }
   };
-
-  // 0. ULTRAVOX SESSION INIT — fires once on mount
-  useEffect(() => {
-    if ('speechSynthesis' in window) window.speechSynthesis.cancel();
-
-    const candidateName = candidate?.name || resumeData?.name || 'the candidate';
-    const role = candidate?.targetRole || jdData?.title || resumeData?.targetRole || 'Software Engineer';
-    const experienceLevel = resumeData?.experienceLevel || 'Mid-Level';
-
-    if (questions && questions.length > 0) {
-      uvInitSession(questions, candidateName, role, experienceLevel)
-        .catch(err => {
-          console.warn('[Ultravox] Could not start session, falling back to Web Speech API:', err);
-          setUltravoxFailed(true);
-        });
-    }
-
-    const connectionTimer = setTimeout(() => {
-      if (!ultravoxMode) {
-        setUltravoxFailed(true);
-      }
-    }, 1500);
-
-    return () => {
-      clearTimeout(connectionTimer);
-      uvEndSession();
-      if ('speechSynthesis' in window) window.speechSynthesis.cancel();
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
 
   // 1. INITIAL WELCOME & SELF-INTRODUCTION ON ROOM ENTRY (Guaranteed Female Voice & No Echo Loop)
   useEffect(() => {
