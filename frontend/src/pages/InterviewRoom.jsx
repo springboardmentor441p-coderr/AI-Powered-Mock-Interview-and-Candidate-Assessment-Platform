@@ -1599,27 +1599,7 @@ export const InterviewRoom = () => {
           </div>
 
           {/* AI Presenter Avatar Component */}
-          <div className="flex-1 flex items-center justify-center my-2 relative">
-            {!audioUnlocked && (
-              <div className="absolute inset-0 bg-slate-950/80 backdrop-blur-sm rounded-xl z-30 flex flex-col items-center justify-center p-4 text-center animate-fade-in border border-cyan-500/40">
-                <div className="p-3 rounded-2xl bg-cyan-950 text-cyan-400 border border-cyan-500/50 mb-3 animate-bounce">
-                  <Volume2 className="w-8 h-8" />
-                </div>
-                <h3 className="text-sm font-bold text-white mb-1">Click to Enable AI Presenter Voice</h3>
-                <p className="text-xs text-slate-300 font-mono max-w-xs mb-4">
-                  Chrome requires a single tap to unlock audio speech synthesis.
-                </p>
-                <button
-                  type="button"
-                  onClick={handleUnlockAudioAndStart}
-                  className="bg-gradient-to-r from-cyan-500 to-indigo-600 hover:from-cyan-400 hover:to-indigo-500 text-slate-950 font-black px-6 py-2.5 rounded-xl font-mono text-xs shadow-xl shadow-cyan-500/20 cursor-pointer flex items-center gap-2"
-                >
-                  <Volume2 className="w-4 h-4" />
-                  <span>Start Voice Session</span>
-                </button>
-              </div>
-            )}
-
+          <div className="flex-1 flex items-center justify-center my-2">
             <AIAvatar
               currentQuestion={
                 isWelcomePhase
