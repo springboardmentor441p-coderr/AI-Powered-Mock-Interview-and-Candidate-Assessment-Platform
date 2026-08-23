@@ -102,14 +102,16 @@ export const AppProvider = ({ children }) => {
           const data = await response.json();
           const formatted = data.map(item => ({
             id: item.id,
-            role: item.title || 'Software Engineer',
+            role: item.title || item.role || 'Software Engineer',
             date: item.created_at ? item.created_at.split('T')[0] : new Date().toISOString().split('T')[0],
-            scorePct: Math.round(item.score_pct || 82),
-            techScore: Math.round((item.score_pct || 82) + 1),
-            behavioralScore: Math.round((item.score_pct || 82) - 1),
-            status: 'Completed',
-            company: 'Target Enterprise',
-            techStack: ['Python', 'React', 'SQL', 'Node.js']
+            scorePct: item.score_pct !== undefined && item.score_pct !== null ? Math.round(item.score_pct) : 0,
+            techScore: item.score_pct !== undefined && item.score_pct !== null ? Math.round(item.score_pct) : 0,
+            behavioralScore: item.score_pct !== undefined && item.score_pct !== null ? Math.round(item.score_pct) : 0,
+            status: item.status || 'Completed',
+            company: item.company || 'Target Enterprise',
+            techStack: item.tech_stack || ['Python', 'React', 'SQL'],
+            userEmail: item.candidate_email || item.email || '',
+            userId: item.candidate_id || item.user_id || ''
           }));
 
           setInterviewHistory(prev => {

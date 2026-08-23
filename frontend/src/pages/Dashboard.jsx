@@ -36,10 +36,19 @@ export const Dashboard = () => {
 
   const [chartMetric, setChartMetric] = useState('all'); // 'all', 'overall', 'technical', 'behavioral'
 
-  // Calculate dynamic stats
-  const totalInterviews = interviewHistory.length;
+  // Filter interview history per active candidate
+  const candidateEmail = candidate?.email?.toLowerCase() || '';
+  const userInterviews = (interviewHistory || []).filter(item => {
+    if (!item) return false;
+    if (candidateEmail && item.userEmail) {
+      return item.userEmail.toLowerCase() === candidateEmail;
+    }
+    return true;
+  });
+
+  const totalInterviews = userInterviews.length;
   const avgInterviewScore = totalInterviews > 0
-    ? Math.round(interviewHistory.reduce((acc, item) => acc + (item.scorePct || 0), 0) / totalInterviews)
+    ? Math.round(userInterviews.reduce((acc, item) => acc + (item.scorePct || 0), 0) / totalInterviews)
     : 0;
 
   const totalAssessments = assessmentHistory.length;
@@ -48,13 +57,13 @@ export const Dashboard = () => {
     : 0;
 
   // Prepare chronological performance chart data (oldest to newest)
-  const chartData = [...interviewHistory].reverse().map((item, index) => ({
+  const chartData = [...userInterviews].reverse().map((item, index) => ({
     session: item.role || `Session ${index + 1}`,
     shortTitle: (item.role || `Session ${index + 1}`).replace(' Software Engineer', ' SDE').replace(' Candidate', ''),
     date: item.date,
     overallScore: item.scorePct,
     techScore: item.techScore || item.scorePct,
-    behavioralScore: item.behavioralScore || Math.max(item.scorePct - 3, 60),
+    behavioralScore: item.behavioralScore || Math.max(item.scorePct - 3, 0),
     company: item.company || 'Enterprise'
   }));
 
@@ -149,7 +158,7 @@ export const Dashboard = () => {
               <CheckCircle2 className="w-3 h-3 text-emerald-400" /> AI Mock Sessions
             </span>
             <span className="bg-cyan-950 px-1.5 py-0.5 rounded border border-cyan-500/30">
-              Completed
+              {totalInterviews > 0 ? 'Completed' : 'No Sessions'}
             </span>
           </div>
         </div>
@@ -176,10 +185,10 @@ export const Dashboard = () => {
 
           <div className="pt-2 border-t border-slate-800/60 flex items-center justify-between text-[10px] font-mono text-emerald-400">
             <span className="flex items-center gap-1">
-              <TrendingUp className="w-3 h-3 text-emerald-400" /> +4.5% Growth
+              <TrendingUp className="w-3 h-3 text-emerald-400" /> {totalInterviews > 0 ? '+4.5% Growth' : 'Pending'}
             </span>
             <span className="bg-emerald-950 px-1.5 py-0.5 rounded border border-emerald-500/30">
-              High Level
+              {totalInterviews > 0 ? (avgInterviewScore > 75 ? 'High Level' : 'Moderate') : 'Not Evaluated'}
             </span>
           </div>
         </div>
@@ -209,7 +218,7 @@ export const Dashboard = () => {
               <Zap className="w-3 h-3 text-purple-400" /> Skill Audits
             </span>
             <span className="bg-purple-950 px-1.5 py-0.5 rounded border border-purple-500/30">
-              Evaluated
+              {totalAssessments > 0 ? 'Evaluated' : 'No Audits'}
             </span>
           </div>
         </div>
@@ -239,7 +248,7 @@ export const Dashboard = () => {
               <Sparkles className="w-3 h-3 text-amber-400" /> Verified Rating
             </span>
             <span className="bg-amber-950 px-1.5 py-0.5 rounded border border-amber-500/30">
-              Top 10%
+              {totalAssessments > 0 ? 'Top 10%' : 'Pending'}
             </span>
           </div>
         </div>
