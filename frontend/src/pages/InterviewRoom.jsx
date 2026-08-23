@@ -377,6 +377,73 @@ export const InterviewRoom = () => {
     }
   };
 
+  const selectedFemaleVoiceRef = useRef(null);
+
+  const resolveFemaleVoice = () => {
+    if (!('speechSynthesis' in window)) return null;
+    const voices = window.speechSynthesis.getVoices() || [];
+    if (voices.length === 0) return null;
+
+    // Filter out all male voice names
+    const femaleVoices = voices.filter(v => {
+      const name = v.name.toLowerCase();
+      const isMale = (
+        name.includes('david') ||
+        name.includes('mark') ||
+        name.includes('george') ||
+        name.includes('james') ||
+        name.includes('alex') ||
+        name.includes('fred') ||
+        name.includes('daniel') ||
+        name.includes('guy') ||
+        name.includes('christopher') ||
+        name.includes('eric') ||
+        name.includes('steffan') ||
+        name.includes('liam') ||
+        name.includes('thomas') ||
+        name.includes('paul') ||
+        name.includes('richard') ||
+        name.includes('john') ||
+        name.includes('mike') ||
+        name.includes('brian') ||
+        (name.includes('male') && !name.includes('female'))
+      );
+      return !isMale;
+    });
+
+    const bestFemale = femaleVoices.find(v => {
+      const name = v.name.toLowerCase();
+      return (
+        name.includes('zira') ||
+        name.includes('samantha') ||
+        name.includes('jenny') ||
+        name.includes('eva') ||
+        name.includes('karen') ||
+        name.includes('victoria') ||
+        name.includes('hazel') ||
+        name.includes('aria') ||
+        name.includes('sonia') ||
+        name.includes('female') ||
+        name.includes('google us english') ||
+        name.includes('natural')
+      ) && v.lang.startsWith('en');
+    }) || femaleVoices.find(v => v.lang.startsWith('en')) || femaleVoices[0];
+
+    if (bestFemale) {
+      selectedFemaleVoiceRef.current = bestFemale;
+    }
+    return bestFemale;
+  };
+
+  useEffect(() => {
+    if ('speechSynthesis' in window) {
+      resolveFemaleVoice();
+      window.speechSynthesis.onvoiceschanged = () => {
+        resolveFemaleVoice();
+      };
+    }
+  }, []);
+
   // Natural Speech Synthesis Voice Engine (Echo Filter Guarded)
   const speakAIText = (text, onEndCallback = null) => {
     if (ultravoxMode) {
@@ -404,58 +471,12 @@ export const InterviewRoom = () => {
 
       const utterance = new SpeechSynthesisUtterance(text);
       utterance.rate = 0.85; // Natural realistic speaking speed
-      utterance.pitch = 1.05;
+      utterance.pitch = 1.35; // Distinct feminine pitch frequency tuning
 
-      const voices = window.speechSynthesis.getVoices();
-      if (voices.length > 0) {
-        // Strictly filter out all male voice names & keywords
-        const femaleVoices = voices.filter(v => {
-          const name = v.name.toLowerCase();
-          const isMale = (
-            name.includes('david') ||
-            name.includes('mark') ||
-            name.includes('george') ||
-            name.includes('james') ||
-            name.includes('alex') ||
-            name.includes('fred') ||
-            name.includes('daniel') ||
-            name.includes('guy') ||
-            name.includes('christopher') ||
-            name.includes('eric') ||
-            name.includes('steffan') ||
-            name.includes('liam') ||
-            name.includes('thomas') ||
-            name.includes('paul') ||
-            name.includes('richard') ||
-            name.includes('john') ||
-            name.includes('mike') ||
-            name.includes('brian') ||
-            name.includes('male') && !name.includes('female')
-          );
-          return !isMale;
-        });
-
-        const femaleVoice = femaleVoices.find(v => {
-          const name = v.name.toLowerCase();
-          return (
-            name.includes('zira') ||
-            name.includes('samantha') ||
-            name.includes('jenny') ||
-            name.includes('eva') ||
-            name.includes('karen') ||
-            name.includes('victoria') ||
-            name.includes('hazel') ||
-            name.includes('female') ||
-            name.includes('google us english') ||
-            name.includes('natural')
-          ) && v.lang.startsWith('en');
-        }) || femaleVoices.find(v => v.lang.startsWith('en')) || femaleVoices[0];
-
-        if (femaleVoice) {
-          utterance.voice = femaleVoice;
-        }
+      const targetVoice = selectedFemaleVoiceRef.current || resolveFemaleVoice();
+      if (targetVoice) {
+        utterance.voice = targetVoice;
       }
-      utterance.pitch = 1.15; // Realistic feminine voice pitch
 
       utterance.onstart = () => {
         setIsSpeaking(true);
