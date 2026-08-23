@@ -1445,40 +1445,69 @@ export const InterviewRoom = () => {
         </div>
       </div>
 
-      {/* 2. PERSON-TO-PERSON HERO VIDEO CONTAINER */}
-      <div className="relative glass-card rounded-2xl border border-cyan-500/30 overflow-hidden bg-slate-950 min-h-[440px] sm:min-h-[500px] flex items-center justify-center shadow-2xl">
-        {/* AI Avatar Center Stage */}
-        <div className="w-full h-full flex items-center justify-center p-6">
-          <AIAvatar
-            currentQuestion={
-              isWelcomePhase
-                ? "Welcome to Smart AI Interview! I am your AI Virtual Presenter, and I will be conducting your technical interview today. Are you ready to begin?"
-                : (currentQ ? (currentQ.questionText || currentQ.question_text) : '')
-            }
-            isSpeaking={isSpeaking}
-            interviewState={interviewState}
-          />
-        </div>
-
-        {/* Candidate Self View Live Cam Floating Window (Top Right) */}
-        <div className="absolute top-4 right-4 w-52 sm:w-64 aspect-video rounded-2xl overflow-hidden border-2 border-cyan-400/80 shadow-2xl z-20 bg-slate-900 group">
-          <div className="absolute top-2 left-2 z-30 bg-slate-950/80 backdrop-blur-sm px-2 py-0.5 rounded text-[9px] font-mono text-cyan-400 border border-cyan-500/30 flex items-center gap-1">
-            <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-            <span>Candidate Live</span>
+      {/* 2. DUAL-PANE SIDE-BY-SIDE VIDEO CALL STAGE */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 items-stretch min-h-[520px]">
+        {/* Left Pane (7 cols): AI Presenter Stage */}
+        <div className="lg:col-span-7 glass-card rounded-2xl border border-cyan-500/40 p-5 bg-slate-950/90 flex flex-col justify-between relative shadow-2xl overflow-hidden min-h-[460px]">
+          <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-cyan-500 via-indigo-500 to-purple-500" />
+          <div className="flex items-center justify-between z-10 mb-2">
+            <div className="flex items-center gap-2 bg-slate-900/90 px-3 py-1.5 rounded-xl border border-cyan-500/30">
+              <span className="w-2 h-2 rounded-full bg-cyan-400 animate-ping" />
+              <span className="text-xs font-bold text-white font-mono">Advika (AI Presenter)</span>
+            </div>
+            <span className="text-[10px] text-cyan-300 bg-cyan-950 px-2.5 py-1 rounded-full font-mono border border-cyan-500/30">
+              {interviewState.toUpperCase()}
+            </span>
           </div>
-          <VisionAnalyzer compact={true} onTelemetryUpdate={handleTelemetryUpdate} onStreamActive={handleStreamActive} faceSignature={setupChecks?.faceSignature} />
-        </div>
 
-        {/* Live Call Control Toolbar & Subtitles Stream Bar (Bottom of Video) */}
-        <div className="absolute bottom-4 left-4 right-4 z-20 flex flex-col gap-2">
-          {/* Subtitles Overlay Bar */}
-          <div className="bg-slate-950/90 backdrop-blur-md p-3 rounded-xl border border-slate-800/80 flex items-center gap-3 shadow-xl">
-            <div className="p-2 rounded-lg bg-cyan-950 text-cyan-400 border border-cyan-500/30">
+          {/* AI Presenter Avatar Component */}
+          <div className="flex-1 flex items-center justify-center my-2">
+            <AIAvatar
+              currentQuestion={
+                isWelcomePhase
+                  ? "Welcome to Smart AI Interview! I am your AI Virtual Presenter, and I will be conducting your technical interview today. Are you ready to begin?"
+                  : (currentQ ? (currentQ.questionText || currentQ.question_text) : '')
+              }
+              isSpeaking={isSpeaking}
+              interviewState={interviewState}
+            />
+          </div>
+
+          {/* AI Live Subtitles Banner */}
+          <div className="bg-slate-900/90 backdrop-blur-md p-3 rounded-xl border border-slate-800 flex items-center gap-3 shadow-lg z-10">
+            <div className="p-2 rounded-lg bg-cyan-950 text-cyan-400 border border-cyan-500/30 shrink-0">
               <MessageSquare className="w-4 h-4" />
             </div>
             <p className="text-xs font-mono text-slate-200 leading-snug truncate">
               {liveSubtitles}
             </p>
+          </div>
+        </div>
+
+        {/* Right Pane (5 cols): Candidate Live Feed & Telemetry */}
+        <div className="lg:col-span-5 flex flex-col gap-4">
+          {/* Candidate Live Webcam Box */}
+          <div className="glass-card rounded-2xl border-2 border-cyan-400/80 overflow-hidden bg-slate-950 relative shadow-2xl flex-1 min-h-[300px] flex flex-col justify-between p-3">
+            <div className="flex items-center justify-between z-20">
+              <div className="bg-slate-950/80 backdrop-blur-sm px-2.5 py-1 rounded-xl text-[10px] font-mono text-cyan-300 border border-cyan-500/30 flex items-center gap-1.5 shadow-sm">
+                <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+                <span>Candidate Live Feed</span>
+              </div>
+              <span className="text-[10px] text-emerald-400 bg-emerald-950 px-2.5 py-1 rounded-xl font-mono border border-emerald-500/30 flex items-center gap-1">
+                <ShieldCheck className="w-3.5 h-3.5" /> AI Shield Active
+              </span>
+            </div>
+
+            <div className="flex-1 w-full my-2 rounded-xl overflow-hidden relative">
+              <VisionAnalyzer compact={false} onTelemetryUpdate={handleTelemetryUpdate} onStreamActive={handleStreamActive} faceSignature={setupChecks?.faceSignature} />
+            </div>
+
+            <div className="bg-slate-900/90 p-2.5 rounded-xl border border-slate-800 flex items-center justify-between text-[11px] font-mono text-slate-300 z-20">
+              <span className="flex items-center gap-1.5 text-cyan-400">
+                <Camera className="w-3.5 h-3.5" /> HD Video Stream
+              </span>
+              <span className="text-emerald-400 font-bold">1080p • 30 FPS</span>
+            </div>
           </div>
         </div>
       </div>
