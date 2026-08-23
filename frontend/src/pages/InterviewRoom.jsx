@@ -540,17 +540,25 @@ export const InterviewRoom = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // 1. INITIAL WELCOME & SELF-INTRODUCTION ON ROOM ENTRY
+  // 1. INITIAL WELCOME & SELF-INTRODUCTION ON ROOM ENTRY (Guaranteed Female Voice)
   useEffect(() => {
     if (ultravoxMode) return;
     if (!isWelcomePhase) return;
     if (welcomeSpokenRef.current) return;
-    welcomeSpokenRef.current = true;
 
-    const welcomeIntro = "Welcome to Smart AI Interview! I am Advika, your Virtual Presenter, and I will be conducting your technical assessment today. Shall we start the interview?";
-    speakAIText(welcomeIntro);
+    const welcomeTimer = setTimeout(() => {
+      if (welcomeSpokenRef.current) return;
+      welcomeSpokenRef.current = true;
+
+      // Ensure female voice is resolved and cached before speaking welcome intro
+      resolveFemaleVoice();
+
+      const welcomeIntro = "Welcome to Smart AI Interview! I am Advika, your Virtual Presenter, and I will be conducting your technical assessment today. Shall we start the interview?";
+      speakAIText(welcomeIntro);
+    }, 350);
 
     return () => {
+      clearTimeout(welcomeTimer);
       if ('speechSynthesis' in window) window.speechSynthesis.cancel();
     };
   }, [isWelcomePhase, ultravoxMode]);
