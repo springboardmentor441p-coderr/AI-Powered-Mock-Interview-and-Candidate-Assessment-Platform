@@ -444,6 +444,8 @@ export const InterviewRoom = () => {
     }
   }, []);
 
+  const audioEchoGuardRef = useRef(0);
+
   // Natural Speech Synthesis Voice Engine (Echo Filter Guarded)
   const speakAIText = (text, onEndCallback = null) => {
     if (ultravoxMode) {
@@ -481,6 +483,7 @@ export const InterviewRoom = () => {
       utterance.onstart = () => {
         setIsSpeaking(true);
         speakingRef.current = true;
+        audioEchoGuardRef.current = Date.now() + 99999; // Guard while speaking
         if (recognitionRef.current) {
           try { recognitionRef.current.abort(); } catch (e) { }
         }
@@ -490,17 +493,20 @@ export const InterviewRoom = () => {
         setIsSpeaking(false);
         speakingRef.current = false;
         setInterviewState(INTERVIEW_STATES.LISTENING);
+        // Guard microphone against speaker echo for 1200ms after AI finishes speaking
+        audioEchoGuardRef.current = Date.now() + 1200;
         setTimeout(() => {
           if (recognitionRef.current && isMicOn && !speakingRef.current) {
             try { recognitionRef.current.start(); } catch (e) { }
           }
-        }, 150);
+        }, 300);
         if (onEndCallback) onEndCallback();
       };
 
       utterance.onerror = () => {
         setIsSpeaking(false);
         speakingRef.current = false;
+        audioEchoGuardRef.current = Date.now() + 500;
         if (recognitionRef.current && isMicOn) {
           try { recognitionRef.current.start(); } catch (e) { }
         }
@@ -540,26 +546,21 @@ export const InterviewRoom = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // 1. INITIAL WELCOME & SELF-INTRODUCTION ON ROOM ENTRY (Guaranteed Female Voice)
+  // 1. INITIAL WELCOME & SELF-INTRODUCTION ON ROOM ENTRY (Guaranteed Female Voice & No Echo Loop)
   useEffect(() => {
     if (ultravoxMode) return;
     if (!isWelcomePhase) return;
     if (welcomeSpokenRef.current) return;
+    welcomeSpokenRef.current = true; // Lock immediately on mount to prevent double execution!
 
     const welcomeTimer = setTimeout(() => {
-      if (welcomeSpokenRef.current) return;
-      welcomeSpokenRef.current = true;
-
-      // Ensure female voice is resolved and cached before speaking welcome intro
       resolveFemaleVoice();
-
       const welcomeIntro = "Welcome to Smart AI Interview! I am Advika, your Virtual Presenter, and I will be conducting your technical assessment today. Shall we start the interview?";
       speakAIText(welcomeIntro);
     }, 350);
 
     return () => {
       clearTimeout(welcomeTimer);
-      if ('speechSynthesis' in window) window.speechSynthesis.cancel();
     };
   }, [isWelcomePhase, ultravoxMode]);
 
@@ -625,8 +626,12 @@ export const InterviewRoom = () => {
         recognition.lang = 'en-US';
 
         recognition.onresult = (event) => {
-          if (speakingRef.current || ('speechSynthesis' in window && window.speechSynthesis.speaking)) {
-            return;
+          if (
+            speakingRef.current ||
+            ('speechSynthesis' in window && window.speechSynthesis.speaking) ||
+            Date.now() < audioEchoGuardRef.current
+          ) {
+            return; // Ignore audio feedback from AI speakers & trailing echo!
           }
 
           let finalTranscript = '';
