@@ -445,77 +445,123 @@ export const InterviewRoom = () => {
   }, []);
 
   const audioEchoGuardRef = useRef(0);
-  const [audioUnlocked, setAudioUnlocked] = useState(false);
 
-  // Natural Speech Synthesis Voice Engine (Fail-safe Asynchronous Driver Execution)
+  // Hybrid Speech Synthesis & Cloud Audio Fallback Engine (Guarantees Voice Sound Everywhere)
   const speakAIText = (text, onEndCallback = null) => {
-    if (!('speechSynthesis' in window)) return;
+    if (!text) return;
 
     if (recognitionRef.current) {
       try { recognitionRef.current.abort(); } catch (e) { }
     }
 
     try {
-      window.speechSynthesis.cancel();
+      if ('speechSynthesis' in window) window.speechSynthesis.cancel();
     } catch (e) {}
 
-    setIsSpeaking(false);
+    setIsSpeaking(true);
+    speakingRef.current = true;
+    audioEchoGuardRef.current = Date.now() + 99999;
     setLiveSubtitles(`[AI Interviewer]: "${text}"`);
 
-    // 60ms delay ensures Chrome/Windows SAPI clears cancellation state cleanly
-    setTimeout(() => {
-      if (!('speechSynthesis' in window)) return;
+    let spokenSuccessfully = false;
 
-      const utterance = new SpeechSynthesisUtterance(text);
-      utterance.rate = 0.9;
-      utterance.pitch = 1.0;
-
-      const targetVoice = selectedFemaleVoiceRef.current || resolveFemaleVoice();
-      if (targetVoice) {
-        utterance.voice = targetVoice;
-      }
-
-      utterance.onstart = () => {
-        setIsSpeaking(true);
-        speakingRef.current = true;
-        setAudioUnlocked(true);
-        audioEchoGuardRef.current = Date.now() + 99999;
-        if (recognitionRef.current) {
-          try { recognitionRef.current.abort(); } catch (e) { }
-        }
-      };
-
-      utterance.onend = () => {
+    // Fallback: Google Cloud Female TTS HTML5 Audio Element
+    const playFallbackAudio = () => {
+      try {
+        const cleanQuery = encodeURIComponent(text.slice(0, 190));
+        const audioUrl = `https://translate.google.com/translate_tts?ie=UTF-8&q=${cleanQuery}&tl=en&client=tw-ob`;
+        const audio = new Audio(audioUrl);
+        audio.volume = 1.0;
+        audio.play().then(() => {
+          setIsSpeaking(true);
+          speakingRef.current = true;
+          audio.onended = () => {
+            setIsSpeaking(false);
+            speakingRef.current = false;
+            setInterviewState(INTERVIEW_STATES.LISTENING);
+            audioEchoGuardRef.current = Date.now() + 1000;
+            if (onEndCallback) onEndCallback();
+          };
+        }).catch((err) => {
+          console.warn("Audio autoplay blocked by browser:", err);
+          setIsSpeaking(false);
+          speakingRef.current = false;
+        });
+      } catch (e) {
         setIsSpeaking(false);
         speakingRef.current = false;
-        setInterviewState(INTERVIEW_STATES.LISTENING);
-        audioEchoGuardRef.current = Date.now() + 1200;
+      }
+    };
+
+    if ('speechSynthesis' in window) {
+      try {
+        const utterance = new SpeechSynthesisUtterance(text);
+        utterance.lang = 'en-US';
+        utterance.rate = 0.9;
+        utterance.pitch = 1.1;
+
+        const voices = window.speechSynthesis.getVoices() || [];
+        if (voices.length > 0) {
+          const femaleVoice = voices.find(v => {
+            const n = v.name.toLowerCase();
+            return (
+              n.includes('zira') ||
+              n.includes('samantha') ||
+              n.includes('jenny') ||
+              n.includes('eva') ||
+              n.includes('karen') ||
+              n.includes('victoria') ||
+              n.includes('hazel') ||
+              n.includes('female') ||
+              n.includes('google us english')
+            ) && v.lang.startsWith('en');
+          }) || voices.find(v => v.lang.startsWith('en'));
+
+          if (femaleVoice) {
+            utterance.voice = femaleVoice;
+          }
+        }
+
+        utterance.onstart = () => {
+          spokenSuccessfully = true;
+          setIsSpeaking(true);
+          speakingRef.current = true;
+        };
+
+        utterance.onend = () => {
+          setIsSpeaking(false);
+          speakingRef.current = false;
+          setInterviewState(INTERVIEW_STATES.LISTENING);
+          audioEchoGuardRef.current = Date.now() + 1000;
+          if (onEndCallback) onEndCallback();
+        };
+
+        utterance.onerror = () => {
+          if (!spokenSuccessfully) {
+            playFallbackAudio();
+          }
+        };
+
+        if (window.speechSynthesis.paused) {
+          window.speechSynthesis.resume();
+        }
+        window.speechSynthesis.speak(utterance);
+        if (window.speechSynthesis.paused) {
+          window.speechSynthesis.resume();
+        }
+
+        // Safety backup: If Web Speech doesn't trigger onstart within 300ms, run fallback audio
         setTimeout(() => {
-          if (recognitionRef.current && isMicOn && !speakingRef.current) {
-            try { recognitionRef.current.start(); } catch (e) { }
+          if (!spokenSuccessfully && !window.speechSynthesis.speaking) {
+            playFallbackAudio();
           }
         }, 300);
-        if (onEndCallback) onEndCallback();
-      };
-
-      utterance.onerror = (err) => {
-        console.warn("Speech synthesis audio notice:", err);
-        setIsSpeaking(false);
-        speakingRef.current = false;
-        audioEchoGuardRef.current = Date.now() + 300;
-        if (recognitionRef.current && isMicOn) {
-          try { recognitionRef.current.start(); } catch (e) { }
-        }
-      };
-
-      if (window.speechSynthesis.paused) {
-        window.speechSynthesis.resume();
+      } catch (err) {
+        playFallbackAudio();
       }
-      window.speechSynthesis.speak(utterance);
-      if (window.speechSynthesis.paused) {
-        window.speechSynthesis.resume();
-      }
-    }, 60);
+    } else {
+      playFallbackAudio();
+    }
   };
 
   const handleUnlockAudioAndStart = () => {
