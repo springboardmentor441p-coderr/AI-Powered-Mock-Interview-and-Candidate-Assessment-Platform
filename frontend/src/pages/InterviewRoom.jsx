@@ -1604,40 +1604,16 @@ export const InterviewRoom = () => {
       {/* 2. DUAL-PANE SIDE-BY-SIDE VIDEO CALL STAGE */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 items-stretch min-h-[520px]">
         {/* Left Pane (7 cols): AI Presenter Stage */}
-        <div className="lg:col-span-7 glass-card rounded-2xl border border-cyan-500/40 p-5 bg-slate-950/90 flex flex-col justify-between relative shadow-2xl overflow-hidden min-h-[460px]">
-          <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-cyan-500 via-indigo-500 to-purple-500" />
-          <div className="flex items-center justify-between z-10 mb-2">
-            <div className="flex items-center gap-2 bg-slate-900/90 px-3 py-1.5 rounded-xl border border-cyan-500/30">
-              <span className="w-2 h-2 rounded-full bg-cyan-400 animate-ping" />
-              <span className="text-xs font-bold text-white font-mono">Advika (AI Presenter)</span>
-            </div>
-            <span className="text-[10px] text-cyan-300 bg-cyan-950 px-2.5 py-1 rounded-full font-mono border border-cyan-500/30">
-              {interviewState.toUpperCase()}
-            </span>
-          </div>
-
-          {/* AI Presenter Avatar Component */}
-          <div className="flex-1 flex items-center justify-center my-2">
-            <AIAvatar
-              currentQuestion={
-                isWelcomePhase
-                  ? "Welcome to Smart AI Interview! I am Advika, your AI Virtual Presenter, and I will be conducting your technical assessment today. Shall we start the interview?"
-                  : (currentQ ? (currentQ.questionText || currentQ.question_text) : '')
-              }
-              isSpeaking={isSpeaking}
-              interviewState={interviewState}
-            />
-          </div>
-
-          {/* AI Live Subtitles Banner */}
-          <div className="bg-slate-900/90 backdrop-blur-md p-3 rounded-xl border border-slate-800 flex items-center gap-3 shadow-lg z-10">
-            <div className="p-2 rounded-lg bg-cyan-950 text-cyan-400 border border-cyan-500/30 shrink-0">
-              <MessageSquare className="w-4 h-4" />
-            </div>
-            <p className="text-xs font-mono text-slate-200 leading-snug truncate">
-              {liveSubtitles}
-            </p>
-          </div>
+        <div className="lg:col-span-7 flex flex-col justify-between">
+          <AIAvatar
+            currentQuestion={
+              isWelcomePhase
+                ? "Welcome to Smart AI Interview! I am Advika, your AI Virtual Presenter, and I will be conducting your technical assessment today. Shall we start the interview?"
+                : (currentQ ? (currentQ.questionText || currentQ.question_text) : '')
+            }
+            isSpeaking={isSpeaking}
+            interviewState={interviewState}
+          />
         </div>
 
         {/* Right Pane (5 cols): Candidate Live Feed & Telemetry */}
