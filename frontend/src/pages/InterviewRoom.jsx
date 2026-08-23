@@ -446,7 +446,7 @@ export const InterviewRoom = () => {
 
   const audioEchoGuardRef = useRef(0);
 
-  // Natural Speech Synthesis Voice Engine (Echo Filter Guarded & Autoplay Unlocked)
+  // Natural Speech Synthesis Voice Engine (Fail-safe Synchronous Audio Execution)
   const speakAIText = (text, onEndCallback = null) => {
     if (!('speechSynthesis' in window)) return;
 
@@ -454,67 +454,62 @@ export const InterviewRoom = () => {
       try { recognitionRef.current.abort(); } catch (e) { }
     }
 
+    try {
+      window.speechSynthesis.cancel();
+    } catch (e) {}
+
+    setIsSpeaking(false);
+    setLiveSubtitles(`[AI Interviewer]: "${text}"`);
+
+    const utterance = new SpeechSynthesisUtterance(text);
+    utterance.rate = 0.9;  // Natural speaking rate
+    utterance.pitch = 1.0; // Standard natural pitch (guarantees cross-browser driver support)
+
+    const targetVoice = selectedFemaleVoiceRef.current || resolveFemaleVoice();
+    if (targetVoice) {
+      utterance.voice = targetVoice;
+    }
+
+    utterance.onstart = () => {
+      setIsSpeaking(true);
+      speakingRef.current = true;
+      audioEchoGuardRef.current = Date.now() + 99999; // Guard while speaking
+      if (recognitionRef.current) {
+        try { recognitionRef.current.abort(); } catch (e) { }
+      }
+    };
+
+    utterance.onend = () => {
+      setIsSpeaking(false);
+      speakingRef.current = false;
+      setInterviewState(INTERVIEW_STATES.LISTENING);
+      // Guard microphone against speaker echo for 1200ms after AI finishes speaking
+      audioEchoGuardRef.current = Date.now() + 1200;
+      setTimeout(() => {
+        if (recognitionRef.current && isMicOn && !speakingRef.current) {
+          try { recognitionRef.current.start(); } catch (e) { }
+        }
+      }, 300);
+      if (onEndCallback) onEndCallback();
+    };
+
+    utterance.onerror = (err) => {
+      console.warn("Speech synthesis audio engine notice:", err);
+      setIsSpeaking(false);
+      speakingRef.current = false;
+      audioEchoGuardRef.current = Date.now() + 300;
+      if (recognitionRef.current && isMicOn) {
+        try { recognitionRef.current.start(); } catch (e) { }
+      }
+    };
+
     if (window.speechSynthesis.paused) {
       window.speechSynthesis.resume();
     }
-    window.speechSynthesis.cancel();
-    setIsSpeaking(false);
-
-    setTimeout(() => {
-      if (!('speechSynthesis' in window)) return;
-      window.speechSynthesis.cancel();
-      if (window.speechSynthesis.paused) {
-        window.speechSynthesis.resume();
-      }
-
-      setLiveSubtitles(`[AI Interviewer]: "${text}"`);
-
-      const utterance = new SpeechSynthesisUtterance(text);
-      utterance.rate = 0.85; // Natural realistic speaking speed
-      utterance.pitch = 1.35; // Distinct feminine pitch frequency tuning
-
-      const targetVoice = selectedFemaleVoiceRef.current || resolveFemaleVoice();
-      if (targetVoice) {
-        utterance.voice = targetVoice;
-      }
-
-      utterance.onstart = () => {
-        setIsSpeaking(true);
-        speakingRef.current = true;
-        audioEchoGuardRef.current = Date.now() + 99999; // Guard while speaking
-        if (recognitionRef.current) {
-          try { recognitionRef.current.abort(); } catch (e) { }
-        }
-      };
-
-      utterance.onend = () => {
-        setIsSpeaking(false);
-        speakingRef.current = false;
-        setInterviewState(INTERVIEW_STATES.LISTENING);
-        // Guard microphone against speaker echo for 1200ms after AI finishes speaking
-        audioEchoGuardRef.current = Date.now() + 1200;
-        setTimeout(() => {
-          if (recognitionRef.current && isMicOn && !speakingRef.current) {
-            try { recognitionRef.current.start(); } catch (e) { }
-          }
-        }, 300);
-        if (onEndCallback) onEndCallback();
-      };
-
-      utterance.onerror = (err) => {
-        console.warn("Speech synthesis audio engine notice:", err);
-        setIsSpeaking(false);
-        speakingRef.current = false;
-        audioEchoGuardRef.current = Date.now() + 300;
-        if (recognitionRef.current && isMicOn) {
-          try { recognitionRef.current.start(); } catch (e) { }
-        }
-      };
-
-      window.speechSynthesis.speak(utterance);
-      // Immediately call resume() to bypass Chrome auto-pause bug!
+    window.speechSynthesis.speak(utterance);
+    if (window.speechSynthesis.paused) {
       window.speechSynthesis.resume();
-    }, 50);
+    }
   };
 
   const handleReplayQuestion = () => {
