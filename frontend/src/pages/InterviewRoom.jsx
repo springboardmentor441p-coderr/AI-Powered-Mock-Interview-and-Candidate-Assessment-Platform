@@ -446,6 +446,7 @@ export const InterviewRoom = () => {
 
   const audioEchoGuardRef = useRef(0);
   const audioContextRef = useRef(null);
+  const [audioUnlocked, setAudioUnlocked] = useState(false);
 
   // Play pleasant Cyberpunk AI Audio Chime before speaking
   const playAIChime = () => {
