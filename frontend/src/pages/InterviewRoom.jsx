@@ -1562,7 +1562,7 @@ export const InterviewRoom = () => {
           </div>
 
           {/* AI Presenter Avatar Component */}
-          <div className="flex-1 flex flex-col items-center justify-center my-2 gap-3 relative">
+          <div className="flex-1 flex items-center justify-center my-2">
             <AIAvatar
               currentQuestion={
                 isWelcomePhase
@@ -1572,37 +1572,6 @@ export const InterviewRoom = () => {
               isSpeaking={isSpeaking}
               interviewState={interviewState}
             />
-
-            {/* Interactive Welcome Phase Readiness Confirmation Banner */}
-            {isWelcomePhase && (
-              <div className="bg-slate-900/95 border-2 border-cyan-400 p-4 rounded-2xl flex flex-col sm:flex-row items-center justify-between gap-4 animate-fade-in shadow-2xl z-30 w-full max-w-lg">
-                <div className="flex items-center gap-3">
-                  <div className="p-2.5 rounded-xl bg-cyan-950 text-cyan-400 border border-cyan-500/40 shrink-0">
-                    <Sparkles className="w-5 h-5 animate-pulse" />
-                  </div>
-                  <div>
-                    <h4 className="text-xs font-bold text-white leading-tight">Ready to begin your technical interview?</h4>
-                    <p className="text-[10px] text-cyan-300 font-mono mt-0.5">Say "Yes, I am ready!" or click below to start.</p>
-                  </div>
-                </div>
-                <div className="flex items-center gap-2 shrink-0">
-                  <button
-                    type="button"
-                    onClick={handleStartInterviewFromWelcome}
-                    className="bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 hover:to-teal-500 text-white font-mono text-xs font-black px-3.5 py-2 rounded-xl transition-all cursor-pointer shadow-lg shadow-emerald-500/30 flex items-center gap-1.5"
-                  >
-                    <span>✅ Start Interview</span>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={handleDeclineInterviewFromWelcome}
-                    className="bg-red-950/80 hover:bg-red-900 text-red-300 border border-red-500/40 font-mono text-xs font-bold px-2.5 py-2 rounded-xl transition-all cursor-pointer"
-                  >
-                    <span>❌ Not Yet</span>
-                  </button>
-                </div>
-              </div>
-            )}
           </div>
 
           {/* AI Live Subtitles Banner */}
