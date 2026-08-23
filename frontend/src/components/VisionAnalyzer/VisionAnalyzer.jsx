@@ -18,7 +18,9 @@ export const VisionAnalyzer = ({ onTelemetryUpdate, compact = false, faceSignatu
     onTelemetryUpdateRef.current = onTelemetryUpdate;
   }, [onTelemetryUpdate]);
 
-  // Dedicated High-Precision Mobile Phone & Gadget Detector Loop (Runs every 200ms)
+  // High-Precision Mobile Phone & Gadget AI Detector Loop (Runs every 300ms)
+  const gadgetStreakRef = useRef(0);
+
   useEffect(() => {
     let detectorTimer = null;
     if (cameraActive) {
@@ -28,70 +30,21 @@ export const VisionAnalyzer = ({ onTelemetryUpdate, compact = false, faceSignatu
         let foundGadget = false;
         let label = 'Clear';
 
-        // Method 1: TensorFlow COCO-SSD Real Object AI Detector
+        // TensorFlow COCO-SSD High-Confidence Real Object AI Detector
         if (cocoModelRef.current) {
           try {
             const predictions = await cocoModelRef.current.detect(videoRef.current);
             const detected = predictions.find(p =>
-              (p.class === 'cell phone' || p.class === 'mobile phone' || p.class === 'phone' || p.class === 'remote' || p.class === 'laptop' || p.class === 'book') && p.score > 0.22
+              (p.class === 'cell phone' || p.class === 'mobile phone' || p.class === 'phone') && p.score > 0.65
             );
             if (detected) {
-              foundGadget = true;
-              label = `Phone (${Math.round(detected.score * 100)}%)`;
-            }
-          } catch (e) {}
-        }
-
-        // Method 2: High-Precision Phone Camera Lens & Non-Skin Block Scanner
-        if (!foundGadget && videoRef.current) {
-          try {
-            const v = videoRef.current;
-            const vW = v.videoWidth || 640;
-            const vH = v.videoHeight || 480;
-            if (vW > 0 && vH > 0) {
-              const tempCanvas = document.createElement('canvas');
-              tempCanvas.width = 160;
-              tempCanvas.height = 120;
-              const tempCtx = tempCanvas.getContext('2d', { willReadFrequently: true });
-              tempCtx.drawImage(v, 0, 0, 160, 120);
-              const imgData = tempCtx.getImageData(0, 0, 160, 120);
-              const data = imgData.data;
-
-              // Scan Left Face/Cheek/Ear Zone (x: 10 to 65, y: 25 to 100)
-              // Scan Right Face/Cheek/Ear Zone (x: 95 to 150, y: 25 to 100)
-              let leftNonSkin = 0, leftTotal = 0, leftDarkEdge = 0;
-              let rightNonSkin = 0, rightTotal = 0, rightDarkEdge = 0;
-
-              for (let y = 25; y < 100; y += 2) {
-                for (let x = 10; x < 65; x += 2) {
-                  const idx = (y * 160 + x) * 4;
-                  const r = data[idx], g = data[idx + 1], b = data[idx + 2];
-                  const isSkin = (r > 55 && g > 35 && b > 20 && r > g && (r - g > 12) && (r - b > 12));
-                  leftTotal++;
-                  if (!isSkin) leftNonSkin++;
-                  if (r < 45 && g < 45 && b < 45) leftDarkEdge++; // camera lenses / bezels
-                }
-
-                for (let x = 95; x < 150; x += 2) {
-                  const idx = (y * 160 + x) * 4;
-                  const r = data[idx], g = data[idx + 1], b = data[idx + 2];
-                  const isSkin = (r > 55 && g > 35 && b > 20 && r > g && (r - g > 12) && (r - b > 12));
-                  rightTotal++;
-                  if (!isSkin) rightNonSkin++;
-                  if (r < 45 && g < 45 && b < 45) rightDarkEdge++;
-                }
-              }
-
-              const leftRatio = leftTotal > 0 ? leftNonSkin / leftTotal : 0;
-              const rightRatio = rightTotal > 0 ? rightNonSkin / rightTotal : 0;
-
-              if ((leftRatio > 0.68 && leftDarkEdge > 20) || (rightRatio > 0.68 && rightDarkEdge > 20)) {
+              gadgetStreakRef.current += 1;
+              if (gadgetStreakRef.current >= 3) {
                 foundGadget = true;
-                label = 'Mobile Phone Detected 📱';
-              } else if (leftRatio > 0.82 || rightRatio > 0.82) {
-                foundGadget = true;
-                label = 'Mobile Device / Phone 📱';
+                label = `Mobile Phone (${Math.round(detected.score * 100)}%)`;
               }
+            } else {
+              gadgetStreakRef.current = 0;
             }
           } catch (e) {}
         }
@@ -105,7 +58,7 @@ export const VisionAnalyzer = ({ onTelemetryUpdate, compact = false, faceSignatu
             hasOcclusion: foundGadget
           });
         }
-      }, 200);
+      }, 300);
     }
 
     return () => {
