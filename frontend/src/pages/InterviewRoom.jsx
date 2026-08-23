@@ -631,7 +631,6 @@ export const InterviewRoom = () => {
 
   // 1. INITIAL WELCOME & SELF-INTRODUCTION ON ROOM ENTRY (Guaranteed Female Voice & No Echo Loop)
   useEffect(() => {
-    if (ultravoxMode) return;
     if (!isWelcomePhase) return;
     if (welcomeSpokenRef.current) return;
     welcomeSpokenRef.current = true; // Lock immediately on mount to prevent double execution!
@@ -645,11 +644,10 @@ export const InterviewRoom = () => {
     return () => {
       clearTimeout(welcomeTimer);
     };
-  }, [isWelcomePhase, ultravoxMode]);
+  }, [isWelcomePhase]);
 
   // 2. QUESTION SPEECH SYNTHESIS — speaks questions instantly
   useEffect(() => {
-    if (ultravoxMode) return;
     if (isWelcomePhase) return;
     if (lastSpokenQIndexRef.current === qIndex) return;
     lastSpokenQIndexRef.current = qIndex;
@@ -664,7 +662,7 @@ export const InterviewRoom = () => {
     return () => {
       if ('speechSynthesis' in window) window.speechSynthesis.cancel();
     };
-  }, [qIndex, isWelcomePhase, ultravoxMode]);
+  }, [qIndex, isWelcomePhase]);
 
   const speakCurrentQuestion = (indexToSpeak = qIndex) => {
     const targetQ = questions[indexToSpeak];
