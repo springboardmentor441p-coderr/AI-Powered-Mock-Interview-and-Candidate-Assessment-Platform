@@ -482,9 +482,9 @@ export const InterviewRoom = () => {
     } catch (e) {}
   };
 
-  // Document-level Chrome Audio Autoplay Unlock Listener
+  // Document-level Chrome Audio Autoplay Unlock & First Click Speech Trigger
   useEffect(() => {
-    const unlockAudioOnUserGesture = () => {
+    const unlockAudioAndSpeakOnGesture = () => {
       if ('speechSynthesis' in window) {
         try {
           window.speechSynthesis.resume();
@@ -495,16 +495,28 @@ export const InterviewRoom = () => {
           audioContextRef.current.resume();
         } catch (e) {}
       }
+
+      // Re-trigger speech if muted by browser autoplay lock
+      if (!speakingRef.current && !window.speechSynthesis.speaking) {
+        const textToSpeak = isWelcomePhase
+          ? "Welcome to Smart AI Interview! I am Advika, your Virtual Presenter, and I will be conducting your technical assessment today. Shall we start the interview?"
+          : (currentQ ? (currentQ.questionText || currentQ.question_text) : '');
+        if (textToSpeak) {
+          speakAIText(textToSpeak);
+        }
+      }
     };
 
-    window.addEventListener('click', unlockAudioOnUserGesture);
-    window.addEventListener('keydown', unlockAudioOnUserGesture);
+    window.addEventListener('click', unlockAudioAndSpeakOnGesture);
+    window.addEventListener('pointerdown', unlockAudioAndSpeakOnGesture);
+    window.addEventListener('keydown', unlockAudioAndSpeakOnGesture);
 
     return () => {
-      window.removeEventListener('click', unlockAudioOnUserGesture);
-      window.removeEventListener('keydown', unlockAudioOnUserGesture);
+      window.removeEventListener('click', unlockAudioAndSpeakOnGesture);
+      window.removeEventListener('pointerdown', unlockAudioAndSpeakOnGesture);
+      window.removeEventListener('keydown', unlockAudioAndSpeakOnGesture);
     };
-  }, []);
+  }, [isWelcomePhase, currentQ]);
 
   // Fail-Safe Speech Synthesis Engine (Voice Object Fallback Guarded)
   const speakAIText = (text, onEndCallback = null) => {
