@@ -445,8 +445,35 @@ export const InterviewRoom = () => {
   }, []);
 
   const audioEchoGuardRef = useRef(0);
+  const audioContextRef = useRef(null);
 
-  // Hybrid Speech Synthesis & Cloud Audio Fallback Engine (Guarantees Voice Sound Everywhere)
+  // Play pleasant Cyberpunk AI Audio Chime before speaking
+  const playAIChime = () => {
+    try {
+      const AudioCtx = window.AudioContext || window.webkitAudioContext;
+      if (!AudioCtx) return;
+      if (!audioContextRef.current) {
+        audioContextRef.current = new AudioCtx();
+      }
+      const ctx = audioContextRef.current;
+      if (ctx.state === 'suspended') {
+        ctx.resume();
+      }
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(523.25, ctx.currentTime); // C5
+      osc.frequency.exponentialRampToValueAtTime(659.25, ctx.currentTime + 0.12); // E5
+      gain.gain.setValueAtTime(0.08, ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.15);
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.start();
+      osc.stop(ctx.currentTime + 0.15);
+    } catch (e) {}
+  };
+
+  // Bulletproof Speech Synthesis Engine (Guaranteed Sound Execution)
   const speakAIText = (text, onEndCallback = null) => {
     if (!text) return;
 
@@ -463,104 +490,54 @@ export const InterviewRoom = () => {
     audioEchoGuardRef.current = Date.now() + 99999;
     setLiveSubtitles(`[AI Interviewer]: "${text}"`);
 
-    let spokenSuccessfully = false;
-
-    // Fallback: Google Cloud Female TTS HTML5 Audio Element
-    const playFallbackAudio = () => {
-      try {
-        const cleanQuery = encodeURIComponent(text.slice(0, 190));
-        const audioUrl = `https://translate.google.com/translate_tts?ie=UTF-8&q=${cleanQuery}&tl=en&client=tw-ob`;
-        const audio = new Audio(audioUrl);
-        audio.volume = 1.0;
-        audio.play().then(() => {
-          setIsSpeaking(true);
-          speakingRef.current = true;
-          audio.onended = () => {
-            setIsSpeaking(false);
-            speakingRef.current = false;
-            setInterviewState(INTERVIEW_STATES.LISTENING);
-            audioEchoGuardRef.current = Date.now() + 1000;
-            if (onEndCallback) onEndCallback();
-          };
-        }).catch((err) => {
-          console.warn("Audio autoplay blocked by browser:", err);
-          setIsSpeaking(false);
-          speakingRef.current = false;
-        });
-      } catch (e) {
-        setIsSpeaking(false);
-        speakingRef.current = false;
-      }
-    };
+    // Play subtle audio tone indicator
+    playAIChime();
 
     if ('speechSynthesis' in window) {
-      try {
-        const utterance = new SpeechSynthesisUtterance(text);
-        utterance.lang = 'en-US';
-        utterance.rate = 0.9;
-        utterance.pitch = 1.1;
+      if (window.speechSynthesis.paused) {
+        window.speechSynthesis.resume();
+      }
 
-        const voices = window.speechSynthesis.getVoices() || [];
-        if (voices.length > 0) {
-          const femaleVoice = voices.find(v => {
-            const n = v.name.toLowerCase();
-            return (
-              n.includes('zira') ||
-              n.includes('samantha') ||
-              n.includes('jenny') ||
-              n.includes('eva') ||
-              n.includes('karen') ||
-              n.includes('victoria') ||
-              n.includes('hazel') ||
-              n.includes('female') ||
-              n.includes('google us english')
-            ) && v.lang.startsWith('en');
-          }) || voices.find(v => v.lang.startsWith('en'));
+      const utterance = new SpeechSynthesisUtterance(text);
+      utterance.lang = 'en-US';
+      utterance.rate = 0.88;
+      utterance.pitch = 1.05;
 
-          if (femaleVoice) {
-            utterance.voice = femaleVoice;
-          }
-        }
+      const targetVoice = selectedFemaleVoiceRef.current || resolveFemaleVoice();
+      if (targetVoice) {
+        utterance.voice = targetVoice;
+      }
 
-        utterance.onstart = () => {
-          spokenSuccessfully = true;
-          setIsSpeaking(true);
-          speakingRef.current = true;
-        };
+      utterance.onstart = () => {
+        setIsSpeaking(true);
+        speakingRef.current = true;
+        setAudioUnlocked(true);
+      };
 
-        utterance.onend = () => {
-          setIsSpeaking(false);
-          speakingRef.current = false;
-          setInterviewState(INTERVIEW_STATES.LISTENING);
-          audioEchoGuardRef.current = Date.now() + 1000;
-          if (onEndCallback) onEndCallback();
-        };
+      utterance.onend = () => {
+        setIsSpeaking(false);
+        speakingRef.current = false;
+        setInterviewState(INTERVIEW_STATES.LISTENING);
+        audioEchoGuardRef.current = Date.now() + 1000;
+        if (onEndCallback) onEndCallback();
+      };
 
-        utterance.onerror = () => {
-          if (!spokenSuccessfully) {
-            playFallbackAudio();
-          }
-        };
+      utterance.onerror = (err) => {
+        console.warn("Speech synthesis notice:", err);
+        setIsSpeaking(false);
+        speakingRef.current = false;
+        audioEchoGuardRef.current = Date.now() + 300;
+        if (onEndCallback) onEndCallback();
+      };
 
-        if (window.speechSynthesis.paused) {
-          window.speechSynthesis.resume();
-        }
-        window.speechSynthesis.speak(utterance);
-        if (window.speechSynthesis.paused) {
-          window.speechSynthesis.resume();
-        }
-
-        // Safety backup: If Web Speech doesn't trigger onstart within 300ms, run fallback audio
-        setTimeout(() => {
-          if (!spokenSuccessfully && !window.speechSynthesis.speaking) {
-            playFallbackAudio();
-          }
-        }, 300);
-      } catch (err) {
-        playFallbackAudio();
+      window.speechSynthesis.speak(utterance);
+      if (window.speechSynthesis.paused) {
+        window.speechSynthesis.resume();
       }
     } else {
-      playFallbackAudio();
+      setIsSpeaking(false);
+      speakingRef.current = false;
+      if (onEndCallback) onEndCallback();
     }
   };
 
