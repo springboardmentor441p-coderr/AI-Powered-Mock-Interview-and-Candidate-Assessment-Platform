@@ -25,7 +25,9 @@ import {
   Award,
   Maximize2,
   Send,
-  CheckCircle2
+  CheckCircle2,
+  PhoneOff,
+  ArrowRight
 } from 'lucide-react';
 import { AIAvatar, INTERVIEW_STATES } from '../components/Avatar/Avatar';
 import { SpeechToText } from '../components/SpeechToText/SpeechToText';
@@ -406,9 +408,24 @@ export const InterviewRoom = () => {
 
       const voices = window.speechSynthesis.getVoices();
       if (voices.length > 0) {
-        const femaleVoice = voices.find(v =>
-          (v.name.includes('Samantha') || v.name.includes('Zira') || v.name.includes('Jenny') || v.name.includes('Karen') || v.name.includes('Victoria') || v.name.includes('Female') || v.name.includes('Google US English') || v.name.includes('Natural')) && v.lang.startsWith('en')
-        ) || voices.find(v => v.lang.startsWith('en')) || voices[0];
+        const femaleVoice = voices.find(v => {
+          const name = v.name.toLowerCase();
+          return (
+            name.includes('zira') ||
+            name.includes('samantha') ||
+            name.includes('jenny') ||
+            name.includes('eva') ||
+            name.includes('karen') ||
+            name.includes('victoria') ||
+            name.includes('hazel') ||
+            name.includes('female') ||
+            name.includes('google us english') ||
+            name.includes('natural')
+          ) && v.lang.startsWith('en');
+        }) || voices.find(v => {
+          const name = v.name.toLowerCase();
+          return !name.includes('david') && !name.includes('mark') && !name.includes('george') && !name.includes('male') && v.lang.startsWith('en');
+        }) || voices[0];
 
         if (femaleVoice) utterance.voice = femaleVoice;
       }
@@ -1373,12 +1390,21 @@ export const InterviewRoom = () => {
         </div>
 
         {/* Time Remaining & Call Actions */}
-        <div className="flex items-center gap-3">
-          <div className="bg-slate-900 px-4 py-2 rounded-xl border border-cyan-500/40 text-cyan-400 font-mono text-xs flex items-center gap-2 shadow-sm">
+        <div className="flex items-center gap-2 flex-wrap">
+          <div className="bg-slate-900 px-3.5 py-2 rounded-xl border border-cyan-500/40 text-cyan-400 font-mono text-xs flex items-center gap-2 shadow-sm">
             <Clock className="w-4 h-4 text-cyan-400" />
-            <span className="text-slate-400 uppercase text-[10px] block">Time Left:</span>
+            <span className="text-slate-400 uppercase text-[10px] hidden sm:block">Time Left:</span>
             <strong className="text-sm font-bold text-cyan-300">{formatTime(timerSeconds)}</strong>
           </div>
+
+          <button
+            type="button"
+            onClick={handleNextQuestion}
+            className="bg-cyan-600/90 hover:bg-cyan-500 text-slate-950 px-3.5 py-2 rounded-xl text-xs font-mono font-bold flex items-center gap-1.5 transition-all cursor-pointer shadow-md"
+          >
+            <span>Next Question</span>
+            <ArrowRight className="w-3.5 h-3.5" />
+          </button>
 
           <button
             type="button"
@@ -1386,7 +1412,16 @@ export const InterviewRoom = () => {
             className="bg-emerald-600/90 hover:bg-emerald-500 text-white px-4 py-2 rounded-xl text-xs font-mono font-bold flex items-center gap-2 transition-all cursor-pointer shadow-lg shadow-emerald-500/20"
           >
             <Send className="w-4 h-4" />
-            <span>Submit</span>
+            <span>Submit & End Interview</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={handleCompleteInterview}
+            className="bg-red-950/80 hover:bg-red-900 text-red-300 border border-red-500/40 px-3.5 py-2 rounded-xl text-xs font-mono font-bold flex items-center gap-1.5 transition-all cursor-pointer shadow-md"
+          >
+            <PhoneOff className="w-4 h-4 text-red-400" />
+            <span className="hidden sm:inline">End Session</span>
           </button>
         </div>
       </div>
