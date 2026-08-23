@@ -267,18 +267,16 @@ To prevent infinite React re-renders, the latest `onMetricsUpdate` callback is s
 
 ## 10. Final Interview Logic & Flow
 
-The final interview logic enforces a reliable, candidate-friendly progression:
+The final interview logic enforces a realistic, online timed AI interview experience:
 
-1. **Question Selection**: Session starts with Question 1 (e.g., candidate background introduction tailored to the selected domain).
-2. **Submission Lock Guard**: Clicking *"Submit Answer & Next Question"* engages `submittingRef.current = true`. This prevents duplicate submissions or duplicate candidate chat bubbles.
-3. **Instant Conversation Progression**:
-   - The candidate's response is appended to the chat thread under `"YOU"`.
-   - Mira's next question is appended to the thread immediately.
-   - Question index increments (`currentIdx + 1`).
-4. **Clean Completion**: The interview ends **ONLY** when:
-   - The candidate completes all configured questions (e.g. 5 of 5), OR
-   - The candidate explicitly clicks *"Finish Interview"* in the confirmation modal.
-   - **No automatic time expiry or countdown timers are used.**
+1. **Question Selection & Intro**: Session begins with Question 1 (candidate background self-introduction tailored to the selected domain).
+2. **Dual Session Timers**:
+   - **Overall Interview Timer**: Configurable 15-minute overall session time limit (15:00 countdown). When overall time expires, the interview safely finalizes and generates the assessment report.
+   - **Per-Question Timer**: 2-minute countdown timer (2:00) per technical prompt. If the question timer expires, the question is logged as unanswered/timed out and auto-advances to the next question.
+3. **Dedicated "Skip Question" Feature**: Candidates can click *"Skip Question"* to skip difficult prompts cleanly. Skips are recorded as unanswered (0.0 score) and Mira responds naturally: *"No problem. Let's move to the next question."*
+4. **Submission Lock Guard**: Clicking *"Submit Answer & Next Question"* engages `submittingRef.current = true` to eliminate re-entrant submissions or duplicate candidate chat bubbles.
+5. **Instant Conversation & Adaptive Probing**: Candidate answers appear in real-time under `"YOU"`, followed immediately by Mira's adaptive follow-up prompt.
+6. **Clean Completion**: The candidate can click *"Finish Interview"* anytime via the header action button or complete all questions to generate the granular assessment report.
 
 ---
 

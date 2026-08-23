@@ -92,9 +92,86 @@ export default function InterviewRoomPage({ sessionData, setActivePage, setFinal
     emotion: "Neutral"
   });
 
+  // REALISTIC INTERVIEW DUAL TIMERS (15-min overall, 2-min per-question)
+  const initialOverallSeconds = sessionData?.time_limit ? sessionData.time_limit * 60 : 900; // Default 15 mins (900s)
+  const initialQuestionSeconds = 120; // 2 minutes per question (120s)
+
+  const [overallTimeRemaining, setOverallTimeRemaining] = useState(() => {
+    return sessionData?.overallTimeRemaining !== undefined ? sessionData.overallTimeRemaining : initialOverallSeconds;
+  });
+  const [questionTimeRemaining, setQuestionTimeRemaining] = useState(() => {
+    return sessionData?.questionTimeRemaining !== undefined ? sessionData.questionTimeRemaining : initialQuestionSeconds;
+  });
+
+  const overallTimeRef = useRef(overallTimeRemaining);
+  const questionTimeRef = useRef(questionTimeRemaining);
+  overallTimeRef.current = overallTimeRemaining;
+  questionTimeRef.current = questionTimeRemaining;
+
   const handleCameraMetricsUpdate = useCallback((m) => {
     setCameraMetrics(m);
   }, []);
+
+  // OVERALL INTERVIEW TIMER & PER-QUESTION COUNTDOWN EFFECT
+  useEffect(() => {
+    if (finalizingRef.current) return;
+
+    const timer = setInterval(() => {
+      if (finalizingRef.current) {
+        clearInterval(timer);
+        return;
+      }
+
+      // 1. Overall Timer Countdown
+      setOverallTimeRemaining(prev => {
+        if (prev <= 1) {
+          clearInterval(timer);
+          // Safely finalize session when overall interview timer expires
+          setActivePopup({
+            text: "⏱️ INTERVIEW TIME EXPIRED: Session automatically finalizing report...",
+            color: "bg-indigo-600 border-indigo-400 text-white font-bold"
+          });
+          setTimeout(() => {
+            handleFinalizeSession("time_expired");
+          }, 600);
+          return 0;
+        }
+        return prev - 1;
+      });
+
+      // 2. Per-Question Timer Countdown
+      setQuestionTimeRemaining(prev => {
+        if (prev <= 1) {
+          // Question timer expired -> Auto-advance to next question as skipped/unanswered
+          setActivePopup({
+            text: "⏳ Question time expired (2:00 limit). Moving to next question...",
+            color: "bg-amber-600 border-amber-400 text-white font-bold"
+          });
+          setTimeout(() => setActivePopup(null), 4000);
+
+          if (!submittingRef.current && !finalizingRef.current) {
+            handleTimeoutNextQuestion();
+          }
+          return initialQuestionSeconds;
+        }
+        return prev - 1;
+      });
+
+    }, 1000);
+
+    return () => clearInterval(timer);
+  }, []);
+
+  // Reset per-question timer when moving to new question
+  const resetQuestionTimer = () => {
+    setQuestionTimeRemaining(initialQuestionSeconds);
+  };
+
+  const formatTime = (seconds) => {
+    const mins = Math.floor(Math.max(0, seconds) / 60);
+    const secs = Math.max(0, seconds) % 60;
+    return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+  };
 
   // PERSIST ACTIVE SESSION STATE TO LOCAL STORAGE FOR BROWSER REFRESH PROTECTION
   useEffect(() => {
@@ -106,6 +183,8 @@ export default function InterviewRoomPage({ sessionData, setActivePage, setFinal
         candidateAnswersList,
         questions: questionsList,
         total_questions: maxQuestions,
+        overallTimeRemaining: overallTimeRef.current,
+        questionTimeRemaining: questionTimeRef.current,
         status: "active"
       };
       localStorage.setItem("smarthire_active_session", JSON.stringify(activeState));
@@ -417,6 +496,7 @@ export default function InterviewRoomPage({ sessionData, setActivePage, setFinal
       // Append candidate answer and Mira's next question cleanly into conversation thread
       setChatThread(prev => [...prev, candidateBubble, interviewerBubble]);
       setCurrentIdx(prev => prev + 1);
+      resetQuestionTimer();
     } else {
       setChatThread(prev => [...prev, candidateBubble]);
     }
@@ -489,6 +569,180 @@ export default function InterviewRoomPage({ sessionData, setActivePage, setFinal
       setSubmitting(false);
     } else {
       // Reached configured max questions -> Finalize session cleanly as completed
+      submittingRef.current = false;
+      await handleFinalizeSession("completed", updatedAnswers);
+    }
+  };
+
+  // DEDICATED SKIP QUESTION HANDLER
+  const handleSkipQuestion = async () => {
+    if (submittingRef.current || finalizingRef.current || !currentQ) return;
+    submittingRef.current = true;
+    setSubmitting(true);
+
+    miraAgent.stopSpeaking();
+    stopMicRecording();
+
+    candidateAnswerRef.current = '';
+    setCandidateAnswer('');
+
+    const finalCandidateAnswer = "Question Skipped by Candidate";
+
+    const candidateBubble = {
+      id: `cand-${currentIdx + 1}-${Date.now()}`,
+      sender: 'YOU',
+      text: "⏩ [Question Skipped]",
+      type: 'candidate'
+    };
+
+    const hasMoreQuestions = currentIdx < maxQuestions - 1;
+    let initialNextQ = hasMoreQuestions ? questionsList[currentIdx + 1] : null;
+    if (hasMoreQuestions && (!initialNextQ || !initialNextQ.question_text)) {
+      initialNextQ = {
+        id: currentIdx + 2,
+        question_text: `Could you elaborate on your experience with core architectural design patterns in ${activeDomain}?`,
+        skill_focus: `${activeDomain} Architecture`
+      };
+    }
+
+    if (hasMoreQuestions && initialNextQ) {
+      const nextInterviewerText = `No problem. Let's move to the next question. ${initialNextQ.question_text}`;
+
+      const interviewerBubble = {
+        id: `mira-${currentIdx + 2}-${Date.now()}`,
+        sender: `Mira (AI Interviewer)`,
+        text: nextInterviewerText,
+        type: 'interviewer'
+      };
+
+      setChatThread(prev => [...prev, candidateBubble, interviewerBubble]);
+      setCurrentIdx(prev => prev + 1);
+      resetQuestionTimer();
+    } else {
+      setChatThread(prev => [...prev, candidateBubble]);
+    }
+
+    const actualEyeContactRatio = cameraMetrics.eyeContactRatio !== undefined 
+      ? cameraMetrics.eyeContactRatio 
+      : (cameraMetrics.streamActive ? 1.0 : 0.0);
+
+    const backendRes = await submitQuestionAnswer({
+      session_id: sessionData?.session_id || 1,
+      question_index: currentIdx + 1,
+      question_text: currentQ?.question_text || currentQ?.q || "",
+      candidate_answer: finalCandidateAnswer,
+      transcript: finalCandidateAnswer,
+      eye_contact_ratio: actualEyeContactRatio
+    });
+
+    const answerEntry = {
+      q_num: currentIdx + 1,
+      q_text: currentQ?.question_text || currentQ?.q || "",
+      user_answer: finalCandidateAnswer,
+      is_answered: false,
+      evaluation_status: "Skipped",
+      technical_score: 0.0,
+      clarity_score: 0.0,
+      feedback: "Question was skipped by candidate.",
+      strengths: [],
+      weaknesses: ["Question skipped by candidate."],
+      skill_focus: currentQ?.skill_focus || activeDomain
+    };
+
+    const updatedAnswers = [...candidateAnswersList, answerEntry];
+    setCandidateAnswersList(updatedAnswers);
+
+    if (hasMoreQuestions) {
+      submittingRef.current = false;
+      setSubmitting(false);
+    } else {
+      submittingRef.current = false;
+      await handleFinalizeSession("completed", updatedAnswers);
+    }
+  };
+
+  // AUTOMATIC PER-QUESTION TIMEOUT HANDLER
+  const handleTimeoutNextQuestion = async () => {
+    if (submittingRef.current || finalizingRef.current || !currentQ) return;
+    submittingRef.current = true;
+    setSubmitting(true);
+
+    miraAgent.stopSpeaking();
+    stopMicRecording();
+
+    candidateAnswerRef.current = '';
+    setCandidateAnswer('');
+
+    const finalCandidateAnswer = "Not answered (Question Time Expired)";
+
+    const candidateBubble = {
+      id: `cand-${currentIdx + 1}-${Date.now()}`,
+      sender: 'YOU',
+      text: "⏳ [Question Time Expired]",
+      type: 'candidate'
+    };
+
+    const hasMoreQuestions = currentIdx < maxQuestions - 1;
+    let initialNextQ = hasMoreQuestions ? questionsList[currentIdx + 1] : null;
+    if (hasMoreQuestions && (!initialNextQ || !initialNextQ.question_text)) {
+      initialNextQ = {
+        id: currentIdx + 2,
+        question_text: `Could you elaborate on your experience with core architectural design patterns in ${activeDomain}?`,
+        skill_focus: `${activeDomain} Architecture`
+      };
+    }
+
+    if (hasMoreQuestions && initialNextQ) {
+      const nextInterviewerText = `Question time expired. Let's move to the next prompt. ${initialNextQ.question_text}`;
+
+      const interviewerBubble = {
+        id: `mira-${currentIdx + 2}-${Date.now()}`,
+        sender: `Mira (AI Interviewer)`,
+        text: nextInterviewerText,
+        type: 'interviewer'
+      };
+
+      setChatThread(prev => [...prev, candidateBubble, interviewerBubble]);
+      setCurrentIdx(prev => prev + 1);
+      resetQuestionTimer();
+    } else {
+      setChatThread(prev => [...prev, candidateBubble]);
+    }
+
+    const actualEyeContactRatio = cameraMetrics.eyeContactRatio !== undefined 
+      ? cameraMetrics.eyeContactRatio 
+      : (cameraMetrics.streamActive ? 1.0 : 0.0);
+
+    const backendRes = await submitQuestionAnswer({
+      session_id: sessionData?.session_id || 1,
+      question_index: currentIdx + 1,
+      question_text: currentQ?.question_text || currentQ?.q || "",
+      candidate_answer: finalCandidateAnswer,
+      transcript: finalCandidateAnswer,
+      eye_contact_ratio: actualEyeContactRatio
+    });
+
+    const answerEntry = {
+      q_num: currentIdx + 1,
+      q_text: currentQ?.question_text || currentQ?.q || "",
+      user_answer: finalCandidateAnswer,
+      is_answered: false,
+      evaluation_status: "Timed Out",
+      technical_score: 0.0,
+      clarity_score: 0.0,
+      feedback: "Question time limit expired (2:00).",
+      strengths: [],
+      weaknesses: ["Question time limit expired."],
+      skill_focus: currentQ?.skill_focus || activeDomain
+    };
+
+    const updatedAnswers = [...candidateAnswersList, answerEntry];
+    setCandidateAnswersList(updatedAnswers);
+
+    if (hasMoreQuestions) {
+      submittingRef.current = false;
+      setSubmitting(false);
+    } else {
       submittingRef.current = false;
       await handleFinalizeSession("completed", updatedAnswers);
     }
@@ -651,10 +905,27 @@ export default function InterviewRoomPage({ sessionData, setActivePage, setFinal
           </div>
         </div>
 
-        <div className="flex items-center gap-3">
+        {/* LIVE SESSION TIMERS & FINISH BUTTON */}
+        <div className="flex flex-wrap items-center gap-3">
+          {/* Overall Interview Session Timer */}
+          <div className={`px-3 py-1.5 rounded-xl border font-mono text-xs font-bold flex items-center gap-1.5 transition-all ${
+            overallTimeRemaining < 120 ? 'bg-red-500/20 border-red-500/50 text-red-300 animate-pulse' : 'bg-slate-900 border-slate-800 text-indigo-300'
+          }`}>
+            <span className="text-slate-400 font-normal text-[10px] uppercase">Interview Time:</span>
+            <span>{formatTime(overallTimeRemaining)}</span>
+          </div>
+
+          {/* Per-Question Timer */}
+          <div className={`px-3 py-1.5 rounded-xl border font-mono text-xs font-bold flex items-center gap-1.5 transition-all ${
+            questionTimeRemaining < 30 ? 'bg-amber-500/20 border-amber-500/50 text-amber-300 animate-pulse' : 'bg-slate-900 border-slate-800 text-cyan-300'
+          }`}>
+            <span className="text-slate-400 font-normal text-[10px] uppercase">Question Time:</span>
+            <span>{formatTime(questionTimeRemaining)}</span>
+          </div>
+
           <button
             onClick={() => setShowEndModal(true)}
-            className="px-3.5 py-1.5 rounded-xl bg-red-500/15 hover:bg-red-500/30 border border-red-500/40 text-red-400 font-mono text-xs font-bold flex items-center gap-1.5 transition-all"
+            className="px-3.5 py-1.5 rounded-xl bg-red-500/15 hover:bg-red-500/30 border border-red-500/40 text-red-400 font-mono text-xs font-bold flex items-center gap-1.5 transition-all shadow-lg hover:scale-105 active:scale-95"
           >
             <PhoneOff className="w-3.5 h-3.5" /> Finish Interview
           </button>
@@ -880,17 +1151,23 @@ export default function InterviewRoomPage({ sessionData, setActivePage, setFinal
             </span>
           </div>
 
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2.5">
+            <button
+              onClick={handleSkipQuestion}
+              disabled={submitting || transcribingAudio}
+              className="px-4 py-2.5 rounded-xl text-xs font-bold border border-slate-700 bg-slate-800/80 text-slate-300 hover:bg-slate-800 hover:text-white hover:border-slate-600 transition-all flex items-center gap-1.5 disabled:opacity-50"
+            >
+              ⏩ Skip Question
+            </button>
+
             <button
               onClick={handleNextQuestion}
               disabled={submitting || transcribingAudio}
-              className="px-6 py-2.5 rounded-xl font-bold text-xs bg-indigo-600 hover:bg-indigo-500 text-white shadow-lg transition-all flex items-center gap-2"
+              className="px-6 py-2.5 rounded-xl font-bold text-xs bg-indigo-600 hover:bg-indigo-500 text-white shadow-lg shadow-indigo-600/30 transition-all flex items-center gap-2 disabled:opacity-50"
             >
               {submitting || transcribingAudio ? "Mira Processing..." : (
                 currentIdx < maxQuestions - 1 ? (
-                  candidateAnswer.trim().length > 0 
-                    ? <>Submit Answer & Next Question <ArrowRight className="w-4 h-4" /></>
-                    : <>Skip Question (Log Unanswered) <ArrowRight className="w-4 h-4" /></>
+                  <>Submit Answer & Next Question <ArrowRight className="w-4 h-4" /></>
                 ) : (
                   <>Complete Interview & Generate Report <PhoneOff className="w-4 h-4" /></>
                 )
