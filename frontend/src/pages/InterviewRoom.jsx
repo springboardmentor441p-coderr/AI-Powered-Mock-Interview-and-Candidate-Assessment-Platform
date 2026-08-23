@@ -482,7 +482,31 @@ export const InterviewRoom = () => {
     } catch (e) {}
   };
 
-  // Clean Natural Speech Synthesis Voice Engine
+  // Document-level Chrome Audio Autoplay Unlock Listener
+  useEffect(() => {
+    const unlockAudioOnUserGesture = () => {
+      if ('speechSynthesis' in window) {
+        try {
+          window.speechSynthesis.resume();
+        } catch (e) {}
+      }
+      if (audioContextRef.current && audioContextRef.current.state === 'suspended') {
+        try {
+          audioContextRef.current.resume();
+        } catch (e) {}
+      }
+    };
+
+    window.addEventListener('click', unlockAudioOnUserGesture);
+    window.addEventListener('keydown', unlockAudioOnUserGesture);
+
+    return () => {
+      window.removeEventListener('click', unlockAudioOnUserGesture);
+      window.removeEventListener('keydown', unlockAudioOnUserGesture);
+    };
+  }, []);
+
+  // Fail-Safe Speech Synthesis Engine (Voice Object Fallback Guarded)
   const speakAIText = (text, onEndCallback = null) => {
     if (!text) return;
     if (!('speechSynthesis' in window)) return;
@@ -501,42 +525,71 @@ export const InterviewRoom = () => {
     audioEchoGuardRef.current = Date.now() + 99999;
     setLiveSubtitles(`[AI Interviewer]: "${text}"`);
 
-    // Play pleasant audio chime
+    // Play subtle audio chime
     playAIChime();
 
-    const utterance = new SpeechSynthesisUtterance(text);
-    utterance.lang = 'en-US';
-    utterance.rate = 0.9;
-    utterance.pitch = 1.0;
+    let isSpeakingStarted = false;
 
-    const targetVoice = selectedFemaleVoiceRef.current || resolveFemaleVoice();
-    if (targetVoice) {
-      utterance.voice = targetVoice;
-    }
+    const speakWithVoiceSetting = (withCustomVoice = true) => {
+      const utterance = new SpeechSynthesisUtterance(text);
+      utterance.lang = 'en-US';
+      utterance.rate = 0.9;
+      utterance.pitch = 1.0;
 
-    utterance.onstart = () => {
-      setIsSpeaking(true);
-      speakingRef.current = true;
+      if (withCustomVoice) {
+        const targetVoice = selectedFemaleVoiceRef.current || resolveFemaleVoice();
+        if (targetVoice) {
+          utterance.voice = targetVoice;
+        }
+      }
+
+      utterance.onstart = () => {
+        isSpeakingStarted = true;
+        setIsSpeaking(true);
+        speakingRef.current = true;
+      };
+
+      utterance.onend = () => {
+        setIsSpeaking(false);
+        speakingRef.current = false;
+        setInterviewState(INTERVIEW_STATES.LISTENING);
+        audioEchoGuardRef.current = Date.now() + 1000;
+        if (onEndCallback) onEndCallback();
+      };
+
+      utterance.onerror = (err) => {
+        console.warn("Speech synthesis notice:", err);
+        if (!isSpeakingStarted && withCustomVoice) {
+          speakWithVoiceSetting(false); // Fallback to default browser voice
+        } else {
+          setIsSpeaking(false);
+          speakingRef.current = false;
+          audioEchoGuardRef.current = Date.now() + 300;
+          if (onEndCallback) onEndCallback();
+        }
+      };
+
+      if (window.speechSynthesis.paused) {
+        window.speechSynthesis.resume();
+      }
+      window.speechSynthesis.speak(utterance);
+      if (window.speechSynthesis.paused) {
+        window.speechSynthesis.resume();
+      }
     };
 
-    utterance.onend = () => {
-      setIsSpeaking(false);
-      speakingRef.current = false;
-      setInterviewState(INTERVIEW_STATES.LISTENING);
-      audioEchoGuardRef.current = Date.now() + 1000;
-      if (onEndCallback) onEndCallback();
-    };
+    speakWithVoiceSetting(true);
 
-    utterance.onerror = (err) => {
-      console.warn("Speech synthesis notice:", err);
-      setIsSpeaking(false);
-      speakingRef.current = false;
-      audioEchoGuardRef.current = Date.now() + 300;
-      if (onEndCallback) onEndCallback();
-    };
-
-    window.speechSynthesis.speak(utterance);
-    window.speechSynthesis.resume();
+    // Safety fallback: If custom voice object fails to trigger speech within 250ms, retry with default voice
+    setTimeout(() => {
+      if (!isSpeakingStarted && !window.speechSynthesis.speaking) {
+        try {
+          window.speechSynthesis.cancel();
+          window.speechSynthesis.resume();
+          speakWithVoiceSetting(false);
+        } catch (e) {}
+      }
+    }, 250);
   };
 
   const handleUnlockAudioAndStart = () => {
