@@ -31,7 +31,7 @@ export const Profile = () => {
       localStorage.removeItem('smarthire_user');
       localStorage.removeItem('smarthire_session_qa');
       localStorage.removeItem('smarthire_video_url');
-    } catch (e) {}
+    } catch (e) { }
 
     if (typeof setUser === 'function') {
       setUser({
@@ -95,14 +95,14 @@ export const Profile = () => {
             </div>
 
             <div>
-              <label className="text-xs font-semibold text-slate-300 block mb-1">Gender (Determines Profile Avatar)</label>
+              <label className="text-xs font-semibold text-slate-300 block mb-1">Gender</label>
               <select
                 value={user.gender || 'male'}
                 onChange={(e) => handleGenderChange(e.target.value)}
                 className="w-full bg-slate-900 border border-slate-800 rounded-xl px-4 py-2.5 text-xs text-cyan-300 font-bold focus:outline-none focus:border-cyan-500 cursor-pointer font-mono"
               >
-                <option value="male">Male (👨 Photorealistic Male Avatar)</option>
-                <option value="female">Female (👩 Photorealistic Female Avatar)</option>
+                <option value="male">Male</option>
+                <option value="female">Female</option>
               </select>
             </div>
 

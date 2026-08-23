@@ -54,7 +54,7 @@ export const SignupPage = () => {
                 type="text"
                 value={fullName}
                 onChange={(e) => setFullName(e.target.value)}
-                placeholder="e.g. Dileep Kumar"
+                placeholder="e.g. Jhon"
                 required
                 className="w-full bg-slate-900 border border-slate-800 rounded-xl pl-9 pr-4 py-2 text-xs text-slate-100 focus:outline-none focus:border-purple-500"
               />
@@ -62,7 +62,7 @@ export const SignupPage = () => {
           </div>
 
           <div>
-            <label className="text-xs font-semibold text-slate-300 block mb-1 font-mono">Gender (Sets Profile Avatar)</label>
+            <label className="text-xs font-semibold text-slate-300 block mb-1 font-mono">Gender </label>
             <div className="relative">
               <UserCheck className="w-4 h-4 text-purple-400 absolute left-3 top-3" />
               <select
@@ -70,8 +70,8 @@ export const SignupPage = () => {
                 onChange={(e) => setGender(e.target.value)}
                 className="w-full bg-slate-900 border border-slate-800 rounded-xl pl-9 pr-4 py-2 text-xs text-purple-300 font-bold focus:outline-none focus:border-purple-500 font-mono cursor-pointer"
               >
-                <option value="male">Male (👨 Male Profile Avatar)</option>
-                <option value="female">Female (👩 Female Profile Avatar)</option>
+                <option value="male">Male</option>
+                <option value="female">Female</option>
               </select>
             </div>
           </div>
