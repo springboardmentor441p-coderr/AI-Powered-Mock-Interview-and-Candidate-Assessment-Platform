@@ -445,8 +445,9 @@ export const InterviewRoom = () => {
   }, []);
 
   const audioEchoGuardRef = useRef(0);
+  const [audioUnlocked, setAudioUnlocked] = useState(false);
 
-  // Natural Speech Synthesis Voice Engine (Fail-safe Synchronous Audio Execution)
+  // Natural Speech Synthesis Voice Engine (Fail-safe Asynchronous Driver Execution)
   const speakAIText = (text, onEndCallback = null) => {
     if (!('speechSynthesis' in window)) return;
 
@@ -461,54 +462,71 @@ export const InterviewRoom = () => {
     setIsSpeaking(false);
     setLiveSubtitles(`[AI Interviewer]: "${text}"`);
 
-    const utterance = new SpeechSynthesisUtterance(text);
-    utterance.rate = 0.9;  // Natural speaking rate
-    utterance.pitch = 1.0; // Standard natural pitch (guarantees cross-browser driver support)
+    // 60ms delay ensures Chrome/Windows SAPI clears cancellation state cleanly
+    setTimeout(() => {
+      if (!('speechSynthesis' in window)) return;
 
-    const targetVoice = selectedFemaleVoiceRef.current || resolveFemaleVoice();
-    if (targetVoice) {
-      utterance.voice = targetVoice;
-    }
+      const utterance = new SpeechSynthesisUtterance(text);
+      utterance.rate = 0.9;
+      utterance.pitch = 1.0;
 
-    utterance.onstart = () => {
-      setIsSpeaking(true);
-      speakingRef.current = true;
-      audioEchoGuardRef.current = Date.now() + 99999; // Guard while speaking
-      if (recognitionRef.current) {
-        try { recognitionRef.current.abort(); } catch (e) { }
+      const targetVoice = selectedFemaleVoiceRef.current || resolveFemaleVoice();
+      if (targetVoice) {
+        utterance.voice = targetVoice;
       }
-    };
 
-    utterance.onend = () => {
-      setIsSpeaking(false);
-      speakingRef.current = false;
-      setInterviewState(INTERVIEW_STATES.LISTENING);
-      // Guard microphone against speaker echo for 1200ms after AI finishes speaking
-      audioEchoGuardRef.current = Date.now() + 1200;
-      setTimeout(() => {
-        if (recognitionRef.current && isMicOn && !speakingRef.current) {
+      utterance.onstart = () => {
+        setIsSpeaking(true);
+        speakingRef.current = true;
+        setAudioUnlocked(true);
+        audioEchoGuardRef.current = Date.now() + 99999;
+        if (recognitionRef.current) {
+          try { recognitionRef.current.abort(); } catch (e) { }
+        }
+      };
+
+      utterance.onend = () => {
+        setIsSpeaking(false);
+        speakingRef.current = false;
+        setInterviewState(INTERVIEW_STATES.LISTENING);
+        audioEchoGuardRef.current = Date.now() + 1200;
+        setTimeout(() => {
+          if (recognitionRef.current && isMicOn && !speakingRef.current) {
+            try { recognitionRef.current.start(); } catch (e) { }
+          }
+        }, 300);
+        if (onEndCallback) onEndCallback();
+      };
+
+      utterance.onerror = (err) => {
+        console.warn("Speech synthesis audio notice:", err);
+        setIsSpeaking(false);
+        speakingRef.current = false;
+        audioEchoGuardRef.current = Date.now() + 300;
+        if (recognitionRef.current && isMicOn) {
           try { recognitionRef.current.start(); } catch (e) { }
         }
-      }, 300);
-      if (onEndCallback) onEndCallback();
-    };
+      };
 
-    utterance.onerror = (err) => {
-      console.warn("Speech synthesis audio engine notice:", err);
-      setIsSpeaking(false);
-      speakingRef.current = false;
-      audioEchoGuardRef.current = Date.now() + 300;
-      if (recognitionRef.current && isMicOn) {
-        try { recognitionRef.current.start(); } catch (e) { }
+      if (window.speechSynthesis.paused) {
+        window.speechSynthesis.resume();
       }
-    };
+      window.speechSynthesis.speak(utterance);
+      if (window.speechSynthesis.paused) {
+        window.speechSynthesis.resume();
+      }
+    }, 60);
+  };
 
-    if (window.speechSynthesis.paused) {
-      window.speechSynthesis.resume();
-    }
-    window.speechSynthesis.speak(utterance);
-    if (window.speechSynthesis.paused) {
-      window.speechSynthesis.resume();
+  const handleUnlockAudioAndStart = () => {
+    setAudioUnlocked(true);
+    if (!('speechSynthesis' in window)) return;
+    if (window.speechSynthesis.paused) window.speechSynthesis.resume();
+    const textToSpeak = isWelcomePhase
+      ? "Welcome to Smart AI Interview! I am Advika, your AI Virtual Presenter, and I will be conducting your technical assessment today. Shall we start the interview?"
+      : (currentQ ? (currentQ.questionText || currentQ.question_text) : '');
+    if (textToSpeak) {
+      speakAIText(textToSpeak);
     }
   };
 
