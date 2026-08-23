@@ -267,16 +267,17 @@ To prevent infinite React re-renders, the latest `onMetricsUpdate` callback is s
 
 ## 10. Final Interview Logic & Flow
 
-The final interview logic enforces a realistic, online timed AI interview experience:
+The final interview logic enforces a realistic, online AI mock-interview experience:
 
-1. **Question Selection & Intro**: Session begins with Question 1 (candidate background self-introduction tailored to the selected domain).
-2. **Dual Session Timers**:
-   - **Overall Interview Timer**: Configurable 15-minute overall session time limit (15:00 countdown). When overall time expires, the interview safely finalizes and generates the assessment report.
-   - **Per-Question Timer**: 2-minute countdown timer (2:00) per technical prompt. If the question timer expires, the question is logged as unanswered/timed out and auto-advances to the next question.
-3. **Dedicated "Skip Question" Feature**: Candidates can click *"Skip Question"* to skip difficult prompts cleanly. Skips are recorded as unanswered (0.0 score) and Mira responds naturally: *"No problem. Let's move to the next question."*
-4. **Submission Lock Guard**: Clicking *"Submit Answer & Next Question"* engages `submittingRef.current = true` to eliminate re-entrant submissions or duplicate candidate chat bubbles.
-5. **Instant Conversation & Adaptive Probing**: Candidate answers appear in real-time under `"YOU"`, followed immediately by Mira's adaptive follow-up prompt.
-6. **Clean Completion**: The candidate can click *"Finish Interview"* anytime via the header action button or complete all questions to generate the granular assessment report.
+1. **Authentication Flow**: Supports Sign Up (`/register`), Sign In (`/login`), and Sign Out (`handleLogout` redirects to Sign In page). Protected routes enforce JWT token authentication.
+2. **Question Selection & Intro**: Session begins naturally with Question 1 (candidate background self-introduction tailored to the selected technical domain).
+3. **Realistic Interview Session Timing**:
+   - **Overall Session Timer**: Configurable 20-minute overall interview limit (`20:00` countdown badge). If session time elapses, the interview gracefully finalizes and generates the assessment report.
+   - **Per-Question Recommended Indicator**: 5-minute recommended time indicator (`05:00`) per prompt. Offers gentle non-intrusive reminder toasts without forced auto-submit cutoffs, allowing candidates ample time to think and speak naturally.
+4. **Dedicated "Skip Question" Feature**: Candidates can click *"Skip Question"* (`[ Skip Question ]`) to pass difficult prompts. Skips are recorded as unanswered (`0.0` score) and Mira responds naturally: *"No problem. Let's move to the next question."*
+5. **Submission Lock Guard**: Clicking *"Submit Answer & Next Question"* engages `submittingRef.current = true` to eliminate duplicate candidate chat bubbles.
+6. **Instant Conversation & Adaptive Probing**: Candidate answers appear in real-time under `"YOU"`, followed immediately by Mira's LLM adaptive follow-up prompt.
+7. **Clean Completion**: The candidate can click *"Finish Interview"* anytime via the header action button or complete all questions to generate the granular assessment report.
 
 ---
 

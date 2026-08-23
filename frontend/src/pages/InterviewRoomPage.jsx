@@ -92,9 +92,9 @@ export default function InterviewRoomPage({ sessionData, setActivePage, setFinal
     emotion: "Neutral"
   });
 
-  // REALISTIC INTERVIEW DUAL TIMERS (15-min overall, 2-min per-question)
-  const initialOverallSeconds = sessionData?.time_limit ? sessionData.time_limit * 60 : 900; // Default 15 mins (900s)
-  const initialQuestionSeconds = 120; // 2 minutes per question (120s)
+  // REALISTIC INTERVIEW DUAL TIMERS (20-min overall session limit, 5-min per-question recommended indicator)
+  const initialOverallSeconds = sessionData?.time_limit ? sessionData.time_limit * 60 : 1200; // Default 20 mins (1200s)
+  const initialQuestionSeconds = 300; // 5 minutes recommended per question (300s)
 
   const [overallTimeRemaining, setOverallTimeRemaining] = useState(() => {
     return sessionData?.overallTimeRemaining !== undefined ? sessionData.overallTimeRemaining : initialOverallSeconds;
@@ -112,7 +112,7 @@ export default function InterviewRoomPage({ sessionData, setActivePage, setFinal
     setCameraMetrics(m);
   }, []);
 
-  // OVERALL INTERVIEW TIMER & PER-QUESTION COUNTDOWN EFFECT
+  // OVERALL INTERVIEW TIMER & PER-QUESTION RECOMMENDED TIME EFFECT
   useEffect(() => {
     if (finalizingRef.current) return;
 
@@ -122,13 +122,13 @@ export default function InterviewRoomPage({ sessionData, setActivePage, setFinal
         return;
       }
 
-      // 1. Overall Timer Countdown
+      // 1. Overall Session Timer Countdown (20 Minutes)
       setOverallTimeRemaining(prev => {
         if (prev <= 1) {
           clearInterval(timer);
           // Safely finalize session when overall interview timer expires
           setActivePopup({
-            text: "⏱️ INTERVIEW TIME EXPIRED: Session automatically finalizing report...",
+            text: "⏱️ INTERVIEW SESSION COMPLETED: Finalizing assessment report...",
             color: "bg-indigo-600 border-indigo-400 text-white font-bold"
           });
           setTimeout(() => {
@@ -139,22 +139,18 @@ export default function InterviewRoomPage({ sessionData, setActivePage, setFinal
         return prev - 1;
       });
 
-      // 2. Per-Question Timer Countdown
+      // 2. Per-Question Recommended Time Indicator Countdown
       setQuestionTimeRemaining(prev => {
-        if (prev <= 1) {
-          // Question timer expired -> Auto-advance to next question as skipped/unanswered
+        if (prev === 1) {
+          // Gentle reminder notice when recommended per-question time elapses (no forced cutoff)
           setActivePopup({
-            text: "⏳ Question time expired (2:00 limit). Moving to next question...",
-            color: "bg-amber-600 border-amber-400 text-white font-bold"
+            text: "💡 Recommended question time (5:00) reached. Take your time to complete your response or click Skip when ready.",
+            color: "bg-indigo-900/90 border-indigo-500/50 text-indigo-200 font-medium"
           });
-          setTimeout(() => setActivePopup(null), 4000);
-
-          if (!submittingRef.current && !finalizingRef.current) {
-            handleTimeoutNextQuestion();
-          }
-          return initialQuestionSeconds;
+          setTimeout(() => setActivePopup(null), 5000);
+          return 0;
         }
-        return prev - 1;
+        return Math.max(0, prev - 1);
       });
 
     }, 1000);

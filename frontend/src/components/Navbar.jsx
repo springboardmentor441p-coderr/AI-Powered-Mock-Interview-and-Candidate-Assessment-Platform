@@ -9,7 +9,7 @@ export default function Navbar({ activePage, setActivePage }) {
   const handleLogout = () => {
     removeStoredToken();
     localStorage.removeItem('smarthire_user');
-    setActivePage('landing');
+    setActivePage('login');
   };
 
   return (
