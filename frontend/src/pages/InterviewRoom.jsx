@@ -482,19 +482,18 @@ export const InterviewRoom = () => {
     } catch (e) {}
   };
 
-  // Dual-Attempt Speech Synthesis Engine (Guaranteed Voice Output)
+  // Clean Natural Speech Synthesis Voice Engine
   const speakAIText = (text, onEndCallback = null) => {
     if (!text) return;
+    if (!('speechSynthesis' in window)) return;
 
     if (recognitionRef.current) {
       try { recognitionRef.current.abort(); } catch (e) { }
     }
 
     try {
-      if ('speechSynthesis' in window) {
-        window.speechSynthesis.cancel();
-        window.speechSynthesis.resume();
-      }
+      window.speechSynthesis.cancel();
+      window.speechSynthesis.resume();
     } catch (e) {}
 
     setIsSpeaking(true);
@@ -502,74 +501,42 @@ export const InterviewRoom = () => {
     audioEchoGuardRef.current = Date.now() + 99999;
     setLiveSubtitles(`[AI Interviewer]: "${text}"`);
 
-    // Play pleasant chime
+    // Play pleasant audio chime
     playAIChime();
 
-    if (!('speechSynthesis' in window)) {
-      setIsSpeaking(false);
-      speakingRef.current = false;
-      if (onEndCallback) onEndCallback();
-      return;
+    const utterance = new SpeechSynthesisUtterance(text);
+    utterance.lang = 'en-US';
+    utterance.rate = 0.9;
+    utterance.pitch = 1.0;
+
+    const targetVoice = selectedFemaleVoiceRef.current || resolveFemaleVoice();
+    if (targetVoice) {
+      utterance.voice = targetVoice;
     }
 
-    let started = false;
-
-    // Helper to configure utterance properties
-    const createUtterance = (useCustomVoice = true) => {
-      const utt = new SpeechSynthesisUtterance(text);
-      utt.lang = 'en-US';
-      utt.rate = 0.88;
-      utt.pitch = 1.05;
-
-      if (useCustomVoice) {
-        const targetVoice = selectedFemaleVoiceRef.current || resolveFemaleVoice();
-        if (targetVoice) {
-          utt.voice = targetVoice;
-        }
-      }
-
-      utt.onstart = () => {
-        started = true;
-        setIsSpeaking(true);
-        speakingRef.current = true;
-      };
-
-      utt.onend = () => {
-        setIsSpeaking(false);
-        speakingRef.current = false;
-        setInterviewState(INTERVIEW_STATES.LISTENING);
-        audioEchoGuardRef.current = Date.now() + 1000;
-        if (onEndCallback) onEndCallback();
-      };
-
-      utt.onerror = () => {
-        setIsSpeaking(false);
-        speakingRef.current = false;
-        audioEchoGuardRef.current = Date.now() + 300;
-        if (onEndCallback) onEndCallback();
-      };
-
-      return utt;
+    utterance.onstart = () => {
+      setIsSpeaking(true);
+      speakingRef.current = true;
     };
 
-    // Attempt 1: Speak with selected female voice
-    const primaryUtterance = createUtterance(true);
-    window.speechSynthesis.resume();
-    window.speechSynthesis.speak(primaryUtterance);
-    window.speechSynthesis.resume();
+    utterance.onend = () => {
+      setIsSpeaking(false);
+      speakingRef.current = false;
+      setInterviewState(INTERVIEW_STATES.LISTENING);
+      audioEchoGuardRef.current = Date.now() + 1000;
+      if (onEndCallback) onEndCallback();
+    };
 
-    // Fallback Attempt 2: If primary utterance didn't trigger onstart within 200ms, retry with default voice
-    setTimeout(() => {
-      if (!started && !window.speechSynthesis.speaking) {
-        try {
-          window.speechSynthesis.cancel();
-          window.speechSynthesis.resume();
-          const fallbackUtterance = createUtterance(false);
-          window.speechSynthesis.speak(fallbackUtterance);
-          window.speechSynthesis.resume();
-        } catch (e) {}
-      }
-    }, 200);
+    utterance.onerror = (err) => {
+      console.warn("Speech synthesis notice:", err);
+      setIsSpeaking(false);
+      speakingRef.current = false;
+      audioEchoGuardRef.current = Date.now() + 300;
+      if (onEndCallback) onEndCallback();
+    };
+
+    window.speechSynthesis.speak(utterance);
+    window.speechSynthesis.resume();
   };
 
   const handleUnlockAudioAndStart = () => {
