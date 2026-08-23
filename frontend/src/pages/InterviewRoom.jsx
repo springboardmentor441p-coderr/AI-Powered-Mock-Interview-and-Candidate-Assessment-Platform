@@ -446,7 +446,19 @@ export const InterviewRoom = () => {
 
   const audioEchoGuardRef = useRef(0);
   const audioContextRef = useRef(null);
-  const [audioUnlocked, setAudioUnlocked] = useState(false);
+
+  // Chrome SpeechSynthesis Keep-Alive Un-Pause Loop
+  useEffect(() => {
+    const keepAliveTimer = setInterval(() => {
+      if ('speechSynthesis' in window && window.speechSynthesis.speaking) {
+        try {
+          window.speechSynthesis.pause();
+          window.speechSynthesis.resume();
+        } catch (e) {}
+      }
+    }, 5000);
+    return () => clearInterval(keepAliveTimer);
+  }, []);
 
   // Play pleasant Cyberpunk AI Audio Chime before speaking
   const playAIChime = () => {
@@ -474,7 +486,7 @@ export const InterviewRoom = () => {
     } catch (e) {}
   };
 
-  // Bulletproof Speech Synthesis Engine (Guaranteed Sound Execution)
+  // Dual-Attempt Speech Synthesis Engine (Guaranteed Voice Output)
   const speakAIText = (text, onEndCallback = null) => {
     if (!text) return;
 
@@ -483,7 +495,10 @@ export const InterviewRoom = () => {
     }
 
     try {
-      if ('speechSynthesis' in window) window.speechSynthesis.cancel();
+      if ('speechSynthesis' in window) {
+        window.speechSynthesis.cancel();
+        window.speechSynthesis.resume();
+      }
     } catch (e) {}
 
     setIsSpeaking(true);
@@ -491,31 +506,39 @@ export const InterviewRoom = () => {
     audioEchoGuardRef.current = Date.now() + 99999;
     setLiveSubtitles(`[AI Interviewer]: "${text}"`);
 
-    // Play subtle audio tone indicator
+    // Play pleasant chime
     playAIChime();
 
-    if ('speechSynthesis' in window) {
-      if (window.speechSynthesis.paused) {
-        window.speechSynthesis.resume();
+    if (!('speechSynthesis' in window)) {
+      setIsSpeaking(false);
+      speakingRef.current = false;
+      if (onEndCallback) onEndCallback();
+      return;
+    }
+
+    let started = false;
+
+    // Helper to configure utterance properties
+    const createUtterance = (useCustomVoice = true) => {
+      const utt = new SpeechSynthesisUtterance(text);
+      utt.lang = 'en-US';
+      utt.rate = 0.88;
+      utt.pitch = 1.05;
+
+      if (useCustomVoice) {
+        const targetVoice = selectedFemaleVoiceRef.current || resolveFemaleVoice();
+        if (targetVoice) {
+          utt.voice = targetVoice;
+        }
       }
 
-      const utterance = new SpeechSynthesisUtterance(text);
-      utterance.lang = 'en-US';
-      utterance.rate = 0.88;
-      utterance.pitch = 1.05;
-
-      const targetVoice = selectedFemaleVoiceRef.current || resolveFemaleVoice();
-      if (targetVoice) {
-        utterance.voice = targetVoice;
-      }
-
-      utterance.onstart = () => {
+      utt.onstart = () => {
+        started = true;
         setIsSpeaking(true);
         speakingRef.current = true;
-        setAudioUnlocked(true);
       };
 
-      utterance.onend = () => {
+      utt.onend = () => {
         setIsSpeaking(false);
         speakingRef.current = false;
         setInterviewState(INTERVIEW_STATES.LISTENING);
@@ -523,23 +546,34 @@ export const InterviewRoom = () => {
         if (onEndCallback) onEndCallback();
       };
 
-      utterance.onerror = (err) => {
-        console.warn("Speech synthesis notice:", err);
+      utt.onerror = () => {
         setIsSpeaking(false);
         speakingRef.current = false;
         audioEchoGuardRef.current = Date.now() + 300;
         if (onEndCallback) onEndCallback();
       };
 
-      window.speechSynthesis.speak(utterance);
-      if (window.speechSynthesis.paused) {
-        window.speechSynthesis.resume();
+      return utt;
+    };
+
+    // Attempt 1: Speak with selected female voice
+    const primaryUtterance = createUtterance(true);
+    window.speechSynthesis.resume();
+    window.speechSynthesis.speak(primaryUtterance);
+    window.speechSynthesis.resume();
+
+    // Fallback Attempt 2: If primary utterance didn't trigger onstart within 200ms, retry with default voice
+    setTimeout(() => {
+      if (!started && !window.speechSynthesis.speaking) {
+        try {
+          window.speechSynthesis.cancel();
+          window.speechSynthesis.resume();
+          const fallbackUtterance = createUtterance(false);
+          window.speechSynthesis.speak(fallbackUtterance);
+          window.speechSynthesis.resume();
+        } catch (e) {}
       }
-    } else {
-      setIsSpeaking(false);
-      speakingRef.current = false;
-      if (onEndCallback) onEndCallback();
-    }
+    }, 200);
   };
 
   const handleUnlockAudioAndStart = () => {
