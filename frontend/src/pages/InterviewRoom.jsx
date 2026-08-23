@@ -408,7 +408,29 @@ export const InterviewRoom = () => {
 
       const voices = window.speechSynthesis.getVoices();
       if (voices.length > 0) {
-        const femaleVoice = voices.find(v => {
+        // Strictly filter out all male voice names & keywords
+        const femaleVoices = voices.filter(v => {
+          const name = v.name.toLowerCase();
+          const isMale = (
+            name.includes('david') ||
+            name.includes('mark') ||
+            name.includes('george') ||
+            name.includes('james') ||
+            name.includes('alex') ||
+            name.includes('fred') ||
+            name.includes('daniel') ||
+            name.includes('guy') ||
+            name.includes('christopher') ||
+            name.includes('eric') ||
+            name.includes('steffan') ||
+            name.includes('liam') ||
+            name.includes('thomas') ||
+            name.includes('male') && !name.includes('female')
+          );
+          return !isMale;
+        });
+
+        const femaleVoice = femaleVoices.find(v => {
           const name = v.name.toLowerCase();
           return (
             name.includes('zira') ||
@@ -422,13 +444,13 @@ export const InterviewRoom = () => {
             name.includes('google us english') ||
             name.includes('natural')
           ) && v.lang.startsWith('en');
-        }) || voices.find(v => {
-          const name = v.name.toLowerCase();
-          return !name.includes('david') && !name.includes('mark') && !name.includes('george') && !name.includes('male') && v.lang.startsWith('en');
-        }) || voices[0];
+        }) || femaleVoices.find(v => v.lang.startsWith('en')) || femaleVoices[0];
 
-        if (femaleVoice) utterance.voice = femaleVoice;
+        if (femaleVoice) {
+          utterance.voice = femaleVoice;
+        }
       }
+      utterance.pitch = 1.15; // Realistic feminine voice pitch
 
       utterance.onstart = () => {
         setIsSpeaking(true);
