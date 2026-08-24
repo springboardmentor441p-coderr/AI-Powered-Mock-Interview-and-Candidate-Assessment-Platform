@@ -658,12 +658,8 @@ export const InterviewRoom = () => {
         recognition.lang = 'en-US';
 
         recognition.onresult = (event) => {
-          if (
-            speakingRef.current ||
-            ('speechSynthesis' in window && window.speechSynthesis.speaking) ||
-            Date.now() < audioEchoGuardRef.current
-          ) {
-            return; // Ignore audio feedback from AI speakers & trailing echo!
+          if (speakingRef.current) {
+            return; // Ignore audio feedback while AI is speaking
           }
 
           let finalTranscript = '';
