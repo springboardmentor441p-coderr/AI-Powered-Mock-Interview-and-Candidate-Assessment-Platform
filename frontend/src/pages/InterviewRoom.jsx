@@ -520,7 +520,7 @@ export const InterviewRoom = () => {
     };
   }, [isWelcomePhase, currentQ]);
 
-  // Fail-Safe Speech Synthesis Engine (Voice Object Fallback Guarded)
+  // Zero-Latency Speech Synthesis Engine (Instant Female Voice Execution)
   const speakAIText = (text, onEndCallback = null) => {
     if (!text) return;
     if (!('speechSynthesis' in window)) return;
@@ -539,69 +539,44 @@ export const InterviewRoom = () => {
     audioEchoGuardRef.current = Date.now() + 99999;
     setLiveSubtitles(`[AI Interviewer]: "${text}"`);
 
-    // Play subtle audio chime
-    playAIChime();
+    const utterance = new SpeechSynthesisUtterance(text);
+    utterance.lang = 'en-US';
+    utterance.rate = 0.95;
+    utterance.pitch = 1.25; // Feminine voice pitch tuning
 
-    let isSpeakingStarted = false;
+    const targetFemaleVoice = selectedFemaleVoiceRef.current || resolveFemaleVoice();
+    if (targetFemaleVoice) {
+      utterance.voice = targetFemaleVoice;
+    }
 
-    const speakWithVoiceSetting = (withCustomVoice = true) => {
-      const utterance = new SpeechSynthesisUtterance(text);
-      utterance.lang = 'en-US';
-      utterance.rate = 0.92;
-      utterance.pitch = 1.25; // Feminine voice pitch tuning
-
-      const targetFemaleVoice = selectedFemaleVoiceRef.current || resolveFemaleVoice();
-      if (targetFemaleVoice) {
-        utterance.voice = targetFemaleVoice;
-      }
-
-      utterance.onstart = () => {
-        isSpeakingStarted = true;
-        setIsSpeaking(true);
-        speakingRef.current = true;
-      };
-
-      utterance.onend = () => {
-        setIsSpeaking(false);
-        speakingRef.current = false;
-        setInterviewState(INTERVIEW_STATES.LISTENING);
-        audioEchoGuardRef.current = Date.now() + 1000;
-        if (onEndCallback) onEndCallback();
-      };
-
-      utterance.onerror = (err) => {
-        console.warn("Speech synthesis notice:", err);
-        if (!isSpeakingStarted && withCustomVoice) {
-          speakWithVoiceSetting(false); // Fallback to default browser voice
-        } else {
-          setIsSpeaking(false);
-          speakingRef.current = false;
-          audioEchoGuardRef.current = Date.now() + 300;
-          if (onEndCallback) onEndCallback();
-        }
-      };
-
-      if (window.speechSynthesis.paused) {
-        window.speechSynthesis.resume();
-      }
-      window.speechSynthesis.speak(utterance);
-      if (window.speechSynthesis.paused) {
-        window.speechSynthesis.resume();
-      }
+    utterance.onstart = () => {
+      setIsSpeaking(true);
+      speakingRef.current = true;
     };
 
-    speakWithVoiceSetting(true);
+    utterance.onend = () => {
+      setIsSpeaking(false);
+      speakingRef.current = false;
+      setInterviewState(INTERVIEW_STATES.LISTENING);
+      audioEchoGuardRef.current = Date.now() + 1000;
+      if (onEndCallback) onEndCallback();
+    };
 
-    // Safety fallback: If custom voice object fails to trigger speech within 250ms, retry with default voice
-    setTimeout(() => {
-      if (!isSpeakingStarted && !window.speechSynthesis.speaking) {
-        try {
-          window.speechSynthesis.cancel();
-          window.speechSynthesis.resume();
-          speakWithVoiceSetting(false);
-        } catch (e) {}
-      }
-    }, 250);
+    utterance.onerror = (err) => {
+      console.warn("Speech synthesis notice:", err);
+      setIsSpeaking(false);
+      speakingRef.current = false;
+      audioEchoGuardRef.current = Date.now() + 300;
+      if (onEndCallback) onEndCallback();
+    };
+
+    if (window.speechSynthesis.paused) {
+      window.speechSynthesis.resume();
+    }
+    window.speechSynthesis.speak(utterance);
+    if (window.speechSynthesis.paused) {
+      window.speechSynthesis.resume();
+    }
   };
 
   const handleUnlockAudioAndStart = () => {
@@ -627,38 +602,15 @@ export const InterviewRoom = () => {
     }
   };
 
-  // 1. AUTOMATIC INSTANT WELCOME & SELF-INTRODUCTION ON ROOM ENTRY
+  // 1. AUTOMATIC INSTANT WELCOME & SELF-INTRODUCTION ON ROOM ENTRY (0ms Latency)
   useEffect(() => {
     if (!isWelcomePhase) return;
     if (welcomeSpokenRef.current) return;
     welcomeSpokenRef.current = true;
 
+    resolveFemaleVoice();
     const welcomeIntro = "Welcome to Smart AI Interview! I am Advika, your Virtual Presenter, and I will be conducting your technical assessment today. Shall we start the interview?";
-
-    const triggerAutomaticSpeech = () => {
-      resolveFemaleVoice();
-      if ('speechSynthesis' in window) {
-        try {
-          window.speechSynthesis.cancel();
-          window.speechSynthesis.resume();
-        } catch (e) {}
-      }
-      speakAIText(welcomeIntro);
-    };
-
-    // Fire immediately on room entry
-    const timer1 = setTimeout(triggerAutomaticSpeech, 50);
-    // Instant fallback check at 350ms if audio paused
-    const timer2 = setTimeout(() => {
-      if ('speechSynthesis' in window && !window.speechSynthesis.speaking) {
-        triggerAutomaticSpeech();
-      }
-    }, 350);
-
-    return () => {
-      clearTimeout(timer1);
-      clearTimeout(timer2);
-    };
+    speakAIText(welcomeIntro);
   }, [isWelcomePhase]);
 
   // 2. QUESTION SPEECH SYNTHESIS — speaks questions instantly
