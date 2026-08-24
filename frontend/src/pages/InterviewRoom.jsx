@@ -666,13 +666,27 @@ export const InterviewRoom = () => {
               }));
             }
 
-            // Trigger AI response after 800ms of candidate silence (fast, responsive speech listening)
+            // Fast ultra-responsive speech listening silence detection (400ms silence)
             if (silenceTimerRef.current) clearTimeout(silenceTimerRef.current);
+            const rawLower = currentFullText.toLowerCase().trim();
+            const isShortConfirmation = (
+              rawLower === 'yes' ||
+              rawLower === 'ready' ||
+              rawLower === 'start' ||
+              rawLower === 'ok' ||
+              rawLower === 'okay' ||
+              rawLower === 'next' ||
+              rawLower.includes('yes') ||
+              rawLower.includes('ready') ||
+              rawLower.includes('start')
+            );
+            const silenceDelay = isShortConfirmation ? 350 : 500;
+
             silenceTimerRef.current = setTimeout(() => {
               if (currentFullText.trim()) {
                 handleCandidateSpeechResponse(currentFullText.trim());
               }
-            }, 800);
+            }, silenceDelay);
           }
         };
 
@@ -765,9 +779,7 @@ export const InterviewRoom = () => {
         speakAIText("Awesome! Let's get started with your first question.", () => {
           setIsWelcomePhase(false);
           setQIndex(0);
-          setTimeout(() => {
-            speakCurrentQuestion(0);
-          }, 400);
+          speakCurrentQuestion(0);
         });
         return;
       } else if (
