@@ -544,29 +544,6 @@ export const InterviewRoom = () => {
     }
   };
 
-  const handleUnlockAudioAndStart = () => {
-    setAudioUnlocked(true);
-    if (!('speechSynthesis' in window)) return;
-    if (window.speechSynthesis.paused) window.speechSynthesis.resume();
-    const textToSpeak = isWelcomePhase
-      ? "Welcome to Smart AI Interview! I am Advika, your AI Virtual Presenter, and I will be conducting your technical assessment today. Shall we start the interview?"
-      : (currentQ ? (currentQ.questionText || currentQ.question_text) : '');
-    if (textToSpeak) {
-      speakAIText(textToSpeak);
-    }
-  };
-
-  const handleReplayQuestion = () => {
-    if (!('speechSynthesis' in window)) return;
-    if (window.speechSynthesis.paused) window.speechSynthesis.resume();
-    const textToSpeak = isWelcomePhase
-      ? "Welcome to Smart AI Interview! I am Advika, your Virtual Presenter, and I will be conducting your technical assessment today. Shall we start the interview?"
-      : (currentQ ? (currentQ.questionText || currentQ.question_text) : '');
-    if (textToSpeak) {
-      speakAIText(textToSpeak);
-    }
-  };
-
   // 1. AUTOMATIC INSTANT WELCOME & SELF-INTRODUCTION ON ROOM ENTRY (0ms Latency)
   useEffect(() => {
     if (!isWelcomePhase) return;
