@@ -506,10 +506,19 @@ export const InterviewRoom = () => {
 
     const utterance = new SpeechSynthesisUtterance(text);
     utterance.lang = 'en-US';
-    utterance.rate = 0.95;
-    utterance.pitch = 1.25; // Feminine voice pitch tuning
+    utterance.rate = 0.94;
+    utterance.pitch = 1.35; // Strict female voice pitch modulation
 
-    const targetFemaleVoice = selectedFemaleVoiceRef.current || resolveFemaleVoice();
+    let targetFemaleVoice = selectedFemaleVoiceRef.current || resolveFemaleVoice();
+
+    // If voices are loading asynchronously, delay speech slightly until female voice object is bound
+    if (!targetFemaleVoice && window.speechSynthesis.getVoices().length === 0) {
+      setTimeout(() => {
+        speakAIText(text, onEndCallback);
+      }, 50);
+      return;
+    }
+
     if (targetFemaleVoice) {
       utterance.voice = targetFemaleVoice;
     }
