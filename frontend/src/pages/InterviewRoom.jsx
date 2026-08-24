@@ -407,6 +407,7 @@ export const InterviewRoom = () => {
       return !isMale;
     });
 
+    // Prioritise explicitly confirmed Female voices
     const bestFemale = femaleVoices.find(v => {
       const name = v.name.toLowerCase();
       return (
@@ -421,6 +422,7 @@ export const InterviewRoom = () => {
         name.includes('sonia') ||
         name.includes('female') ||
         name.includes('google us english') ||
+        name.includes('google uk english female') ||
         name.includes('natural')
       ) && v.lang.startsWith('en');
     }) || femaleVoices.find(v => v.lang.startsWith('en')) || femaleVoices[0];
@@ -545,14 +547,12 @@ export const InterviewRoom = () => {
     const speakWithVoiceSetting = (withCustomVoice = true) => {
       const utterance = new SpeechSynthesisUtterance(text);
       utterance.lang = 'en-US';
-      utterance.rate = 0.9;
-      utterance.pitch = 1.0;
+      utterance.rate = 0.92;
+      utterance.pitch = 1.25; // Feminine voice pitch tuning
 
-      if (withCustomVoice) {
-        const targetVoice = selectedFemaleVoiceRef.current || resolveFemaleVoice();
-        if (targetVoice) {
-          utterance.voice = targetVoice;
-        }
+      const targetFemaleVoice = selectedFemaleVoiceRef.current || resolveFemaleVoice();
+      if (targetFemaleVoice) {
+        utterance.voice = targetFemaleVoice;
       }
 
       utterance.onstart = () => {
