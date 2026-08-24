@@ -501,7 +501,7 @@ export const InterviewRoom = () => {
 
     setIsSpeaking(true);
     speakingRef.current = true;
-    audioEchoGuardRef.current = Date.now() + 99999;
+    audioEchoGuardRef.current = Date.now() + 300;
     setLiveSubtitles(`[AI Interviewer]: "${text}"`);
 
     const utterance = new SpeechSynthesisUtterance(text);
@@ -526,13 +526,14 @@ export const InterviewRoom = () => {
     utterance.onstart = () => {
       setIsSpeaking(true);
       speakingRef.current = true;
+      audioEchoGuardRef.current = Date.now() + 200;
     };
 
     utterance.onend = () => {
       setIsSpeaking(false);
       speakingRef.current = false;
+      audioEchoGuardRef.current = 0; // Unlock speech recognition immediately!
       setInterviewState(INTERVIEW_STATES.LISTENING);
-      audioEchoGuardRef.current = Date.now() + 1000;
       if (onEndCallback) onEndCallback();
     };
 
@@ -540,7 +541,7 @@ export const InterviewRoom = () => {
       console.warn("Speech synthesis notice:", err);
       setIsSpeaking(false);
       speakingRef.current = false;
-      audioEchoGuardRef.current = Date.now() + 300;
+      audioEchoGuardRef.current = 0; // Unlock speech recognition immediately!
       if (onEndCallback) onEndCallback();
     };
 
@@ -661,7 +662,11 @@ export const InterviewRoom = () => {
             }
           }
 
-          const currentFullText = (accumulatedText + finalTranscript + interimTranscript).trim();
+          if (finalTranscript) {
+            accumulatedText += finalTranscript;
+          }
+
+          const currentFullText = (accumulatedText + interimTranscript).trim();
 
           if (currentFullText) {
             setCandidateSpeechText(currentFullText);
