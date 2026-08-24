@@ -534,6 +534,14 @@ export const InterviewRoom = () => {
       speakingRef.current = false;
       audioEchoGuardRef.current = 0; // Unlock speech recognition immediately!
       setInterviewState(INTERVIEW_STATES.LISTENING);
+
+      // INSTANTLY START MICROPHONE RECOGNITION TO LISTEN TO CANDIDATE ANSWER!
+      if (recognitionRef.current) {
+        try {
+          recognitionRef.current.start();
+        } catch (e) {}
+      }
+
       if (onEndCallback) onEndCallback();
     };
 
@@ -542,6 +550,14 @@ export const InterviewRoom = () => {
       setIsSpeaking(false);
       speakingRef.current = false;
       audioEchoGuardRef.current = 0; // Unlock speech recognition immediately!
+      setInterviewState(INTERVIEW_STATES.LISTENING);
+
+      if (recognitionRef.current) {
+        try {
+          recognitionRef.current.start();
+        } catch (e) {}
+      }
+
       if (onEndCallback) onEndCallback();
     };
 
@@ -705,10 +721,14 @@ export const InterviewRoom = () => {
         };
 
         recognition.onend = () => {
-          if (!isStopped && isMicOn && !speakingRef.current) {
-            try {
-              recognition.start();
-            } catch (err) { }
+          if (!isStopped && isMicOn) {
+            setTimeout(() => {
+              if (!speakingRef.current) {
+                try {
+                  recognition.start();
+                } catch (err) { }
+              }
+            }, 100);
           }
         };
 
