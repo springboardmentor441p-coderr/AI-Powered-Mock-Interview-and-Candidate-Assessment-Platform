@@ -27,25 +27,35 @@ class SessionTranscriptWebhookView(APIView):
     """
     POST /api/v1/interviews/realtime/sessions/<id>/transcript/webhook/
 
-    Receives one finalized transcript turn from the frontend relay.
-    Authenticated by X-Tool-Secret header — not by Django auth.
-    Throttling disabled: the shared secret is the rate-control mechanism.
+    Receives one finalized transcript turn from the frontend relay or webhook.
+    Authenticated by either:
+      1. X-Tool-Secret shared header, OR
+      2. Authenticated candidate who owns the session.
+    Throttling disabled: the authentication is the rate-control mechanism.
     """
     permission_classes = [AllowAny]
-    throttle_classes: list[type[BaseThrottle]] = []  # exempt from Django throttle
+    throttle_classes: list[type[BaseThrottle]] = []
 
     def post(self, request: Request, session_id: str, *args: Any, **kwargs: Any):
         from core.container import container
         from apps.interview.models import ConversationTurn
 
         provided_secret = request.headers.get("X-Tool-Secret", "")
-        if not settings.ULTRAVOX_TOOL_SHARED_SECRET or provided_secret != settings.ULTRAVOX_TOOL_SHARED_SECRET:
+        is_secret_valid = bool(settings.ULTRAVOX_TOOL_SHARED_SECRET and provided_secret == settings.ULTRAVOX_TOOL_SHARED_SECRET)
+        is_candidate_auth = bool(request.user and request.user.is_authenticated and request.user.role == "candidate")
+
+        if not (is_secret_valid or is_candidate_auth):
             return APIResponse.error(
                 message="Invalid webhook credentials.",
                 http_status=status.HTTP_401_UNAUTHORIZED,
             )
 
         session = get_object_or_404(InterviewSession, pk=session_id)
+        if is_candidate_auth and not is_secret_valid and session.candidate_id != request.user.id:
+            return APIResponse.error(
+                message="Permission denied.",
+                http_status=status.HTTP_403_FORBIDDEN,
+            )
 
         serializer = UltravoxTranscriptEventSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
@@ -69,46 +79,28 @@ class SessionTranscriptWebhookView(APIView):
 
     @staticmethod
     def _resolve_question(session, vd: dict, ConversationTurn) -> "Question | None":
-        """
-        Determine which seed topic this transcript turn belongs to.
-
-        Priority:
-          1. Explicit question_id in payload (frontend sent it — trust it).
-          2. Timestamp-based lookup: find the last ConversationTurn whose
-             seed_topic was introduced before this turn's timestamp. This
-             correctly handles async transcript delivery where turns arrive
-             after the orchestrator has already moved to the next topic.
-          3. Current ASKED topic — last resort for turns with no timestamp.
-
-        Why timestamp-based over status=ASKED:
-          Transcript webhooks arrive asynchronously from the frontend. By
-          the time turns for topic N reach Django, the orchestrator may have
-          already transitioned to topic N+1 (status=ASKED). Looking at the
-          current ASKED topic assigns all late-arriving turns to the wrong
-          topic. Using the turn's own timestamp against ConversationTurn
-          created_at anchors each turn to the correct topic regardless of
-          delivery lag.
-        """
-        # 1. Explicit question_id wins.
         if vd.get("question_id"):
             q = Question.objects.filter(pk=vd["question_id"], session=session).first()
             if q:
                 return q
-       
         return session.current_seed_topic
 
 
 class SessionTranscriptListView(APIView):
     """
     GET /api/v1/interviews/realtime/sessions/<id>/transcript/full/
-    Full ordered transcript for replay/review UI.
+    Full ordered transcript for replay/review UI. Accessible by candidate owner or recruiter.
     """
-    permission_classes = [IsCandidate]
+    permission_classes = [IsAuthenticated]
 
     def get(self, request: Request, session_id: str, *args: Any, **kwargs: Any):
         from core.container import container
 
-        session = get_owned_session_or_404(candidate=request.user, session_id=session_id)
+        session = get_object_or_404(InterviewSession.objects.select_related("candidate"), pk=session_id)
+        user = request.user
+        if session.candidate_id != user.id and user.role not in ("recruiter", "admin"):
+            return APIResponse.error(message="Access denied.", http_status=status.HTTP_403_FORBIDDEN)
+
         turns = container.transcript_service().get_ordered_turns(session)
         return APIResponse.success(data=TranscriptSerializer(turns, many=True).data)
 
@@ -116,12 +108,16 @@ class SessionTranscriptListView(APIView):
 class SessionThreadEvaluationListView(APIView):
     """
     GET /api/v1/interviews/realtime/sessions/<id>/thread-evaluations/
-    Per-topic thread evaluation scores.
+    Per-topic thread evaluation scores. Accessible by candidate owner or recruiter.
     """
-    permission_classes = [IsCandidate]
+    permission_classes = [IsAuthenticated]
 
     def get(self, request: Request, session_id: str, *args: Any, **kwargs: Any):
-        session = get_owned_session_or_404(candidate=request.user, session_id=session_id)
+        session = get_object_or_404(InterviewSession.objects.select_related("candidate"), pk=session_id)
+        user = request.user
+        if session.candidate_id != user.id and user.role not in ("recruiter", "admin"):
+            return APIResponse.error(message="Access denied.", http_status=status.HTTP_403_FORBIDDEN)
+
         evaluations = (
             ThreadEvaluation.objects
             .filter(interview=session)
@@ -139,14 +135,34 @@ class SessionInterviewBriefView(APIView):
     permission_classes = [IsAuthenticated]
 
     def _get_brief(self, session_id: str) -> InterviewBrief:
-        return get_object_or_404(InterviewBrief, interview_id=session_id)
+        return get_object_or_404(
+            InterviewBrief.objects.select_related("interview", "interview__candidate"),
+            interview_id=session_id,
+        )
 
     def get(self, request: Request, session_id: str, *args: Any, **kwargs: Any):
         brief = self._get_brief(session_id)
+        user = request.user
+        is_candidate_owner = (brief.interview.candidate_id == user.id)
+        is_recruiter = (user.role in ("recruiter", "admin"))
+
+        if not (is_candidate_owner or is_recruiter):
+            return APIResponse.error(
+                message="You do not have permission to view this interview brief.",
+                http_status=status.HTTP_403_FORBIDDEN,
+            )
+
         return APIResponse.success(data=InterviewBriefSerializer(brief).data)
 
     def patch(self, request: Request, session_id: str, *args: Any, **kwargs: Any):
         brief = self._get_brief(session_id)
+        user = request.user
+        if user.role not in ("recruiter", "admin"):
+            return APIResponse.error(
+                message="Only recruiters and administrators can submit hiring verdicts.",
+                http_status=status.HTTP_403_FORBIDDEN,
+            )
+
         serializer = HumanVerdictSerializer(brief, data=request.data, partial=True)
         serializer.is_valid(raise_exception=True)
         serializer.save(reviewed_by=request.user, reviewed_at=timezone.now())

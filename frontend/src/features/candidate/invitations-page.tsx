@@ -133,7 +133,7 @@ export default function InvitationsPage() {
                     </div>
 
                     <div className="flex shrink-0 flex-col gap-2 sm:items-end">
-                      {inv.status === "pending" && (
+                      {(inv.status === "pending" || inv.status === "sent" || inv.status === "opened") && (
                         <Button
                           onClick={() => handleAccept(inv.id)}
                           disabled={acceptInvitation.isPending}
@@ -147,12 +147,21 @@ export default function InvitationsPage() {
                         </Button>
                       )}
                       {inv.status === "accepted" && inv.session_id && (
-                        <Button
-                          variant="outline"
-                          onClick={() => navigate(`/app/interviews/${inv.session_id}`)}
-                        >
-                          View results
-                        </Button>
+                        inv.session_status === "completed" ? (
+                          <Button
+                            variant="outline"
+                            onClick={() => navigate(`/app/interviews/${inv.session_id}`)}
+                          >
+                            View results
+                          </Button>
+                        ) : (
+                          <Button
+                            onClick={() => navigate(`/room/${inv.session_id}`)}
+                          >
+                            <Play className="h-4 w-4" />
+                            Resume interview
+                          </Button>
+                        )
                       )}
                     </div>
                   </CardContent>

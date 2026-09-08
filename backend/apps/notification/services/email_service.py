@@ -33,3 +33,25 @@ class EmailService(BaseService):
             "— SmartHire AI Team"
         )
         return self._provider.send(to=to, subject=subject, body=body)
+
+    def send_invitation(
+        self,
+        *,
+        to: str,
+        recruiter_name: str,
+        template_title: str,
+        invite_url: str,
+        message: str = "",
+    ) -> bool:
+        subject = f"Interview Invitation from {recruiter_name} on SmartHire AI"
+        note_section = f"\n\nPersonal Note from {recruiter_name}:\n\"{message}\"" if message else ""
+        body = (
+            f"Hello,\n\n"
+            f"{recruiter_name} has invited you to complete an AI-powered interview for {template_title} on SmartHire AI."
+            f"{note_section}\n\n"
+            f"You can start your interview by clicking the link below:\n"
+            f"{invite_url}\n\n"
+            f"Please ensure you have a working microphone and a stable internet connection.\n\n"
+            f"— The SmartHire AI Team"
+        )
+        return self._provider.send(to=to, subject=subject, body=body)

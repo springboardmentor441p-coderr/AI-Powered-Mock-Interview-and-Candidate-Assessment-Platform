@@ -30,3 +30,23 @@ class TestRegistrationAndLogin:
     def test_me_requires_auth(self, api_client):
         res = api_client.get(reverse("identity:me"))
         assert res.status_code == 401
+
+    def test_logout_succeeds_with_refresh_token(self, api_client, candidate_user):
+        login_res = api_client.post(reverse("identity:login"), {"email": candidate_user.email, "password": "StrongPass123!"})
+        refresh = login_res.data["refresh"]
+        access = login_res.data["access"]
+        api_client.credentials(HTTP_AUTHORIZATION=f"Bearer {access}")
+
+        logout_res = api_client.post(reverse("identity:logout"), {"refresh": refresh})
+        assert logout_res.status_code == 200
+
+    def test_logout_succeeds_without_auth_header(self, api_client, candidate_user):
+        login_res = api_client.post(reverse("identity:login"), {"email": candidate_user.email, "password": "StrongPass123!"})
+        refresh = login_res.data["refresh"]
+        # No Authorization header set — simulating expired access token
+        logout_res = api_client.post(reverse("identity:logout"), {"refresh": refresh})
+        assert logout_res.status_code == 200
+
+    def test_logout_is_idempotent_on_invalid_or_repeated_token(self, api_client):
+        logout_res = api_client.post(reverse("identity:logout"), {"refresh": "invalid_or_already_blacklisted"})
+        assert logout_res.status_code == 200

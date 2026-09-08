@@ -59,7 +59,10 @@ httpClient.interceptors.response.use(
   async (error: AxiosError<RawErrorPayload>) => {
     const original = error.config as (InternalAxiosRequestConfig & { _retry?: boolean }) | undefined;
     const status = error.response?.status;
-    const isAuthEndpoint = original?.url?.includes("/auth/login") || original?.url?.includes("/auth/token/refresh");
+    const isAuthEndpoint =
+      original?.url?.includes("/auth/login") ||
+      original?.url?.includes("/auth/token/refresh") ||
+      original?.url?.includes("/auth/logout");
 
     if (status === 401 && original && !original._retry && !isAuthEndpoint) {
       if (!getAuthSnapshot().refreshToken) {

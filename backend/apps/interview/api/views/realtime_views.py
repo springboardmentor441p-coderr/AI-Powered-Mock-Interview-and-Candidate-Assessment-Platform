@@ -1,5 +1,6 @@
 import json
 from typing import Any, cast
+import uuid
 
 from django.conf import settings
 from django.shortcuts import get_object_or_404
@@ -69,17 +70,59 @@ class SessionRealtimeStartView(APIView):
         return APIResponse.success(data=RealtimeSessionDetailSerializer(session).data)
 
 
-class SessionRealtimeAbandonView(APIView):
+class SessionRealtimeHeartbeatView(APIView):
     """
-    POST /api/v1/interviews/realtime/sessions/<session_id>/abandon/
-
-    Abandons a scheduled/in-progress realtime session that failed to start
-    (e.g. Ultravox plan limit, network error). Also resets the linked
-    invitation back to 'pending' so the candidate can retry.
+    POST /api/v1/interviews/realtime/sessions/<session_id>/heartbeat/
+    Liveness probe sent by frontend every 10–15s during active call.
+    Updates last_seen_at and recovers CONNECTION_LOST sessions.
     """
     permission_classes = [IsCandidate]
 
     def post(self, request: Request, session_id: str, *args: Any, **kwargs: Any):
+        from django.utils import timezone
+
+        session = get_owned_session_or_404(candidate=request.user, session_id=session_id)
+        now = timezone.now()
+        client_session_id = request.data.get("client_session_id")
+
+        update_fields = ["last_seen_at", "updated_at"]
+        session.last_seen_at = now
+
+        if client_session_id and not session.client_session_id:
+            try:
+                session.client_session_id = uuid.UUID(str(client_session_id))
+                update_fields.append("client_session_id")
+            except (ValueError, TypeError, AttributeError):
+                pass
+
+        # Auto-recover if temporary connection drop occurred
+        if session.status == InterviewSession.Status.CONNECTION_LOST:
+            session.status = InterviewSession.Status.IN_PROGRESS
+            update_fields.append("status")
+
+        session.save(update_fields=update_fields)
+
+        return APIResponse.success(
+            data={
+                "session_id": str(session.id),
+                "status": session.status,
+                "last_seen_at": session.last_seen_at,
+            },
+            message="Heartbeat recorded.",
+        )
+
+
+class SessionRealtimeAbandonView(APIView):
+    """
+    POST /api/v1/interviews/realtime/sessions/<session_id>/abandon/
+    Explicitly abandons a session (e.g. candidate clicks 'Leave Interview' and confirms).
+    Preserves audit trails without wiping relational links.
+    """
+    permission_classes = [IsCandidate]
+
+    def post(self, request: Request, session_id: str, *args: Any, **kwargs: Any):
+        from apps.interview.models import InvitationStatus
+
         session = get_owned_session_or_404(candidate=request.user, session_id=session_id)
 
         if session.status == InterviewSession.Status.COMPLETED:
@@ -92,19 +135,18 @@ class SessionRealtimeAbandonView(APIView):
             session.status = InterviewSession.Status.ABANDONED
             session.save(update_fields=["status", "updated_at"])
 
-        # Reset the invitation so the candidate can accept again
+        # Update linked invitation status without wiping session foreign key
         try:
             inv = session.invitation  # type: ignore[attr-defined]
-            if inv is not None and inv.status == "accepted":
-                inv.status = "pending"
-                inv.session = None
-                inv.save(update_fields=["status", "session", "updated_at"])
+            if inv is not None and inv.status == InvitationStatus.ACCEPTED:
+                inv.status = InvitationStatus.ABANDONED
+                inv.save(update_fields=["status", "updated_at"])
         except Exception:  # noqa: BLE001
-            pass  # no invitation linked — that's fine
+            pass
 
         return APIResponse.success(
             data=RealtimeSessionDetailSerializer(session).data,
-            message="Session abandoned. You can retry the invitation.",
+            message="Session abandoned.",
         )
 
 

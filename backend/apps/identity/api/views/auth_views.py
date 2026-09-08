@@ -3,6 +3,7 @@ from typing import Any, cast
 from rest_framework import generics, permissions, status
 from rest_framework.request import Request
 from rest_framework.views import APIView
+from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
 
 from core.responses import APIResponse
@@ -48,6 +49,27 @@ class LoginView(TokenObtainPairView):
 
 class RefreshTokenView(TokenRefreshView):
     """Re-exported as-is to keep all auth endpoints under apps.identity.api.urls."""
+
+
+class LogoutView(APIView):
+    """
+    Idempotent logout endpoint. Blacklists the provided refresh token.
+    AllowAny allows candidates and recruiters to cleanly log out even if
+    their access token has expired (avoiding 401 refresh loops on logout).
+    """
+
+    permission_classes = [permissions.AllowAny]
+
+    def post(self, request: Request, *args: Any, **kwargs: Any):
+        refresh = request.data.get("refresh")
+        if refresh:
+            try:
+                token = RefreshToken(refresh)
+                token.blacklist()
+            except Exception:
+                # Token already blacklisted, expired, or malformed — logout remains safe and idempotent
+                pass
+        return APIResponse.success(message="Logged out successfully.", http_status=status.HTTP_200_OK)
 
 
 class MeView(generics.RetrieveUpdateAPIView):

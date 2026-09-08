@@ -8,11 +8,12 @@ import { VuMeter } from "@/components/shared/vu-meter";
 import { cn, titleCase } from "@/lib/utils";
 import { useRealtimeSessionPoll, useStartRealtimeSession } from "@/features/candidate/hooks";
 import { interviewsApi } from "@/api/interviews";
+import { API_BASE_URL } from "@/api/client";
 import { useFaceAssessment } from "./hooks/use-face-assessment";
 import { FaceAssessmentHUD } from "./face-assessment-hud";
 import { useAuthStore } from "@/stores/auth-store";
 
-const BACKEND = "http://localhost:8000/api/v1/interviews";
+const BACKEND = `${API_BASE_URL}/interviews`;
 const TOOL_SECRET = import.meta.env.VITE_ULTRAVOX_TOOL_SECRET as string;
 
 interface LiveTranscriptLine {
@@ -174,11 +175,16 @@ export default function LiveInterviewRoom() {
             .slice(lastSentIdxRef.current + 1)
             .some((t) => t.isFinal && t.speaker === "agent");
 
+          const token = useAuthStore.getState().accessToken;
+          const authHeaders: Record<string, string> = {};
+          if (token) authHeaders["Authorization"] = `Bearer ${token}`;
+          if (TOOL_SECRET) authHeaders["X-Tool-Secret"] = TOOL_SECRET;
+
           if (hasNewAgentTurn) {
             try {
               const res = await fetch(
                 `${BACKEND}/realtime/sessions/${sessionId}/current-topic/`,
-                { headers: { "X-Tool-Secret": TOOL_SECRET } },
+                { headers: authHeaders },
               );
               if (res.ok) {
                 const data = await res.json();
@@ -197,7 +203,7 @@ export default function LiveInterviewRoom() {
               method: "POST",
               headers: {
                 "Content-Type": "application/json",
-                "X-Tool-Secret": TOOL_SECRET,
+                ...authHeaders,
               },
               body: JSON.stringify({
                 speaker: turn.speaker === "agent" ? "assistant" : "candidate",
@@ -284,47 +290,65 @@ export default function LiveInterviewRoom() {
     phaseRef.current = phase;
   }, [phase]);
 
-  const abandonSessionOnLeave = useCallback(() => {
+  // ── Liveness Heartbeat & Cleanup ─────────────────────────────────────── //
+  const [showLeaveDialog, setShowLeaveDialog] = useState(false);
+  const clientSessionIdRef = useRef<string>(
+    (() => {
+      let id = sessionStorage.getItem(`smarthire_tab_${sessionId}`);
+      if (!id) {
+        id = typeof crypto !== "undefined" && crypto.randomUUID
+          ? crypto.randomUUID()
+          : "10000000-1000-4000-8000-100000000000".replace(/[018]/g, (c) =>
+              (+c ^ (crypto.getRandomValues(new Uint8Array(1))[0] & (15 >> (+c / 4)))).toString(16)
+            );
+        sessionStorage.setItem(`smarthire_tab_${sessionId}`, id);
+      }
+      return id;
+    })()
+  );
+
+  // Send periodic liveness probe every 12s while connecting or live
+  useEffect(() => {
     if (!sessionId) return;
-    const token = useAuthStore.getState().accessToken;
-    const url = `${import.meta.env.VITE_API_BASE_URL ?? "http://localhost:8000/api/v1"}/interviews/realtime/sessions/${sessionId}/abandon/`;
-    fetch(url, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        ...(token ? { Authorization: `Bearer ${token}` } : {}),
-      },
-      keepalive: true,
-    }).catch(() => {});
-  }, [sessionId]);
+    if (phase !== "live" && phase !== "connecting") return;
+
+    // Send immediate initial ping
+    interviewsApi.heartbeat(sessionId, clientSessionIdRef.current).catch(() => {});
+
+    const interval = setInterval(() => {
+      interviewsApi.heartbeat(sessionId, clientSessionIdRef.current).catch((err) => {
+        console.warn("[heartbeat] ping failed:", err);
+      });
+    }, 12000);
+
+    return () => clearInterval(interval);
+  }, [sessionId, phase]);
 
   useEffect(() => {
-    const handleUnload = () => {
-      const currentPhase = phaseRef.current;
-      // Only abandon if the call was actively live and user closed the window/tab
-      if (currentPhase === "live" && !intentionalDisconnectRef.current) {
-        abandonSessionOnLeave();
-      }
-    };
-
-    window.addEventListener("pagehide", handleUnload);
-    window.addEventListener("beforeunload", handleUnload);
-
     return () => {
-      window.removeEventListener("pagehide", handleUnload);
-      window.removeEventListener("beforeunload", handleUnload);
-
-      // Leave the Ultravox call if any is active
+      // Cleanly leave the WebRTC voice call on unmount without abandoning the interview session
       try {
         sessionRef.current?.leaveCall();
       } catch {
         /* no-op */
       }
-      // Note: We intentionally do NOT call abandonSessionOnLeave() on React unmount.
-      // In React 18 StrictMode (and during routing/fast refresh), components unmount
-      // and remount during normal lifecycle. Abandoning here breaks session setup.
     };
-  }, [abandonSessionOnLeave]);
+  }, []);
+
+  async function handleConfirmAbandon() {
+    if (!sessionId) return;
+    intentionalDisconnectRef.current = true;
+    face.stop();
+    try { sessionRef.current?.leaveCall(); } catch { /* ignore */ }
+    try {
+      await interviewsApi.abandonRealtime(sessionId);
+      toast.info("Interview session abandoned.");
+    } catch {
+      // ignore
+    } finally {
+      navigate("/app/invitations");
+    }
+  }
 
   function handleRetryCall() {
     hasStartedRef.current = false;
@@ -486,6 +510,9 @@ export default function LiveInterviewRoom() {
                   {face.active ? <Video className="h-4 w-4" /> : <VideoOff className="h-4 w-4" />}
                   {face.active ? "Camera on" : "Camera off"}
                 </Button>
+                <Button variant="outline" size="lg" onClick={() => setShowLeaveDialog(true)}>
+                  Leave
+                </Button>
                 <Button variant="destructive" size="lg" onClick={handleEndCall}>
                   <PhoneOff className="h-4 w-4" /> End interview
                 </Button>
@@ -515,6 +542,27 @@ export default function LiveInterviewRoom() {
           </div>
         )}
       </main>
+
+      {/* Leave interview confirmation modal */}
+      {showLeaveDialog && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
+          <div className="w-full max-w-md rounded-xl border border-border bg-card p-6 shadow-xl">
+            <h3 className="font-display text-lg font-semibold text-foreground">Leave Interview?</h3>
+            <p className="mt-2 text-sm text-muted-foreground">
+              If you temporarily refresh or lose connection, your interview progress is preserved and you can return.
+              If you explicitly <strong>Abandon</strong>, this session will be permanently marked abandoned.
+            </p>
+            <div className="mt-6 flex justify-end gap-3">
+              <Button variant="outline" onClick={() => setShowLeaveDialog(false)}>
+                Stay in interview
+              </Button>
+              <Button variant="destructive" onClick={handleConfirmAbandon}>
+                Abandon interview
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

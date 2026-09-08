@@ -331,10 +331,19 @@ export interface Notification {
 
 // ---- Invitations ------------------------------------------------------------------
 
-export type InvitationStatus = "pending" | "accepted" | "expired";
+export type InvitationStatus =
+  | "pending"
+  | "sent"
+  | "opened"
+  | "accepted"
+  | "declined"
+  | "expired"
+  | "revoked"
+  | "abandoned";
 
 export interface InterviewInvitation {
   id: string;
+  token?: string;
   candidate_email: string;
   candidate_name: string | null;
   template: InterviewTemplate | null;
@@ -343,17 +352,38 @@ export interface InterviewInvitation {
   session_id: string | null;
   session_status: string | null;
   has_result: boolean;
+  expires_at?: string | null;
+  is_expired?: boolean;
   created_at: string;
   updated_at: string;
 }
 
 export interface ReceivedInvitation {
   id: string;
+  token?: string;
   recruiter_name: string;
   template: InterviewTemplate | null;
   message: string;
   status: InvitationStatus;
   session_id: string | null;
+  session_status?: string | null;
+  expires_at?: string | null;
+  is_expired?: boolean;
+  created_at: string;
+}
+
+export interface PublicInvitation {
+  id: string;
+  token: string;
+  recruiter_name: string;
+  candidate_email: string;
+  template: InterviewTemplate | null;
+  message: string;
+  status: InvitationStatus;
+  is_expired: boolean;
+  expires_at: string | null;
+  session_id: string | null;
+  session_status: string | null;
   created_at: string;
 }
 

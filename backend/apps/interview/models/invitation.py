@@ -1,23 +1,44 @@
+import secrets
 import uuid
 
 from django.conf import settings
 from django.db import models
+from django.utils import timezone
+
+
+def generate_invitation_token() -> str:
+    return secrets.token_urlsafe(32)
 
 
 class InvitationStatus(models.TextChoices):
     PENDING = "pending", "Pending"
+    SENT = "sent", "Sent"
+    OPENED = "opened", "Opened"
     ACCEPTED = "accepted", "Accepted"
+    DECLINED = "declined", "Declined"
     EXPIRED = "expired", "Expired"
+    REVOKED = "revoked", "Revoked"
+    ABANDONED = "abandoned", "Abandoned"
 
 
 class InterviewInvitation(models.Model):
     """
     Sent by a recruiter to a candidate email.
-    When accepted, the candidate creates (or is linked to) a session
-    from the specified template.
+    Secured by a high-entropy unguessable token (`token`), with expiration tracking.
+    When accepted, links to an InterviewSession from the specified template.
     """
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+
+    # Secure unguessable token used for public verification & invitation URLs
+    token = models.CharField(
+        max_length=64,
+        unique=True,
+        null=True,
+        blank=True,
+        db_index=True,
+        editable=False,
+    )
 
     # Who sent it
     recruiter = models.ForeignKey(
@@ -56,6 +77,8 @@ class InterviewInvitation(models.Model):
         db_index=True,
     )
 
+    expires_at = models.DateTimeField(null=True, blank=True, db_index=True)
+
     # Filled once candidate starts the invited session
     session = models.OneToOneField(
         "interview.InterviewSession",
@@ -72,6 +95,23 @@ class InterviewInvitation(models.Model):
         app_label = "interview"
         db_table = "interview_invitations"
         ordering = ["-created_at"]
+        indexes = [
+            models.Index(fields=["candidate_email", "status"]),
+            models.Index(fields=["token"]),
+        ]
+
+    @property
+    def is_expired(self) -> bool:
+        if self.status == InvitationStatus.EXPIRED:
+            return True
+        if self.expires_at and timezone.now() >= self.expires_at:
+            return True
+        return False
+
+    def save(self, *args, **kwargs):
+        if not self.token:
+            self.token = generate_invitation_token()
+        super().save(*args, **kwargs)
 
     def __str__(self) -> str:
-        return f"Invitation({self.recruiter_id} → {self.candidate_email}, {self.status})" # type: ignore
+        return f"Invitation({self.recruiter_id} → {self.candidate_email}, {self.status})" # type: ignore

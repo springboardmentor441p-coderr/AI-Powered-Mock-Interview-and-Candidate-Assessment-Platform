@@ -7,9 +7,14 @@ from django.db import models
 class InterviewSession(models.Model):
     class Status(models.TextChoices):
         SCHEDULED = "scheduled", "Scheduled"
+        PREPARING = "preparing", "Preparing"
+        READY = "ready", "Ready"
         IN_PROGRESS = "in_progress", "In Progress"
         COMPLETED = "completed", "Completed"
+        PREPARATION_FAILED = "preparation_failed", "Preparation Failed"
+        CONNECTION_LOST = "connection_lost", "Connection Lost"
         ABANDONED = "abandoned", "Abandoned"
+        FAILED = "failed", "Failed"
 
     class Mode(models.TextChoices):
         SCRIPTED = "scripted", "Scripted (legacy, turn-by-turn)"
@@ -34,7 +39,9 @@ class InterviewSession(models.Model):
 
     started_at = models.DateTimeField(null=True, blank=True)
     completed_at = models.DateTimeField(null=True, blank=True)
+    last_seen_at = models.DateTimeField(null=True, blank=True, db_index=True)
     duration_seconds = models.PositiveIntegerField(null=True, blank=True)
+    client_session_id = models.UUIDField(null=True, blank=True, db_index=True)
 
     video_recording = models.FileField(upload_to="sessions/video/", null=True, blank=True)
     audio_recording = models.FileField(upload_to="sessions/audio/", null=True, blank=True)

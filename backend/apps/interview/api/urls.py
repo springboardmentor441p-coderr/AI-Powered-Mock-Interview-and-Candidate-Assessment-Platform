@@ -4,13 +4,17 @@ from apps.interview.api.views.invitation_views import (
     AcceptInvitationView,
     ReceivedInvitationsView,
     RecruiterSessionHistoryView,
+    ResendInvitationView,
+    RevokeInvitationView,
     SendInvitationView,
     SentInvitationsView,
+    VerifyInvitationView,
 )
 from apps.interview.api.views.realtime_views import (
     SessionRealtimeAccountWebhookView,
     SessionRealtimeAbandonView,
     SessionRealtimeCreateView,
+    SessionRealtimeHeartbeatView,
     SessionRealtimeStartView,
     SessionRealtimeToolAskNextQuestionView,
     SessionCurrentTopicView,
@@ -42,6 +46,7 @@ urlpatterns = [
     # --- Realtime voice flow ---
     path("realtime/sessions/create/", SessionRealtimeCreateView.as_view(), name="realtime_session_create"),
     path("realtime/sessions/<uuid:session_id>/start/", SessionRealtimeStartView.as_view(), name="realtime_session_start"),
+    path("realtime/sessions/<uuid:session_id>/heartbeat/", SessionRealtimeHeartbeatView.as_view(), name="realtime_session_heartbeat"),
     path("realtime/sessions/<uuid:session_id>/abandon/", SessionRealtimeAbandonView.as_view(), name="realtime_session_abandon"),
 
     # Transcript
@@ -63,6 +68,9 @@ urlpatterns = [
     path("invitations/send/", SendInvitationView.as_view(), name="invitation_send"),
     path("invitations/sent/", SentInvitationsView.as_view(), name="invitation_sent_list"),
     path("invitations/received/", ReceivedInvitationsView.as_view(), name="invitation_received_list"),
+    path("invitations/verify/<str:token>/", VerifyInvitationView.as_view(), name="invitation_verify"),
     path("invitations/<uuid:invitation_id>/accept/", AcceptInvitationView.as_view(), name="invitation_accept"),
+    path("invitations/<uuid:invitation_id>/revoke/", RevokeInvitationView.as_view(), name="invitation_revoke"),
+    path("invitations/<uuid:invitation_id>/resend/", ResendInvitationView.as_view(), name="invitation_resend"),
     path("invitations/history/", RecruiterSessionHistoryView.as_view(), name="invitation_history"),
 ]

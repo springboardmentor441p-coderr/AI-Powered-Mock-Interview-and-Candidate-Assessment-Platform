@@ -26,8 +26,7 @@ const RecruiterInterviewHistoryPage = lazy(() => import("@/features/recruiter/in
 
 const NotificationsPage = lazy(() => import("@/features/notifications/notifications-page"));
 const InvitationsPage = lazy(() => import("@/features/candidate/invitations-page"));
-
-
+const InvitationLandingPage = lazy(() => import("@/features/candidate/invitation-landing-page"));
 
 const NotFoundPage = lazy(() => import("@/features/not-found-page"));
 
@@ -68,6 +67,7 @@ function RootRedirect() {
 
 export const router = createBrowserRouter([
   { path: "/", element: <RootRedirect /> },
+  { path: "/invite/:token", element: <Suspended><InvitationLandingPage /></Suspended> },
   {
     element: <PublicOnlyRoute />,
     children: [

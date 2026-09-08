@@ -81,12 +81,15 @@ class InterviewOrchestrator(BaseService):
 
     @transaction.atomic
     def start_realtime_session(self, *, session: InterviewSession) -> InterviewSession:
+        # Lock session row to guarantee idempotency across concurrent start requests
+        session = InterviewSession.objects.select_for_update().get(pk=session.pk)
+
         if session.mode != InterviewSession.Mode.REALTIME:
             raise BusinessRuleViolation("This session was not created in realtime mode.")
         if session.status == InterviewSession.Status.IN_PROGRESS and session.call_join_url:
             self.logger.info("Session %s already in progress with call %s, returning active session", session.id, session.call_id)
             return session
-        if session.status != InterviewSession.Status.SCHEDULED:
+        if session.status not in (InterviewSession.Status.SCHEDULED, InterviewSession.Status.READY):
             raise BusinessRuleViolation(f"Cannot start a call for a session in status '{session.status}'.")
         if not session.seed_topics_ready:
             raise BusinessRuleViolation(
@@ -106,13 +109,15 @@ class InterviewOrchestrator(BaseService):
             metadata={"session_id": str(session.id)},
         )
 
+        now = timezone.now()
         session.status = InterviewSession.Status.IN_PROGRESS
-        session.started_at = timezone.now()
+        session.started_at = now
+        session.last_seen_at = now
         session.call_id = handle.call_id
         session.call_join_url = handle.join_url
         session.realtime_provider = handle.provider
         session.save(
-            update_fields=["status", "started_at", "call_id", "call_join_url", "realtime_provider"]
+            update_fields=["status", "started_at", "last_seen_at", "call_id", "call_join_url", "realtime_provider"]
         )
         self.logger.info("Started realtime call %s for session %s", handle.call_id, session.id)
         return session

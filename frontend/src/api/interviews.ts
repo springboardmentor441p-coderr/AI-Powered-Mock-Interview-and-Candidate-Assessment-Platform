@@ -48,7 +48,11 @@ export const interviewsApi = {
   async startRealtime(sessionId: string): Promise<RealtimeSessionDetail> {
     return post<RealtimeSessionDetail>(`/interviews/realtime/sessions/${sessionId}/start/`);
   },
-  /** Abandon a scheduled/in-progress session that failed to start and reset its invitation to pending. */
+  /** Send liveness probe every 10-15s to keep session active and avoid watchdog timeout. */
+  async heartbeat(sessionId: string, clientSessionId?: string): Promise<{ session_id: string; status: string; last_seen_at: string }> {
+    return post(`/interviews/realtime/sessions/${sessionId}/heartbeat/`, { client_session_id: clientSessionId });
+  },
+  /** Explicitly abandon a session (e.g. user confirms 'Leave Interview'). */
   async abandonRealtime(sessionId: string): Promise<RealtimeSessionDetail> {
     return post<RealtimeSessionDetail>(`/interviews/realtime/sessions/${sessionId}/abandon/`);
   },
@@ -77,8 +81,17 @@ export const interviewsApi = {
   async receivedInvitations(): Promise<Paginated<import("@/types/api").ReceivedInvitation>> {
     return getList("/interviews/invitations/received/");
   },
+  async verifyInvitation(token: string): Promise<import("@/types/api").PublicInvitation> {
+    return get(`/interviews/invitations/verify/${token}/`);
+  },
   async acceptInvitation(invitationId: string): Promise<import("@/types/api").RealtimeSessionDetail> {
     return post(`/interviews/invitations/${invitationId}/accept/`);
+  },
+  async revokeInvitation(invitationId: string): Promise<import("@/types/api").InterviewInvitation> {
+    return post(`/interviews/invitations/${invitationId}/revoke/`);
+  },
+  async resendInvitation(invitationId: string): Promise<import("@/types/api").InterviewInvitation> {
+    return post(`/interviews/invitations/${invitationId}/resend/`);
   },
   async recruiterHistory(): Promise<RecruiterHistoryResponse> {
     return get("/interviews/invitations/history/");
