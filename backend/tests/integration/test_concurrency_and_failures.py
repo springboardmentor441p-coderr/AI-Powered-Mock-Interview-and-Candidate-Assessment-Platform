@@ -13,6 +13,7 @@ from apps.interview.models import (
     InvitationStatus,
     InterviewTemplate,
     ConversationTurn,
+    Transcript,
 )
 from apps.interview.tasks import check_stale_sessions_task, generate_seed_topics_task
 from apps.notification.tasks.email_tasks import send_invitation_email_task
@@ -194,3 +195,140 @@ class TestFailureInjectionAndRecovery:
         session.refresh_from_db()
         # Session recovered back to in_progress!
         assert session.status == InterviewSession.Status.IN_PROGRESS
+
+    def test_duplicate_transcript_turn_is_idempotent(self, candidate_user):
+        session = InterviewSession.objects.create(
+            candidate=candidate_user,
+            mode=InterviewSession.Mode.REALTIME,
+            status=InterviewSession.Status.IN_PROGRESS,
+            interview_type="technical",
+            domain="Backend",
+            difficulty="medium",
+        )
+
+        client = APIClient()
+        client.force_authenticate(user=candidate_user)
+
+        payload = {
+            "speaker": "candidate",
+            "text": "I used Redis and Celery for background processing.",
+            "sequence_number": 1,
+            "timestamp": timezone.now().isoformat(),
+        }
+
+        # First transcript submission
+        res1 = client.post(
+            f"/api/v1/interviews/realtime/sessions/{session.id}/transcript/webhook/",
+            payload,
+            format="json",
+        )
+        assert res1.status_code == 201
+
+        # Duplicate transcript submission (e.g. client network retry)
+        res2 = client.post(
+            f"/api/v1/interviews/realtime/sessions/{session.id}/transcript/webhook/",
+            payload,
+            format="json",
+        )
+        assert res2.status_code in (200, 201)
+
+        # Database must only contain 1 record for sequence_number 1
+        assert Transcript.objects.filter(interview=session, sequence_number=1).count() == 1
+
+    def test_candidate_refresh_during_preparation_returns_preparing_status(self, candidate_user):
+        session = InterviewSession.objects.create(
+            candidate=candidate_user,
+            mode=InterviewSession.Mode.REALTIME,
+            status=InterviewSession.Status.PREPARING,
+            interview_type="technical",
+            domain="Backend",
+            difficulty="medium",
+            seed_topics_ready=False,
+        )
+
+        client = APIClient()
+        client.force_authenticate(user=candidate_user)
+
+        # Candidate polls / refreshes page
+        res = client.get(f"/api/v1/interviews/sessions/{session.id}/")
+        assert res.status_code == 200
+        assert res.data["status"] == "preparing"
+
+    def test_candidate_forbidden_from_recruiter_endpoints(self, candidate_user):
+        client = APIClient()
+        client.force_authenticate(user=candidate_user)
+
+        # Candidate cannot view recruiter sent invitations
+        res1 = client.get("/api/v1/interviews/invitations/sent/")
+        assert res1.status_code == 403
+
+        # Candidate cannot view recruiter session history
+        res2 = client.get("/api/v1/interviews/invitations/history/")
+        assert res2.status_code == 403
+
+    def test_end_to_end_full_lifecycle_recruiter_to_candidate_to_result(self, recruiter_user, candidate_user, test_template):
+        from apps.ai.providers.realtime_voice.interfaces import RealtimeCallHandle
+
+        recruiter_client = APIClient()
+        recruiter_client.force_authenticate(user=recruiter_user)
+
+        # 1. Recruiter sends invitation
+        with patch("apps.notification.tasks.email_tasks.send_invitation_email_task.delay"):
+            res_invite = recruiter_client.post(
+                "/api/v1/interviews/invitations/send/",
+                {
+                    "candidate_email": candidate_user.email,
+                    "template_id": str(test_template.id),
+                    "message": "Welcome to your interview round!",
+                },
+                format="json",
+            )
+            assert res_invite.status_code == 201
+            invitation_id = res_invite.data["data"]["id"]
+            token = res_invite.data["data"]["token"]
+
+        # 2. Candidate clicks link: public verification
+        public_client = APIClient()
+        res_verify = public_client.get(f"/api/v1/interviews/invitations/verify/{token}/")
+        assert res_verify.status_code == 200
+        assert res_verify.data["data"]["status"] in ("pending", "opened", "sent")
+
+        # 3. Candidate accepts invitation
+        candidate_client = APIClient()
+        candidate_client.force_authenticate(user=candidate_user)
+        with patch("apps.interview.tasks.generate_seed_topics_task.delay"):
+            res_accept = candidate_client.post(f"/api/v1/interviews/invitations/{invitation_id}/accept/")
+            assert res_accept.status_code == 201
+            session_id = res_accept.data["data"]["id"]
+
+        session = InterviewSession.objects.get(pk=session_id)
+        session.seed_topics_ready = True
+        session.status = InterviewSession.Status.READY
+        session.save()
+
+        # 4. Candidate starts realtime call
+        mock_handle = RealtimeCallHandle(
+            call_id="call-e2e-final-456",
+            join_url="https://live.ultravox.mock/call-e2e-final-456",
+            provider="ultravox",
+        )
+        with patch(
+            "apps.ai.providers.realtime_voice.ultravox_provider.UltravoxRealtimeVoiceProvider.create_call",
+            return_value=mock_handle,
+        ):
+            res_start = candidate_client.post(f"/api/v1/interviews/realtime/sessions/{session_id}/start/")
+            assert res_start.status_code == 200
+            assert res_start.data["data"]["status"] == "in_progress"
+            assert res_start.data["data"]["call_join_url"] == "https://live.ultravox.mock/call-e2e-final-456"
+
+        # 5. Heartbeat probe sent during call
+        res_heartbeat = candidate_client.post(f"/api/v1/interviews/realtime/sessions/{session_id}/heartbeat/")
+        assert res_heartbeat.status_code == 200
+
+        # 6. Candidate completes call
+        with patch("apps.assessment.tasks.scoring_tasks.run_assessment_pipeline.delay"):
+            res_complete = candidate_client.post(f"/api/v1/interviews/sessions/{session_id}/complete/")
+            assert res_complete.status_code == 200
+
+        session.refresh_from_db()
+        assert session.status == InterviewSession.Status.COMPLETED
