@@ -38,6 +38,9 @@ export default function LiveInterviewRoom() {
 
   const sessionRef = useRef<import("ultravox-client").UltravoxSession | null>(null);
   const hasStartedRef = useRef(false);
+  const startedCallJoinUrlRef = useRef<string | null>(null);
+  const hasConnectedRef = useRef(false);
+  const isCallingRef = useRef(false);
   const transcriptEndRef = useRef<HTMLDivElement>(null);
   const lastSentIdxRef = useRef(-1);
   const currentQuestionIdRef = useRef<string>("");
@@ -104,17 +107,25 @@ export default function LiveInterviewRoom() {
   // ── Call setup ───────────────────────────────────────────────────────── //
   const beginCall = useCallback(
     async (attempt = 1) => {
-      if (!sessionId) return;
+      if (!sessionId || isCallingRef.current) return;
+      isCallingRef.current = true;
       setPhase("connecting");
+      setErrorMessage(null);
       lastSentIdxRef.current = -1;
       currentQuestionIdRef.current = "";
       intentionalDisconnectRef.current = false;
 
       try {
-        const started = await startSession.mutateAsync(sessionId);
-        if (!started.call_join_url) {
-          throw new Error("The interviewer couldn't join the call. Please try again.");
+        let joinUrl = startedCallJoinUrlRef.current;
+        if (!joinUrl) {
+          const started = await startSession.mutateAsync(sessionId);
+          if (!started.call_join_url) {
+            throw new Error("The interviewer couldn't join the call. Please try again.");
+          }
+          joinUrl = started.call_join_url;
+          startedCallJoinUrlRef.current = joinUrl;
         }
+
         const { UltravoxSession } = await import("ultravox-client");
         const uvSession = new UltravoxSession();
         sessionRef.current = uvSession;
@@ -123,14 +134,16 @@ export default function LiveInterviewRoom() {
           const uvStatus = uvSession.status;
           setCallStatus(uvStatus);
 
+          if (["idle", "listening", "thinking", "speaking"].includes(uvStatus)) {
+            hasConnectedRef.current = true;
+          }
+
           if (uvStatus === "disconnected") {
             if (intentionalDisconnectRef.current) {
               // We triggered this — wrapping-up handler already called
               setPhase((p) => (p === "wrapping-up" || p === "ended" ? "ended" : p));
-            } else {
-              // Ultravox dropped us (plan limit, network error, etc.)
-              // The session was started (in_progress) but never user-ended.
-              // Transition to error so the candidate sees a clear message.
+            } else if (hasConnectedRef.current) {
+              // Only trigger error if the call had successfully connected and then dropped mid-call
               setPhase((p) => {
                 if (p === "live" || p === "connecting") {
                   return "error";
@@ -138,15 +151,9 @@ export default function LiveInterviewRoom() {
                 return p === "wrapping-up" || p === "ended" ? "ended" : p;
               });
               setErrorMessage(
-                "The call was disconnected unexpectedly (this can happen if the AI service has reached its plan limit). " +
-                  "Your session has been reset — you can retry the interview from your invitations page.",
+                "The call was disconnected unexpectedly (this can happen if the AI service has reached its plan limit or network dropped). " +
+                  "You can retry or start a new interview.",
               );
-              // Best-effort: abandon the session so the invitation resets to pending
-              if (sessionId) {
-                interviewsApi.abandonRealtime(sessionId).catch(() => {
-                  // ignore — worst case the session stays scheduled
-                });
-              }
             }
           }
         });
@@ -203,28 +210,23 @@ export default function LiveInterviewRoom() {
           }
         });
 
-        await uvSession.joinCall(started.call_join_url);
+        await uvSession.joinCall(joinUrl);
         setPhase("live");
       } catch (err) {
+        console.error("Call connection attempt failed:", err);
+        isCallingRef.current = false;
+
         if (attempt < 3) {
           setTimeout(() => void beginCall(attempt + 1), 3000);
           return;
         }
-        console.error(err);
 
         const message =
           err instanceof Error ? err.message : "Couldn't connect to the interviewer.";
         setErrorMessage(message);
         setPhase("error");
-
-        // Abandon the session so the invitation resets back to pending
-        if (sessionId) {
-          try {
-            await interviewsApi.abandonRealtime(sessionId);
-          } catch {
-            // ignore — not critical
-          }
-        }
+      } finally {
+        isCallingRef.current = false;
       }
     },
     [sessionId, startSession],
@@ -299,10 +301,8 @@ export default function LiveInterviewRoom() {
   useEffect(() => {
     const handleUnload = () => {
       const currentPhase = phaseRef.current;
-      if (
-        (currentPhase === "preparing" || currentPhase === "connecting" || currentPhase === "live") &&
-        !intentionalDisconnectRef.current
-      ) {
+      // Only abandon if the call was actively live and user closed the window/tab
+      if (currentPhase === "live" && !intentionalDisconnectRef.current) {
         abandonSessionOnLeave();
       }
     };
@@ -320,17 +320,21 @@ export default function LiveInterviewRoom() {
       } catch {
         /* no-op */
       }
-
-      // Abandon the session on the backend if leaving before completed/ended
-      const currentPhase = phaseRef.current;
-      if (
-        (currentPhase === "preparing" || currentPhase === "connecting" || currentPhase === "live") &&
-        !intentionalDisconnectRef.current
-      ) {
-        abandonSessionOnLeave();
-      }
+      // Note: We intentionally do NOT call abandonSessionOnLeave() on React unmount.
+      // In React 18 StrictMode (and during routing/fast refresh), components unmount
+      // and remount during normal lifecycle. Abandoning here breaks session setup.
     };
   }, [abandonSessionOnLeave]);
+
+  function handleRetryCall() {
+    hasStartedRef.current = false;
+    startedCallJoinUrlRef.current = null;
+    hasConnectedRef.current = false;
+    isCallingRef.current = false;
+    setErrorMessage(null);
+    setPhase("preparing");
+    void beginCall();
+  }
 
   async function handleRetryFromError() {
     // Navigate back to invitations so they can click "Accept & start" again
@@ -385,12 +389,18 @@ export default function LiveInterviewRoom() {
             </div>
             <p className="font-display text-xl text-foreground">Interview interrupted</p>
             <p className="max-w-sm text-sm text-muted-foreground">{errorMessage}</p>
-            <div className="flex gap-3">
+            <div className="flex flex-wrap items-center justify-center gap-3">
               <Button
                 variant="outline"
-                onClick={handleRetryFromError}
+                onClick={handleRetryCall}
               >
                 <RefreshCw className="h-4 w-4" />
+                Retry connection
+              </Button>
+              <Button
+                variant="ghost"
+                onClick={handleRetryFromError}
+              >
                 Go to invitations
               </Button>
               <Button variant="ghost" onClick={() => navigate("/app/interviews/new")}>

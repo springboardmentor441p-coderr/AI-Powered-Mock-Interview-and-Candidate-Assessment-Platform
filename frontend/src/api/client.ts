@@ -127,7 +127,7 @@ export function normalizeError(error: unknown): ApiError {
 /** Unwraps `{success, data}` envelopes; passes through raw payloads (simplejwt, MeView) as-is. */
 export function unwrap<T>(payload: unknown): T {
   if (payload && typeof payload === "object" && "success" in payload && "data" in (payload as object)) {
-    return (payload as { data: T }).data;
+    return (payload as unknown as { data: T }).data;
   }
   return payload as T;
 }

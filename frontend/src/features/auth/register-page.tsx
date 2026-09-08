@@ -9,6 +9,7 @@ import { Spinner } from "@/components/ui/spinner";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { registerSchema, type RegisterFormValues } from "@/features/auth/schemas";
 import { useLogin, useRegister } from "@/features/auth/hooks";
+import type { RegisterPayload } from "@/api/auth";
 
 export default function RegisterPage() {
   const navigate = useNavigate();
@@ -28,13 +29,32 @@ export default function RegisterPage() {
   });
 
   function onSubmit(values: RegisterFormValues) {
-    registerMutation.mutate(values, {
+    const payload: RegisterPayload = {
+      first_name: values.first_name,
+      last_name: values.last_name,
+      email: values.email,
+      role: values.role,
+      password: values.password,
+      password_confirm: values.password_confirm,
+    };
+
+    registerMutation.mutate(payload, {
       onSuccess: () => {
         toast.success("Account created — signing you in…");
         login.mutate(
-          { email: values.email, password: values.password },
+          { email: payload.email, password: payload.password },
           { onSuccess: () => navigate("/app", { replace: true }) },
         );
+      },
+      onError: (err) => {
+        if (err.details && typeof err.details === "object" && !Array.isArray(err.details)) {
+          for (const [field, msgs] of Object.entries(err.details)) {
+            const message = Array.isArray(msgs) ? msgs.join(" ") : String(msgs);
+            if (field in values) {
+              form.setError(field as keyof RegisterFormValues, { message });
+            }
+          }
+        }
       },
     });
   }

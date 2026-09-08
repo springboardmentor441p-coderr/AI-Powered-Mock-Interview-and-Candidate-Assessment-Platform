@@ -20,6 +20,8 @@ isn't a single generic webhook):
     it detects the candidate barged in in the middle of the AI
     speaking - `was_interrupted=True`).
 """
+from typing import Any, cast
+
 from django.conf import settings
 from django.db import transaction
 from django.db.models import F
@@ -81,6 +83,9 @@ class InterviewOrchestrator(BaseService):
     def start_realtime_session(self, *, session: InterviewSession) -> InterviewSession:
         if session.mode != InterviewSession.Mode.REALTIME:
             raise BusinessRuleViolation("This session was not created in realtime mode.")
+        if session.status == InterviewSession.Status.IN_PROGRESS and session.call_join_url:
+            self.logger.info("Session %s already in progress with call %s, returning active session", session.id, session.call_id)
+            return session
         if session.status != InterviewSession.Status.SCHEDULED:
             raise BusinessRuleViolation(f"Cannot start a call for a session in status '{session.status}'.")
         if not session.seed_topics_ready:
@@ -165,7 +170,7 @@ class InterviewOrchestrator(BaseService):
                 asked_topic.id, session.id,
             )
             transaction.on_commit(
-                lambda topic_id=str(asked_topic.id): evaluate_topic_thread.delay(str(session.id), topic_id)  # pyright: ignore[reportCallIssue]
+                lambda topic_id=str(asked_topic.id): cast(Any, evaluate_topic_thread).delay(str(session.id), topic_id)
             )
         else:
             self.logger.info(
@@ -240,21 +245,21 @@ class InterviewOrchestrator(BaseService):
         )
         if last_asked is not None and not ThreadEvaluation.objects.filter(seed_topic=last_asked).exists():
             transaction.on_commit(
-                lambda topic_id=str(last_asked.id): evaluate_topic_thread.delay(str(session.id), topic_id)  # pyright: ignore[reportCallIssue]
+                lambda topic_id=str(last_asked.id): cast(Any, evaluate_topic_thread).delay(str(session.id), topic_id)
             )
 
         # 60s countdown gives evaluate_topic_thread time to finish before
         # the brief tries to read all ThreadEvaluation rows.
         transaction.on_commit(
-            lambda: generate_interview_brief.apply_async(  # pyright: ignore[reportCallIssue]
+            lambda: cast(Any, generate_interview_brief).apply_async(
                 args=[str(session.id)],
                 countdown=60,
             )
         )
 
         transaction.on_commit(
-            lambda: run_assessment_pipeline.apply_async(
-                args=[str(session.id)],# type: ignore[union-attr]
+            lambda: cast(Any, run_assessment_pipeline).apply_async(
+                args=[str(session.id)],
                 countdown=15,
             )
         )  
@@ -267,7 +272,7 @@ class InterviewOrchestrator(BaseService):
     @transaction.atomic
     def record_transcript_turn(
         self, *, session: InterviewSession, speaker: str, text: str,
-        turn_type: str = ConversationTurn.TurnType.ANSWER,
+        turn_type: str = ConversationTurn.TurnType.ANSWER.value,
         started_at_ms: int | None = None, ended_at_ms: int | None = None,
         was_interrupted: bool = False,
     ) -> ConversationTurn:
@@ -280,8 +285,8 @@ class InterviewOrchestrator(BaseService):
             was_interrupted=was_interrupted,
         )
         if was_interrupted:
-            session.interrupt_count = F("interrupt_count") + 1
-            session.save(update_fields=["interrupt_count"])
+            InterviewSession.objects.filter(pk=session.pk).update(interrupt_count=F("interrupt_count") + 1)
+            session.refresh_from_db(fields=["interrupt_count"])
             last_ai_turn = (
                 session.turns.filter(speaker=ConversationTurn.Speaker.AI).exclude(pk=turn.pk).order_by("-order").first()  # type: ignore[attr-defined]
             )

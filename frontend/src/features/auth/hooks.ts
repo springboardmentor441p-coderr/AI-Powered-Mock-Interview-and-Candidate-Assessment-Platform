@@ -40,7 +40,12 @@ export function useRegister() {
   return useMutation({
     mutationFn: (payload: RegisterPayload) => authApi.register(payload),
     onError: (error: ApiError) => {
-      toast.error(error.message || "Couldn't create your account.");
+      let msg = error.message;
+      if (error.details && typeof error.details === "object") {
+        const firstErr = Object.values(error.details).flat()[0];
+        if (firstErr) msg = String(firstErr);
+      }
+      toast.error(msg || "Couldn't create your account.");
     },
   });
 }
