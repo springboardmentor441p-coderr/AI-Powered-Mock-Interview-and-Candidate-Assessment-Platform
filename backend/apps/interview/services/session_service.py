@@ -107,9 +107,11 @@ class SessionService(BaseService):
 
     @transaction.atomic
     def complete_session(self, *, session: InterviewSession) -> InterviewSession:
+        if session.status == InterviewSession.Status.COMPLETED:
+            return session
         if session.status not in (InterviewSession.Status.IN_PROGRESS, InterviewSession.Status.SCHEDULED):
             raise BusinessRuleViolation(f"Cannot complete a session in status '{session.status}'.")
-        if session.answers.filter(answered_at__isnull=False).count() == 0:  # type: ignore[attr-defined]
+        if session.mode == InterviewSession.Mode.SCRIPTED and session.answers.filter(answered_at__isnull=False).count() == 0:  # type: ignore[attr-defined]
             raise ValidationError("Cannot complete a session with no answered questions.")
         session.status = InterviewSession.Status.COMPLETED
         completed_at = timezone.now()

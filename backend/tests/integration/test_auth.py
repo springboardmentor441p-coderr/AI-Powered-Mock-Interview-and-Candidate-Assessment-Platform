@@ -50,3 +50,13 @@ class TestRegistrationAndLogin:
     def test_logout_is_idempotent_on_invalid_or_repeated_token(self, api_client):
         logout_res = api_client.post(reverse("identity:logout"), {"refresh": "invalid_or_already_blacklisted"})
         assert logout_res.status_code == 200
+
+    def test_refresh_after_logout_fails(self, api_client, candidate_user):
+        login_res = api_client.post(reverse("identity:login"), {"email": candidate_user.email, "password": "StrongPass123!"})
+        refresh = login_res.data["refresh"]
+
+        logout_res = api_client.post(reverse("identity:logout"), {"refresh": refresh})
+        assert logout_res.status_code == 200
+
+        refresh_res = api_client.post(reverse("identity:token_refresh"), {"refresh": refresh})
+        assert refresh_res.status_code == 401

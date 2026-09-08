@@ -125,8 +125,10 @@ class SessionCompleteView(APIView):
         from apps.assessment.tasks.scoring_tasks import run_assessment_pipeline
 
         session = get_owned_session_or_404(candidate=request.user, session_id=session_id)
+        already_completed = (session.status == InterviewSession.Status.COMPLETED)
         session = container.session_service().complete_session(session=session)
-        run_assessment_pipeline.delay(str(session.id))  # type: ignore[union-attr]
+        if not already_completed:
+            run_assessment_pipeline.delay(str(session.id))  # type: ignore[union-attr]
         return APIResponse.success(
             data=InterviewSessionDetailSerializer(session).data,
             message="Session completed. Assessment pipeline queued.",
