@@ -27,7 +27,6 @@ export const Sidebar = () => {
     { name: 'Dashboard', path: '/dashboard', icon: LayoutDashboard },
     { name: 'Interview', path: '/create-interview', icon: PlusCircle },
     { name: 'Assessment', path: '/assessment', icon: FileText },
-    { name: 'PPT Deck', path: '/presentation', icon: Sparkles },
     { name: 'History', path: '/interview-history', icon: History },
     { name: 'Profile', path: '/profile', icon: User },
   ];
