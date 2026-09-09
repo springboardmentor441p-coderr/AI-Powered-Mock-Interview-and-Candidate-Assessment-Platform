@@ -501,21 +501,21 @@ export const InterviewRoom = () => {
 
     setIsSpeaking(true);
     speakingRef.current = true;
-    audioEchoGuardRef.current = Date.now() + 300;
+    audioEchoGuardRef.current = Date.now() + 200;
     setLiveSubtitles(`[AI Interviewer]: "${text}"`);
 
     const utterance = new SpeechSynthesisUtterance(text);
     utterance.lang = 'en-US';
-    utterance.rate = 0.94;
+    utterance.rate = 1.05; // Fast, natural, crisp female voice cadence
     utterance.pitch = 1.35; // Strict female voice pitch modulation
 
     let targetFemaleVoice = selectedFemaleVoiceRef.current || resolveFemaleVoice();
 
-    // If voices are loading asynchronously, delay speech slightly until female voice object is bound
+    // If voices are loading asynchronously, retry quickly
     if (!targetFemaleVoice && window.speechSynthesis.getVoices().length === 0) {
       setTimeout(() => {
         speakAIText(text, onEndCallback);
-      }, 50);
+      }, 20);
       return;
     }
 
@@ -523,13 +523,28 @@ export const InterviewRoom = () => {
       utterance.voice = targetFemaleVoice;
     }
 
+    // Safety timer to prevent speakingRef lock if browser onend fails to fire
+    const safetyMs = Math.max(1200, Math.ceil(text.length / 14) * 1000 + 400);
+    if (speakingTimerRef.current) clearTimeout(speakingTimerRef.current);
+    speakingTimerRef.current = setTimeout(() => {
+      if (speakingRef.current) {
+        setIsSpeaking(false);
+        speakingRef.current = false;
+        audioEchoGuardRef.current = 0;
+        if (recognitionRef.current) {
+          try { recognitionRef.current.start(); } catch (e) {}
+        }
+      }
+    }, safetyMs);
+
     utterance.onstart = () => {
       setIsSpeaking(true);
       speakingRef.current = true;
-      audioEchoGuardRef.current = Date.now() + 200;
+      audioEchoGuardRef.current = Date.now() + 150;
     };
 
     utterance.onend = () => {
+      if (speakingTimerRef.current) clearTimeout(speakingTimerRef.current);
       setIsSpeaking(false);
       speakingRef.current = false;
       audioEchoGuardRef.current = 0; // Unlock speech recognition immediately!
@@ -546,6 +561,7 @@ export const InterviewRoom = () => {
     };
 
     utterance.onerror = (err) => {
+      if (speakingTimerRef.current) clearTimeout(speakingTimerRef.current);
       console.warn("Speech synthesis notice:", err);
       setIsSpeaking(false);
       speakingRef.current = false;
@@ -613,9 +629,6 @@ export const InterviewRoom = () => {
     speakAIText("Awesome! Let's get started with your first question.", () => {
       setIsWelcomePhase(false);
       setQIndex(0);
-      setTimeout(() => {
-        speakCurrentQuestion(0);
-      }, 400);
     });
   };
 
@@ -633,9 +646,7 @@ export const InterviewRoom = () => {
     }
 
     if (qIndex < questions.length - 1) {
-      const nextIdx = qIndex + 1;
-      setQIndex(nextIdx);
-      speakCurrentQuestion(nextIdx);
+      setQIndex(prev => prev + 1);
     } else {
       handleCompleteInterview();
     }
@@ -692,7 +703,7 @@ export const InterviewRoom = () => {
               }));
             }
 
-            // Fast ultra-responsive speech listening silence detection (400ms silence)
+            // Ultra-responsive speech listening silence detection (200ms silence)
             if (silenceTimerRef.current) clearTimeout(silenceTimerRef.current);
             const rawLower = currentFullText.toLowerCase().trim();
             const isShortConfirmation = (
@@ -706,7 +717,7 @@ export const InterviewRoom = () => {
               rawLower.includes('ready') ||
               rawLower.includes('start')
             );
-            const silenceDelay = isShortConfirmation ? 350 : 500;
+            const silenceDelay = isShortConfirmation ? 120 : 220;
 
             silenceTimerRef.current = setTimeout(() => {
               if (currentFullText.trim()) {
@@ -717,14 +728,10 @@ export const InterviewRoom = () => {
         };
 
         recognition.onend = () => {
-          if (!isStopped && isMicOn) {
-            setTimeout(() => {
-              if (!speakingRef.current) {
-                try {
-                  recognition.start();
-                } catch (err) { }
-              }
-            }, 100);
+          if (!isStopped && isMicOn && !speakingRef.current) {
+            try {
+              recognition.start();
+            } catch (err) { }
           }
         };
 
@@ -924,8 +931,10 @@ export const InterviewRoom = () => {
 
     const isLastQuestion = qIndex >= questions.length - 1;
 
-    // 7. EXPLICIT SKIP OR NEXT QUESTION REQUEST ("I don't know" / "skip" / "next question" / "I'm done")
+    // 7. EXPLICIT SKIP OR NEXT QUESTION REQUEST ("I don't know" / "skip" / "next question" / "I'm done" / "that's it")
     const isExplicitNextCommand = (
+      rawText === 'next' ||
+      rawText === 'done' ||
       rawText.includes("don't know") ||
       rawText.includes("dont know") ||
       rawText.includes("no idea") ||
@@ -935,6 +944,8 @@ export const InterviewRoom = () => {
       rawText.includes("move to next") ||
       rawText.includes("im done") ||
       rawText.includes("i am done") ||
+      rawText.includes("that's it") ||
+      rawText.includes("that is it") ||
       rawText.includes("finished with my answer") ||
       rawText.includes("completed my answer") ||
       rawText.includes("that's all") ||
@@ -963,18 +974,15 @@ export const InterviewRoom = () => {
     }
   };
 
-  const autoAdvanceNextQuestion = async () => {
+  const autoAdvanceNextQuestion = () => {
     if (isTerminatingRef.current) return;
 
     const currentQObj = questions[qIndex];
     const candidateAnsText = candidateAnswers[qIndex] || candidateSpeechText || '';
 
-    // Step 1: ANALYZING STATE (Backend evaluates candidate answer against correctness, relevance, resume & JD context)
-    setInterviewState(INTERVIEW_STATES.ANALYZING);
-    setLiveSubtitles('🤖 AI is evaluating your answer against JD criteria & resume context...');
-
-    try {
-      const evalResp = await fetch('http://localhost:8000/api/v1/interview/evaluate-answer', {
+    // Non-blocking background evaluation for instant candidate response feel
+    if (candidateAnsText.trim()) {
+      fetch('http://localhost:8000/api/v1/interview/evaluate-answer', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -985,68 +993,15 @@ export const InterviewRoom = () => {
           resume_context: JSON.stringify(resumeData || {}),
           jd_context: jdData?.rawText || ''
         })
-      });
-      if (evalResp.ok) {
-        const evalData = await evalResp.json();
-        setEvaluationsPerQuestion(prev => ({ ...prev, [qIndex]: evalData }));
-
-        // If candidate scored weakly or showed gap on skill, generate dynamic adaptive follow-up
-        if ((evalData.overall_score && evalData.overall_score < 7.0) || (evalData.technical_accuracy && evalData.technical_accuracy < 7.0)) {
-          setInterviewState(INTERVIEW_STATES.GENERATING);
-          setLiveSubtitles(`🤖 Preparing dynamic follow-up probing question for: ${currentQObj?.topic || 'Skill'}...`);
-
-          try {
-            const adaptResp = await fetch('http://localhost:8000/api/v1/interview/adaptive-question', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({
-                weak_question_text: currentQObj ? (currentQObj.questionText || currentQObj.question_text) : '',
-                candidate_weak_answer: candidateAnsText,
-                weak_skill: (currentQObj?.expected_skills && currentQObj.expected_skills[0]) || currentQObj?.topic || 'Technical'
-              })
-            });
-            if (adaptResp.ok) {
-              const adaptData = await adaptResp.json();
-              if (adaptData && adaptData.question_text) {
-                const formattedAdaptQ = {
-                  id: `adaptive-${Date.now()}`,
-                  category: adaptData.category || 'Adaptive Technical',
-                  question_type: adaptData.question_type || 'Technical',
-                  topic: adaptData.topic || 'Adaptive Probing',
-                  difficulty: adaptData.difficulty || 'Medium',
-                  questionText: adaptData.question_text,
-                  expected_skills: adaptData.expected_skills || [],
-                  expected_points: adaptData.expected_points || []
-                };
-                setQuestions(prevQs => {
-                  const nextQs = [...prevQs];
-                  nextQs.splice(qIndex + 1, 0, formattedAdaptQ);
-                  return nextQs;
-                });
-              }
-            }
-          } catch (adaptErr) {
-            console.warn("Adaptive question fetch notice:", adaptErr);
-          }
+      }).then(r => r.ok ? r.json() : null).then(evalData => {
+        if (evalData) {
+          setEvaluationsPerQuestion(prev => ({ ...prev, [qIndex]: evalData }));
         }
-      }
-    } catch (err) {
-      console.warn("Answer evaluation fetch notice:", err);
+      }).catch(err => console.warn("Background answer evaluation notice:", err));
     }
 
-    // Step 2: GENERATING STATE (Preparing next question)
-    setInterviewState(INTERVIEW_STATES.GENERATING);
-    setLiveSubtitles('🤖 Preparing next question...');
-    await new Promise(r => setTimeout(r, 1200));
-
-    // Step 3: Transition back to SPEAKING for next question
     if (qIndex < questions.length - 1) {
-      const nextIdx = qIndex + 1;
-      setQIndex(nextIdx);
-      setInterviewState(INTERVIEW_STATES.SPEAKING);
-      setTimeout(() => {
-        speakCurrentQuestion(nextIdx);
-      }, 400);
+      setQIndex(prev => prev + 1);
     } else {
       handleCompleteInterview();
     }
