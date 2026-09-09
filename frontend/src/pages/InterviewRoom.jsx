@@ -129,6 +129,7 @@ export const InterviewRoom = () => {
   const [candidateAnswers, setCandidateAnswers] = useState({});
   const candidateMemory = useRef({});
   const silenceTimerRef = useRef(null);
+  const speakingTimerRef = useRef(null);
   const [ultravoxMode, setUltravoxMode] = useState(false); // true when Ultravox is active
   const [ultravoxFailed, setUltravoxFailed] = useState(false); // true ONLY if Ultravox fails to initialize
 
