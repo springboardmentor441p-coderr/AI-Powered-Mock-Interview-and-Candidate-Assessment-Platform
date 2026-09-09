@@ -342,16 +342,30 @@ export const InterviewRoom = () => {
     }
   }, []);
 
-  const handleStreamActive = (stream) => {
+  const handleStreamActive = async (stream) => {
     webcamStreamRef.current = stream;
+    let recordingStream = stream;
+
     try {
-      const options = { mimeType: 'video/webm;codecs=vp9,opus' };
+      if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+        const audioStream = await navigator.mediaDevices.getUserMedia({ audio: true }).catch(() => null);
+        if (audioStream && audioStream.getAudioTracks().length > 0) {
+          recordingStream = new MediaStream([
+            ...stream.getVideoTracks(),
+            ...audioStream.getAudioTracks()
+          ]);
+        }
+      }
+    } catch (e) {}
+
+    try {
       let recorder;
-      try {
-        recorder = new MediaRecorder(stream, options);
-      } catch (e) {
-        console.warn("VP9 codecs not supported, falling back to default configuration");
-        recorder = new MediaRecorder(stream);
+      if (typeof MediaRecorder !== 'undefined' && MediaRecorder.isTypeSupported('video/webm;codecs=vp8,opus')) {
+        recorder = new MediaRecorder(recordingStream, { mimeType: 'video/webm;codecs=vp8,opus' });
+      } else if (typeof MediaRecorder !== 'undefined' && MediaRecorder.isTypeSupported('video/webm')) {
+        recorder = new MediaRecorder(recordingStream, { mimeType: 'video/webm' });
+      } else {
+        recorder = new MediaRecorder(recordingStream);
       }
 
       mediaRecorderRef.current = recorder;
@@ -1178,6 +1192,7 @@ export const InterviewRoom = () => {
         const data = await response.json();
         console.log("Successfully stored all interview details, questions, answers, and metadata.");
 
+        let uploadedVideoUrl = null;
         if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
           try {
             mediaRecorderRef.current.stop();
@@ -1201,6 +1216,7 @@ export const InterviewRoom = () => {
               const uploadData = await uploadResp.json();
               console.log("Webcam video recording uploaded and stored successfully!", uploadData);
               if (uploadData && uploadData.video_recording_url) {
+                uploadedVideoUrl = uploadData.video_recording_url;
                 try {
                   localStorage.setItem('smarthire_video_url', uploadData.video_recording_url);
                 } catch (e) { }
@@ -1213,7 +1229,7 @@ export const InterviewRoom = () => {
           }
         }
 
-        return data.session_id;
+        return { sessionId: data.session_id, videoUrl: uploadedVideoUrl };
       } else {
         console.error("Backend failed to store interview details:", await response.text());
       }
@@ -1228,6 +1244,11 @@ export const InterviewRoom = () => {
     uvEndSession();
 
     const selectedRole = candidate?.targetRole || jdData?.title || resumeData?.targetRole || 'Software Engineer';
+    const saveResult = await saveInterviewDetailsToBackend(true, reason);
+    const realVideoUrl = (saveResult && typeof saveResult === 'object' && saveResult.videoUrl)
+      ? saveResult.videoUrl
+      : (typeof localStorage !== 'undefined' ? localStorage.getItem('smarthire_video_url') : null);
+
     const terminatedReport = {
       id: `report-${Date.now()}`,
       candidateName: candidate?.name || resumeData?.name || user?.name || 'Candidate',
@@ -1239,6 +1260,7 @@ export const InterviewRoom = () => {
       isDisqualified: true,
       isTerminated: true,
       terminationReason: reason,
+      videoRecordingUrl: realVideoUrl,
       summary: `INTERVIEW SESSION DISQUALIFIED & TERMINATED EARLY: Candidate committed a proctoring security violation (${reason}). Zero score awarded.`,
       categoryScores: {
         technical_skills: 0,
@@ -1272,7 +1294,6 @@ export const InterviewRoom = () => {
 
     setFinalReport(terminatedReport);
     addCompletedInterview(terminatedReport.id, selectedRole, 'Target Enterprise', 0);
-    await saveInterviewDetailsToBackend(true, reason);
     if (document.fullscreenElement || document.webkitFullscreenElement) {
       if (document.exitFullscreen) document.exitFullscreen().catch(() => { });
       else if (document.webkitExitFullscreen) document.webkitExitFullscreen();
@@ -1298,7 +1319,11 @@ export const InterviewRoom = () => {
     const activeRole = candidate?.targetRole || jdData?.title || resumeData?.targetRole || 'Software Engineer';
 
     // 1. ALWAYS await backend database save FIRST so data is persisted cleanly in smarthire.db!
-    const sessionId = await saveInterviewDetailsToBackend(false, null);
+    const saveResult = await saveInterviewDetailsToBackend(false, null);
+    const sessionId = (saveResult && typeof saveResult === 'object') ? saveResult.sessionId : saveResult;
+    const realVideoUrl = (saveResult && typeof saveResult === 'object' && saveResult.videoUrl)
+      ? saveResult.videoUrl
+      : (typeof localStorage !== 'undefined' ? localStorage.getItem('smarthire_video_url') : null);
 
     let dynamicReport = null;
     if (sessionId) {
@@ -1312,7 +1337,7 @@ export const InterviewRoom = () => {
             candidateName: candidate?.name || resumeData?.name || user?.name || 'Candidate',
             targetRole: activeRole,
             company: 'Target Enterprise',
-            videoRecordingUrl: `uploads/recordings/interview_session_${sessionId}.mp4`,
+            videoRecordingUrl: realVideoUrl || detail.video_recording_url || localStorage.getItem('smarthire_video_url'),
             overallScore: detail.overall_score || (detail.overall_score_pct ? (detail.overall_score_pct / 10).toFixed(1) : 8.2),
             overallScorePct: detail.overall_score_pct || 82,
             performanceLevel: detail.performance_level || 'Strong Performance',
