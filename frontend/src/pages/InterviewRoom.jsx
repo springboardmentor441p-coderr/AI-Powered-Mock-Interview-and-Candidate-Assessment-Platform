@@ -1249,6 +1249,19 @@ export const InterviewRoom = () => {
       ? saveResult.videoUrl
       : (typeof localStorage !== 'undefined' ? localStorage.getItem('smarthire_video_url') : null);
 
+    const askedQuestionsPerf = questions.slice(0, Math.max(1, qIndex + 1)).map((q, idx) => {
+      const ansText = candidateAnswers[idx] || candidateSpeechText || 'No verbal response recorded.';
+      return {
+        q_num: idx + 1,
+        topic: q.topic || 'General Concept',
+        question_text: q.questionText || q.question_text || '',
+        question_type: q.category || q.question_type || 'Technical',
+        candidate_answer: ansText,
+        score: '0.0 / 10',
+        feedback: 'Disqualified early due to proctoring security violation.'
+      };
+    });
+
     const terminatedReport = {
       id: `report-${Date.now()}`,
       candidateName: candidate?.name || resumeData?.name || user?.name || 'Candidate',
@@ -1278,7 +1291,7 @@ export const InterviewRoom = () => {
       behavioralSkills: { Compliance: '0/10' },
       strengths: ['None - Disqualified for Proctoring Security Violation'],
       areasForImprovement: [reason],
-      questionPerformance: [],
+      questionPerformance: askedQuestionsPerf,
       aiRecommendations: [
         'Do not exit full-screen mode or switch browser tabs during proctored assessments.',
         'Maintain continuous camera presence and center face in frame.'

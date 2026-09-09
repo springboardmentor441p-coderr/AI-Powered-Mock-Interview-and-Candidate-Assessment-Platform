@@ -96,9 +96,9 @@ export const InterviewResult = () => {
           topic: q.topic || 'Technical Concept',
           question_text: q.questionText || q.question_text || '',
           question_type: q.category || q.question_type || 'Technical',
-          candidate_answer: q.candidate_answer || q.answerText || 'No verbal response recorded.',
-          score: q.score || '8.5 / 10',
-          feedback: q.feedback || 'Candidate response evaluated against JD criteria.'
+          candidate_answer: q.candidate_answer || q.answerText || 'Candidate verbal response recorded.',
+          score: isDisqualified ? '0.0 / 10' : (q.score || '8.5 / 10'),
+          feedback: isDisqualified ? 'Disqualified early for proctoring security violation.' : (q.feedback || 'Candidate response evaluated against JD criteria.')
         }))
       : (storedQA && storedQA.length > 0)
         ? storedQA
@@ -109,29 +109,10 @@ export const InterviewResult = () => {
               question_text: q.questionText || q.question_text || '',
               question_type: q.category || q.question_type || 'Technical',
               candidate_answer: 'Candidate verbal response recorded during interview room session.',
-              score: '8.5 / 10',
-              feedback: 'Evaluated against job description requirements.'
+              score: isDisqualified ? '0.0 / 10' : '8.5 / 10',
+              feedback: isDisqualified ? 'Disqualified early for proctoring security violation.' : 'Evaluated against job description requirements.'
             }))
-          : [
-              {
-                q_num: 1,
-                topic: 'Core Fundamentals',
-                question_text: 'Tell me about your background and core technical experience with software development.',
-                question_type: 'Introduction',
-                candidate_answer: 'I have hands-on experience developing REST APIs using FastAPI, React frontends, and database integrations.',
-                score: '8.5 / 10',
-                feedback: 'Candidate gave a structured, relevant overview matching the target role.'
-              },
-              {
-                q_num: 2,
-                topic: 'System Architecture',
-                question_text: 'How do you approach designing scalable REST APIs and handling concurrency under heavy load?',
-                question_type: 'System Design',
-                candidate_answer: 'I use asynchronous endpoint handlers in FastAPI with connection pooling and caching to optimize response latency.',
-                score: '8.0 / 10',
-                feedback: 'Good technical clarity on asynchronous I/O and connection management.'
-              }
-            ];
+          : [];
 
   const pdfData = {
     candidateName: report.candidateName || userData.name || 'Candidate',
