@@ -20,6 +20,7 @@ import { InterviewHistory } from './pages/InterviewHistory';
 import { PerformanceDashboard } from './pages/PerformanceDashboard';
 import { Profile } from './pages/Profile';
 import { Settings } from './pages/Settings';
+import { Presentation } from './pages/Presentation';
 
 const GOOGLE_CLIENT_ID = "435399712429-9aqp9sn322e1iivqac2ke58pi2tgbin5.apps.googleusercontent.com";
 
@@ -89,6 +90,7 @@ export default function App() {
                     <Route path="/performance" element={<PerformanceDashboard />} />
                     <Route path="/profile" element={<Profile />} />
                     <Route path="/settings" element={<Settings />} />
+                    <Route path="/presentation" element={<Presentation />} />
                     <Route path="*" element={<Navigate to="/" replace />} />
                   </Routes>
                 </main>
