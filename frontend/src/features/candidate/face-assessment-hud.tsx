@@ -89,6 +89,7 @@ export function FaceAssessmentHUD({
         "flex flex-col gap-2 rounded-xl border border-border bg-card/80 backdrop-blur-sm p-3 w-52",
         className,
       )}
+      data-testid="face-assessment-hud"
     >
       {/* Camera feed + presence dot */}
       <div className="relative rounded-lg overflow-hidden bg-black/60 aspect-video">
@@ -96,6 +97,7 @@ export function FaceAssessmentHUD({
           ref={videoRef}
           muted
           playsInline
+          data-testid="face-hud-video"
           className={cn(
             "w-full h-full object-cover transition-opacity duration-300",
             active ? "opacity-100" : "opacity-30",
@@ -107,7 +109,7 @@ export function FaceAssessmentHUD({
             className="h-1.5 w-1.5 rounded-full"
             style={{ backgroundColor: presenceColor }}
           />
-          <span className="font-mono text-[0.5rem] uppercase tracking-widest" style={{ color: presenceColor }}>
+          <span className="font-mono text-[0.5rem] uppercase tracking-widest" style={{ color: presenceColor }} data-testid="presence-label">
             {presenceLabel}
           </span>
         </div>
@@ -121,7 +123,7 @@ export function FaceAssessmentHUD({
 
       {/* Error state */}
       {error && (
-        <div className="flex flex-col gap-1 rounded-lg border border-destructive/40 bg-destructive/10 px-2 py-1.5">
+        <div className="flex flex-col gap-1 rounded-lg border border-destructive/40 bg-destructive/10 px-2 py-1.5" data-testid="camera-error-container">
           <p className="font-mono text-[0.58rem] text-destructive font-semibold leading-tight">
             ⚠ Camera unavailable
           </p>
@@ -158,7 +160,7 @@ export function FaceAssessmentHUD({
 
           {/* Multiple faces warning */}
           {metrics.multipleFacesDetected && (
-            <div className="flex items-center gap-1.5 rounded-lg border border-destructive/50 bg-destructive/15 px-2 py-1">
+            <div className="flex items-center gap-1.5 rounded-lg border border-destructive/50 bg-destructive/15 px-2 py-1" data-testid="multiple-faces-warning">
               <span className="text-xs">⚠️</span>
               <p className="font-mono text-[0.58rem] text-destructive leading-tight font-semibold">
                 Multiple faces detected
@@ -168,7 +170,7 @@ export function FaceAssessmentHUD({
 
           {/* Gaze hint */}
           {!gazeOk && faceOk && (
-            <div className="flex items-center gap-1.5 rounded-lg border border-amber-500/30 bg-amber-500/10 px-2 py-1">
+            <div className="flex items-center gap-1.5 rounded-lg border border-amber-500/30 bg-amber-500/10 px-2 py-1" data-testid="gaze-warning">
               <Eye className="h-3 w-3 text-amber-400 shrink-0" />
               <p className="font-mono text-[0.58rem] text-amber-300 leading-tight">
                 Keep your gaze on the screen

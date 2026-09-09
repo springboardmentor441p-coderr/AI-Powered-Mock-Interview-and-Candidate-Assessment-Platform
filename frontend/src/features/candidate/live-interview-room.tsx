@@ -12,6 +12,8 @@ import { API_BASE_URL } from "@/api/client";
 import { useFaceAssessment } from "./hooks/use-face-assessment";
 import { FaceAssessmentHUD } from "./face-assessment-hud";
 import { useAuthStore } from "@/stores/auth-store";
+import { createInterviewProvider } from "./providers/provider-factory";
+import type { IInterviewProvider } from "./providers/interview-provider";
 
 const BACKEND = `${API_BASE_URL}/interviews`;
 const TOOL_SECRET = import.meta.env.VITE_ULTRAVOX_TOOL_SECRET as string;
@@ -37,7 +39,7 @@ export default function LiveInterviewRoom() {
   const [elapsed, setElapsed] = useState(0);
 
 
-  const sessionRef = useRef<import("ultravox-client").UltravoxSession | null>(null);
+  const sessionRef = useRef<IInterviewProvider | null>(null);
   const hasStartedRef = useRef(false);
   const startedCallJoinUrlRef = useRef<string | null>(null);
   const hasConnectedRef = useRef(false);
@@ -127,8 +129,7 @@ export default function LiveInterviewRoom() {
           startedCallJoinUrlRef.current = joinUrl;
         }
 
-        const { UltravoxSession } = await import("ultravox-client");
-        const uvSession = new UltravoxSession();
+        const uvSession = await createInterviewProvider();
         sessionRef.current = uvSession;
 
         uvSession.addEventListener("status", () => {
@@ -369,7 +370,7 @@ export default function LiveInterviewRoom() {
   const secs = String(elapsed % 60).padStart(2, "0");
 
   return (
-    <div className="flex min-h-screen flex-col bg-background">
+    <div className="flex min-h-screen flex-col bg-background" data-testid="live-interview-room">
       {/* ── Header ─────────────────────────────────────────────────────── */}
       <header className="flex items-center justify-between border-b border-border px-6 py-4">
         <div className="flex items-center gap-2.5">
@@ -378,7 +379,7 @@ export default function LiveInterviewRoom() {
         </div>
         {phase === "live" && (
           <div className="flex items-center gap-3">
-            <div className="flex items-center gap-2 rounded-full border border-tape/40 bg-tape/10 px-3 py-1">
+            <div className="flex items-center gap-2 rounded-full border border-tape/40 bg-tape/10 px-3 py-1" data-testid="interview-on-air-badge">
               <span className="rec-dot" />
               <span className="font-mono-num text-xs text-tape">ON AIR · {mins}:{secs}</span>
             </div>
@@ -412,11 +413,12 @@ export default function LiveInterviewRoom() {
               <PhoneOff className="h-6 w-6" />
             </div>
             <p className="font-display text-xl text-foreground">Interview interrupted</p>
-            <p className="max-w-sm text-sm text-muted-foreground">{errorMessage}</p>
+            <p className="max-w-sm text-sm text-muted-foreground" data-testid="error-message">{errorMessage}</p>
             <div className="flex flex-wrap items-center justify-center gap-3">
               <Button
                 variant="outline"
                 onClick={handleRetryCall}
+                data-testid="retry-connection-btn"
               >
                 <RefreshCw className="h-4 w-4" />
                 Retry connection
@@ -450,17 +452,18 @@ export default function LiveInterviewRoom() {
                         ? "border-accent shadow-[0_0_40px_-6px_hsl(var(--accent)/0.5)]"
                         : "border-border",
                   )}
+                  data-testid="interviewer-status"
                 >
                   <Radio className="h-10 w-10 text-primary" />
                 </div>
-                <p className="font-mono text-xs uppercase tracking-[0.2em] text-muted-foreground">
+                <p className="font-mono text-xs uppercase tracking-[0.2em] text-muted-foreground" data-testid="status-text">
                   {titleCase(callStatus)}
                 </p>
                 <VuMeter active={callStatus === "speaking" || callStatus === "listening"} />
               </div>
 
               {/* Transcript */}
-              <div className="w-full max-w-2xl rounded-xl border border-border bg-card/60 p-5">
+              <div className="w-full max-w-2xl rounded-xl border border-border bg-card/60 p-5" data-testid="transcript-container">
                 <p className="mb-3 font-mono text-[0.65rem] uppercase tracking-widest text-muted-foreground">
                   Live transcript
                 </p>
@@ -474,6 +477,8 @@ export default function LiveInterviewRoom() {
                     <div
                       key={i}
                       className={cn("flex flex-col gap-0.5", line.speaker === "candidate" && "items-end")}
+                      data-testid="transcript-line"
+                      data-speaker={line.speaker}
                     >
                       <span className="text-[0.65rem] uppercase tracking-wider text-muted-foreground">
                         {line.speaker === "agent" ? "Interviewer" : "You"}
@@ -497,7 +502,7 @@ export default function LiveInterviewRoom() {
 
               {/* Controls */}
               <div className="flex items-center gap-3">
-                <Button variant="outline" size="lg" onClick={toggleMute}>
+                <Button variant="outline" size="lg" onClick={toggleMute} data-testid="mute-toggle-btn">
                   {muted ? <MicOff className="h-4 w-4" /> : <Mic className="h-4 w-4" />}
                   {muted ? "Unmute" : "Mute"}
                 </Button>
@@ -505,15 +510,16 @@ export default function LiveInterviewRoom() {
                   variant="outline"
                   size="lg"
                   onClick={toggleFace}
+                  data-testid="camera-toggle-btn"
                   title={face.active ? "Disable face assessment" : "Enable face assessment"}
                 >
                   {face.active ? <Video className="h-4 w-4" /> : <VideoOff className="h-4 w-4" />}
                   {face.active ? "Camera on" : "Camera off"}
                 </Button>
-                <Button variant="outline" size="lg" onClick={() => setShowLeaveDialog(true)}>
+                <Button variant="outline" size="lg" onClick={() => setShowLeaveDialog(true)} data-testid="leave-interview-btn">
                   Leave
                 </Button>
-                <Button variant="destructive" size="lg" onClick={handleEndCall}>
+                <Button variant="destructive" size="lg" onClick={handleEndCall} data-testid="end-interview-btn">
                   <PhoneOff className="h-4 w-4" /> End interview
                 </Button>
               </div>
@@ -556,7 +562,7 @@ export default function LiveInterviewRoom() {
               <Button variant="outline" onClick={() => setShowLeaveDialog(false)}>
                 Stay in interview
               </Button>
-              <Button variant="destructive" onClick={handleConfirmAbandon}>
+              <Button variant="destructive" onClick={handleConfirmAbandon} data-testid="confirm-abandon-btn">
                 Abandon interview
               </Button>
             </div>

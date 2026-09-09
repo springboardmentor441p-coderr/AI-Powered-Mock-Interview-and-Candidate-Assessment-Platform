@@ -79,8 +79,8 @@ export default function InvitationLandingPage() {
             <div className="mx-auto mb-2 flex h-12 w-12 items-center justify-center rounded-full bg-destructive/15 text-destructive">
               <AlertCircle className="h-6 w-6" />
             </div>
-            <CardTitle className="font-display text-xl text-foreground">Invitation Unavailable</CardTitle>
-            <CardDescription className="text-muted-foreground">
+            <CardTitle className="font-display text-xl text-foreground" data-testid="invitation-error-title">Invitation Unavailable</CardTitle>
+            <CardDescription className="text-muted-foreground" data-testid="invitation-error-desc">
               {error || "This interview invitation is invalid, expired, or has been revoked."}
             </CardDescription>
           </CardHeader>
@@ -187,7 +187,7 @@ export default function InvitationLandingPage() {
             </div>
 
             {isExpired && (
-              <div className="flex items-start gap-3 rounded-lg border border-destructive/30 bg-destructive/10 p-4 text-sm text-destructive">
+              <div className="flex items-start gap-3 rounded-lg border border-destructive/30 bg-destructive/10 p-4 text-sm text-destructive" data-testid="invitation-expired-alert">
                 <AlertCircle className="mt-0.5 h-5 w-5 shrink-0" />
                 <div>
                   <p className="font-semibold">This invitation has expired</p>
@@ -219,6 +219,7 @@ export default function InvitationLandingPage() {
                     <Button
                       size="lg"
                       onClick={() => navigate(`/room/${invitation.session_id}`)}
+                      data-testid="resume-interview-btn"
                     >
                       <Play className="h-4 w-4" />
                       Resume Interview
@@ -228,6 +229,7 @@ export default function InvitationLandingPage() {
                       size="lg"
                       onClick={handleAccept}
                       disabled={accepting}
+                      data-testid="accept-invitation-btn"
                     >
                       {accepting ? <Spinner /> : <Play className="h-4 w-4" />}
                       Accept & Begin Interview

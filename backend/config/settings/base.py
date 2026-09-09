@@ -163,6 +163,7 @@ CELERY_RESULT_BACKEND = env_str(env, "CELERY_RESULT_BACKEND", default="redis://l
 CELERY_ACCEPT_CONTENT = ["json"]
 CELERY_TASK_SERIALIZER = "json"
 CELERY_RESULT_SERIALIZER = "json"
+CELERY_TASK_ALWAYS_EAGER = env_bool(env, "CELERY_TASK_ALWAYS_EAGER", default=False)
 CELERY_BEAT_SCHEDULE = {
     "send-interview-reminders": {
         "task": "apps.notification.tasks.reminder_tasks.send_reminder_task",

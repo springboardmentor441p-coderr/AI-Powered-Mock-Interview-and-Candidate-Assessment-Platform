@@ -123,7 +123,8 @@ class TestInvitationsFlow:
 
             inv.refresh_from_db()
             assert inv.status == InvitationStatus.ACCEPTED
-            assert str(inv.session_id) == session_id
+            assert inv.session is not None
+            assert str(inv.session.id) == session_id
 
             # Duplicate accept click / refresh
             res2 = api_client.post(url)
@@ -185,5 +186,6 @@ class TestInvitationsFlow:
             assert res_resend.status_code == 200
             inv.refresh_from_db()
             assert inv.status == InvitationStatus.PENDING
+            assert inv.expires_at is not None
             assert inv.expires_at > timezone.now() + timedelta(days=6)
             mock_email.assert_called_once_with(str(inv.id))

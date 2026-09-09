@@ -125,7 +125,7 @@ class SendInvitationView(APIView):
 
         # Dispatch async email delivery
         try:
-            send_invitation_email_task.delay(str(invitation.id))
+            send_invitation_email_task.delay(str(invitation.id))  # type: ignore
         except Exception:
             # Celery broker down in dev should not crash invitation creation
             pass
@@ -183,7 +183,7 @@ class AcceptInvitationView(APIView):
 
         with transaction.atomic():
             invitation = (
-                InterviewInvitation.objects.select_for_update()
+                InterviewInvitation.objects.select_for_update(of=("self",))
                 .filter(pk=invitation_id, candidate_email=user.email)
                 .select_related("template", "session")
                 .first()
@@ -258,7 +258,7 @@ class AcceptInvitationView(APIView):
 
         # Dispatch async seed topic generation outside the transaction lock
         try:
-            generate_seed_topics_task.delay(str(session.id), topic_count)
+            generate_seed_topics_task.delay(str(session.id), topic_count)  # type: ignore
         except Exception:
             pass
 
@@ -322,7 +322,7 @@ class ResendInvitationView(APIView):
         invitation.save(update_fields=["expires_at", "status", "updated_at"])
 
         try:
-            send_invitation_email_task.delay(str(invitation.id))
+            send_invitation_email_task.delay(str(invitation.id))  # type: ignore
         except Exception:
             pass
 
