@@ -35,7 +35,7 @@ class InterviewSessionDetailSerializer(serializers.ModelSerializer):
     class Meta:
         model = InterviewSession
         fields = ("id", "mode", "interview_type", "domain", "difficulty", "status",
-                  "started_at", "completed_at", "duration_seconds",
+                  "started_at", "completed_at", "duration_seconds", "seed_topics_ready",
                   "video_recording", "audio_recording", "answers", "created_at")
         read_only_fields = fields
 

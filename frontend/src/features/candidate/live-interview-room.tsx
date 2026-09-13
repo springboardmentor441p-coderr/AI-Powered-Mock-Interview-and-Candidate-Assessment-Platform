@@ -18,6 +18,26 @@ import type { IInterviewProvider } from "./providers/interview-provider";
 const BACKEND = `${API_BASE_URL}/interviews`;
 const TOOL_SECRET = import.meta.env.VITE_ULTRAVOX_TOOL_SECRET as string;
 
+function isSessionEnded(sId: string | undefined): boolean {
+  if (!sId || typeof window === "undefined") return false;
+  try {
+    return (
+      localStorage.getItem(`smarthire_session_ended_${sId}`) === "true" ||
+      sessionStorage.getItem(`smarthire_session_ended_${sId}`) === "true"
+    );
+  } catch {
+    return false;
+  }
+}
+
+function markSessionEnded(sId: string | undefined) {
+  if (!sId || typeof window === "undefined") return;
+  try {
+    localStorage.setItem(`smarthire_session_ended_${sId}`, "true");
+    sessionStorage.setItem(`smarthire_session_ended_${sId}`, "true");
+  } catch {}
+}
+
 interface LiveTranscriptLine {
   speaker: "agent" | "candidate";
   text: string;
@@ -31,7 +51,8 @@ export default function LiveInterviewRoom() {
   const navigate = useNavigate();
   const startSession = useStartRealtimeSession();
 
-  const [phase, setPhase] = useState<CallPhase>("preparing");
+  const endedInitially = isSessionEnded(sessionId);
+  const [phase, setPhase] = useState<CallPhase>(() => (endedInitially ? "ended" : "preparing"));
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [muted, setMuted] = useState(false);
   const [callStatus, setCallStatus] = useState<string>("idle");
@@ -69,30 +90,56 @@ export default function LiveInterviewRoom() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // ── Immediate redirect if session was ended ─────────────────────────── //
+  useEffect(() => {
+    if (!sessionId) return;
+    if (isSessionEnded(sessionId)) {
+      hasStartedRef.current = true;
+      setPhase("ended");
+      navigate(`/app/interviews/${sessionId}`, { replace: true });
+    }
+  }, [sessionId, navigate]);
+
   // ── Polling ──────────────────────────────────────────────────────────── //
-  const { data: pollData } = useRealtimeSessionPoll(sessionId, phase === "preparing");
+  const { data: pollData } = useRealtimeSessionPoll(
+    sessionId,
+    phase === "preparing" && !endedInitially,
+  );
 
   useEffect(() => {
     if (!pollData || hasStartedRef.current) return;
+
+    // If session is already completed or marked ended, do NOT restart/prepare — go directly to results
+    if (
+      pollData.status === "completed" ||
+      isSessionEnded(sessionId)
+    ) {
+      markSessionEnded(sessionId);
+      hasStartedRef.current = true;
+      setPhase("ended");
+      navigate(`/app/interviews/${sessionId}`, { replace: true });
+      return;
+    }
+
     if (pollData.status === "abandoned") {
       setPhase("error");
       setErrorMessage("This session was abandoned. Start a new interview from the setup page.");
       return;
     }
+
+    if (pollData.status === "failed" || pollData.status === "preparation_failed") {
+      setPhase("error");
+      setErrorMessage("Interview session failed to initialize. Please start a new interview from the setup page.");
+      return;
+    }
+
+    // ONLY begin call if seed topics are ready AND the session is in a startable state
     const ready = (pollData as unknown as { seed_topics_ready?: boolean }).seed_topics_ready;
-    if (ready === true) {
+    if (ready === true && ["ready", "scheduled", "in_progress"].includes(pollData.status)) {
       hasStartedRef.current = true;
       void beginCall();
-    } else if (ready === undefined) {
-      const timeout = setTimeout(() => {
-        if (!hasStartedRef.current) {
-          hasStartedRef.current = true;
-          void beginCall();
-        }
-      }, 4000);
-      return () => clearTimeout(timeout);
     }
-  }, [pollData]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [pollData, navigate, sessionId]);
 
   // ── Timer ────────────────────────────────────────────────────────────── //
   useEffect(() => {
@@ -142,8 +189,10 @@ export default function LiveInterviewRoom() {
 
           if (uvStatus === "disconnected") {
             if (intentionalDisconnectRef.current) {
-              // We triggered this — wrapping-up handler already called
-              setPhase((p) => (p === "wrapping-up" || p === "ended" ? "ended" : p));
+              // Intentionally ended — redirect immediately to results
+              markSessionEnded(sessionId);
+              setPhase("ended");
+              navigate(`/app/interviews/${sessionId}`, { replace: true });
             } else if (hasConnectedRef.current) {
               // Only trigger error if the call had successfully connected and then dropped mid-call
               setPhase((p) => {
@@ -242,19 +291,22 @@ export default function LiveInterviewRoom() {
   // ── End call ─────────────────────────────────────────────────────────── //
   async function handleEndCall() {
     if (!sessionId) return;
+    markSessionEnded(sessionId);
     intentionalDisconnectRef.current = true;
-    setPhase("wrapping-up");
+    hasStartedRef.current = true;
+    setPhase("ended");
     face.stop();
-    try { sessionRef.current?.leaveCall(); } catch { /* ignore */ }
     try {
-      const detail = await interviewsApi.realtimeDetail(sessionId);
-      if (detail.status !== "completed") {
-        await interviewsApi.complete(sessionId).catch(() => undefined);
-      }
-    } finally {
-      toast.success("Interview wrapped. Compiling your results…");
-      navigate(`/app/interviews/${sessionId}`);
+      sessionRef.current?.leaveCall();
+    } catch {
+      /* ignore */
     }
+    // Fire completion to backend; scoring pipeline runs asynchronously
+    interviewsApi.complete(sessionId).catch((err) => {
+      console.warn("[endCall] Complete session call failed:", err);
+    });
+    toast.success("Interview wrapped. Compiling your results…");
+    navigate(`/app/interviews/${sessionId}`, { replace: true });
   }
 
   function toggleMute() {
@@ -395,13 +447,18 @@ export default function LiveInterviewRoom() {
           <div className="flex flex-col items-center gap-4 text-center">
             <Spinner className="h-8 w-8 text-primary" />
             <p className="font-display text-xl text-foreground">
-              {phase === "preparing"
-                ? "Preparing your interview topics…"
-                : "Connecting to the interviewer…"}
+              {phase === "connecting"
+                ? "Connecting to the interviewer…"
+                : !pollData
+                  ? "Checking interview session…"
+                  : "Preparing your interview topics…"}
             </p>
             <p className="max-w-sm text-sm text-muted-foreground">
-              This usually takes a few seconds. We're generating tailored topics based on your role
-              and résumé.
+              {phase === "connecting"
+                ? "Setting up audio connection with the AI interviewer."
+                : !pollData
+                  ? "Verifying interview status…"
+                  : "This usually takes a few seconds. We're generating tailored topics based on your role and résumé."}
             </p>
           </div>
         )}
@@ -537,14 +594,24 @@ export default function LiveInterviewRoom() {
           </div>
         )}
 
-        {/* Wrapping up */}
-        {phase === "wrapping-up" && (
+        {/* Wrapping up / Ended */}
+        {(phase === "wrapping-up" || phase === "ended") && (
           <div className="flex flex-col items-center gap-4 text-center">
             <Spinner className="h-8 w-8 text-primary" />
-            <p className="font-display text-xl text-foreground">Wrapping up the session…</p>
-            <p className="max-w-sm text-sm text-muted-foreground">
-              We're saving your recording and kicking off scoring. This can take a minute.
+            <p className="font-display text-xl text-foreground">
+              {phase === "ended" ? "Interview completed" : "Wrapping up your interview…"}
             </p>
+            <p className="max-w-sm text-sm text-muted-foreground">
+              Redirecting you to your results and feedback…
+            </p>
+            <Button
+              variant="outline"
+              size="sm"
+              className="mt-2"
+              onClick={() => navigate(`/app/interviews/${sessionId}`, { replace: true })}
+            >
+              View results now
+            </Button>
           </div>
         )}
       </main>

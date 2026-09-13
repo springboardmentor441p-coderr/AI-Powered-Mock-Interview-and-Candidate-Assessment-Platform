@@ -140,6 +140,7 @@ export function useBrief(sessionId: string | undefined) {
     queryFn: () => interviewsApi.brief(sessionId as string),
     enabled: Boolean(sessionId),
     retry: false,
+    refetchInterval: (query) => (query.state.data ? false : 3000),
   });
 }
 
@@ -149,6 +150,7 @@ export function useSpeechAnalysis(sessionId: string | undefined) {
     queryFn: () => assessmentApi.speechAnalysis(sessionId as string),
     enabled: Boolean(sessionId),
     retry: false,
+    refetchInterval: (query) => (query.state.data ? false : 3000),
   });
 }
 
@@ -158,6 +160,7 @@ export function useFinalScore(sessionId: string | undefined) {
     queryFn: () => assessmentApi.finalScore(sessionId as string),
     enabled: Boolean(sessionId),
     retry: false,
+    refetchInterval: (query) => (query.state.data ? false : 3000),
   });
 }
 
@@ -167,6 +170,7 @@ export function useSessionFeedback(sessionId: string | undefined) {
     queryFn: () => assessmentApi.feedback(sessionId as string),
     enabled: Boolean(sessionId),
     retry: false,
+    refetchInterval: (query) => (query.state.data ? false : 3000),
   });
 }
 

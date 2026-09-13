@@ -22,14 +22,24 @@ import {
 
 export default function SessionDetailPage() {
   const { sessionId } = useParams<{ sessionId: string }>();
-  const { data: session, isLoading } = useSessionDetail(sessionId);
+  const { data: session, isLoading, isError } = useSessionDetail(sessionId);
 
-  if (isLoading || !session) {
+  if (isLoading) {
     return (
       <div className="space-y-4">
         <Skeleton className="h-10 w-72" />
         <Skeleton className="h-64 w-full" />
       </div>
+    );
+  }
+
+  if (isError || !session) {
+    return (
+      <EmptyState
+        icon={AlertTriangle}
+        title="Session not found"
+        description="We couldn't find the interview session you requested."
+      />
     );
   }
 
@@ -140,10 +150,11 @@ function OverviewTab({ sessionId }: { sessionId: string }) {
   );
 }
 
-function MiniScore({ label, value }: { label: string; value: number }) {
+function MiniScore({ label, value }: { label: string; value: number | null | undefined }) {
+  const displayVal = value !== null && value !== undefined && !Number.isNaN(Number(value)) ? Math.round(Number(value)) : "—";
   return (
     <div className="rounded-lg bg-secondary/40 p-3 text-center">
-      <p className="font-mono-num text-2xl font-semibold text-foreground">{Math.round(value)}</p>
+      <p className="font-mono-num text-2xl font-semibold text-foreground">{displayVal}</p>
       <p className="text-[0.65rem] uppercase tracking-wider text-muted-foreground">{label}</p>
     </div>
   );
@@ -160,7 +171,8 @@ function FeedbackCard({
   items: string[];
   tone: "success" | "warning" | "default";
 }) {
-  if (!items || items.length === 0) return null;
+  const list = Array.isArray(items) ? items : [];
+  if (list.length === 0) return null;
   const toneClass = tone === "success" ? "text-success" : tone === "warning" ? "text-warning" : "text-primary";
   return (
     <Card>
@@ -171,7 +183,7 @@ function FeedbackCard({
       </CardHeader>
       <CardContent>
         <ul className="space-y-2 text-sm text-muted-foreground">
-          {items.map((item, i) => (
+          {list.map((item, i) => (
             <li key={i} className="flex gap-2">
               <span className="mt-1.5 h-1 w-1 shrink-0 rounded-full bg-current" />
               {item}
@@ -239,7 +251,7 @@ function ThreadsTab({ sessionId }: { sessionId: string }) {
               <MiniScore label="Specificity" value={thread.specificity} />
               <MiniScore label="Recovery" value={thread.recovery} />
             </div>
-            {thread.strong_signals?.length > 0 && (
+            {Array.isArray(thread.strong_signals) && thread.strong_signals.length > 0 && (
               <div>
                 <p className="mb-1 text-xs font-semibold uppercase tracking-wider text-success">Strong signals</p>
                 <ul className="space-y-1 text-sm text-muted-foreground">
@@ -249,7 +261,7 @@ function ThreadsTab({ sessionId }: { sessionId: string }) {
                 </ul>
               </div>
             )}
-            {thread.red_flags?.length > 0 && (
+            {Array.isArray(thread.red_flags) && thread.red_flags.length > 0 && (
               <div>
                 <p className="mb-1 text-xs font-semibold uppercase tracking-wider text-destructive">Red flags</p>
                 <ul className="space-y-1 text-sm text-muted-foreground">

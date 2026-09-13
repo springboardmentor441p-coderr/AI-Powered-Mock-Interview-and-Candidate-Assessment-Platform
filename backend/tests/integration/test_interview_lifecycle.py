@@ -247,3 +247,25 @@ class TestInterviewLifecycle:
         brief.refresh_from_db()
         assert brief.human_verdict == "advance"
         assert brief.human_notes == "Great candidate!"
+
+    def test_complete_session_from_ready_and_connection_lost_succeeds(self, candidate_user, realtime_session):
+        client = APIClient()
+        client.force_authenticate(user=candidate_user)
+
+        # 1. Complete from READY status
+        realtime_session.status = InterviewSession.Status.READY
+        realtime_session.save()
+
+        with patch("apps.assessment.tasks.scoring_tasks.run_assessment_pipeline.delay") as mock_pipeline:
+            res = client.post(f"/api/v1/interviews/sessions/{realtime_session.id}/complete/")
+            assert res.status_code == 200
+            assert res.data["data"]["status"] == "completed"
+            mock_pipeline.assert_called_once_with(str(realtime_session.id))
+
+        # 2. Complete again is idempotent
+        with patch("apps.assessment.tasks.scoring_tasks.run_assessment_pipeline.delay") as mock_pipeline:
+            res_repeat = client.post(f"/api/v1/interviews/sessions/{realtime_session.id}/complete/")
+            assert res_repeat.status_code == 200
+            assert res_repeat.data["data"]["status"] == "completed"
+            mock_pipeline.assert_not_called()
+

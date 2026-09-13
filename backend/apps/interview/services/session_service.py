@@ -109,7 +109,13 @@ class SessionService(BaseService):
     def complete_session(self, *, session: InterviewSession) -> InterviewSession:
         if session.status == InterviewSession.Status.COMPLETED:
             return session
-        if session.status not in (InterviewSession.Status.IN_PROGRESS, InterviewSession.Status.SCHEDULED):
+        if session.status not in (
+            InterviewSession.Status.IN_PROGRESS,
+            InterviewSession.Status.SCHEDULED,
+            InterviewSession.Status.READY,
+            InterviewSession.Status.PREPARING,
+            InterviewSession.Status.CONNECTION_LOST,
+        ):
             raise BusinessRuleViolation(f"Cannot complete a session in status '{session.status}'.")
         if session.mode == InterviewSession.Mode.SCRIPTED and session.answers.filter(answered_at__isnull=False).count() == 0:  # type: ignore[attr-defined]
             raise ValidationError("Cannot complete a session with no answered questions.")

@@ -128,7 +128,13 @@ class SessionCompleteView(APIView):
         already_completed = (session.status == InterviewSession.Status.COMPLETED)
         session = container.session_service().complete_session(session=session)
         if not already_completed:
-            run_assessment_pipeline.delay(str(session.id))  # type: ignore[union-attr]
+            try:
+                run_assessment_pipeline.delay(str(session.id))  # type: ignore[union-attr]
+            except Exception:
+                import logging
+                logging.getLogger("smarthire").exception(
+                    "Assessment pipeline failed to run for session %s", session.id
+                )
         return APIResponse.success(
             data=InterviewSessionDetailSerializer(session).data,
             message="Session completed. Assessment pipeline queued.",
