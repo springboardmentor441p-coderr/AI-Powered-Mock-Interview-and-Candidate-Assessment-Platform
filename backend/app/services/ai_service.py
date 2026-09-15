@@ -367,94 +367,91 @@ class AIService:
             "}"
         )
         res = call_groq_json(prompt, system_instruction)
-        if res and isinstance(res, dict) and "overall_score" in res:
-            return res
+        # Dynamically compute question performance and scores strictly based on actual candidate answers
+        total_qs = len(answers) if answers else 1
+        q_perf = []
+        scores_list = []
 
-        # Robust default fallback if AI model returns partial or empty JSON
-        return {
-            "overall_score": 8.2,
-            "overall_score_pct": 82,
-            "performance_level": "Strong Performance",
-            "summary": "The candidate demonstrated strong domain knowledge in technical architecture and core skills, with minor areas for growth in query optimization.",
-            "category_scores": {
-                "technical_skills": 8.2,
-                "problem_solving": 8.0,
-                "communication": 7.8,
-                "behavioral": 8.4,
-                "resume_knowledge": 8.5,
-                "jd_capabilities": 8.1
-            },
-            "technical_skills_assessment": {
-                "Python": "8.5/10",
-                "SQL": "7.0/10",
-                "React": "9.0/10",
-                "FastAPI": "8.0/10",
-                "REST API": "8.5/10",
-                "Authentication": "7.5/10"
-            },
-            "skills_demonstrated": ["Python", "React", "FastAPI", "REST API", "JWT", "Problem Solving"],
-            "needs_improvement": ["Advanced SQL", "System Design", "Communication structure"],
-            "resume_validation": [
-                {
-                    "claim": "Built REST APIs using FastAPI",
-                    "status": "Demonstrated strongly",
-                    "evidence": "Candidate gave a clear, detailed explanation of JWT auth & routing in FastAPI."
-                },
-                {
-                    "claim": "Database design & SQL optimization",
-                    "status": "Partially demonstrated",
-                    "evidence": "Candidate understood basic queries but lacked depth on indexing & joins."
-                }
-            ],
-            "jd_capabilities": [
-                { "skill": "Python", "status": "Strong", "score": "8.5/10" },
-                { "skill": "SQL", "status": "Good", "score": "7.0/10" },
-                { "skill": "FastAPI", "status": "Strong", "score": "8.0/10" },
-                { "skill": "REST APIs", "status": "Strong", "score": "8.5/10" },
-                { "skill": "Problem Solving", "status": "Good", "score": "8.0/10" },
-                { "skill": "Communication", "status": "Good", "score": "7.8/10" }
-            ],
-            "behavioral_skills": {
-                "Problem Solving": "8.5/10",
-                "Communication": "8.0/10",
-                "Ownership": "7.5/10",
-                "Teamwork": "8.0/10",
-                "Leadership": "7.5/10",
-                "Adaptability": "8.0/10",
-                "Decision Making": "8.0/10"
-            },
-            "communication_analysis": {
-                "clarity": "8.5/10",
-                "relevance": "9.0/10",
-                "structure": "8.0/10",
-                "grammar": "8.5/10",
-                "conciseness": "7.5/10",
-                "vocabulary": "8.0/10",
-                "explanation_quality": "8.5/10"
-            },
-            "strengths": [
-                "Strong project knowledge and hands-on FastAPI experience",
-                "Good technical fundamentals and architectural clarity",
-                "Clear articulation of problem-solving trade-offs"
-            ],
-            "areas_for_improvement": [
-                "Deepen understanding of advanced SQL query optimization",
-                "Practice system design patterns for high-scale microservices",
-                "Use STAR method for structured behavioral responses"
-            ],
-            "question_performance": [
-                {
-                    "q_num": 1,
-                    "topic": "Introduction & Project Overview",
-                    "question_text": "Tell me about yourself and your FastAPI project.",
-                    "question_type": "Introduction",
-                    "expected_skills": ["FastAPI", "Python"],
-                    "score": "8.5/10",
-                    "feedback": "Strong introduction with relevant project experience."
-                }
-            ],
-            "ai_recommendations": [
-                "Review SQL JOIN types and indexing strategies.",
-                "Practice explaining architectural design trade-offs concisely."
-            ]
+        existing_qps = res.get("question_performance") if (res and isinstance(res, dict) and isinstance(res.get("question_performance"), list)) else []
+
+        for idx, a in enumerate(answers):
+            ans_text = a.get("candidate_answer") or a.get("candidate_audio_transcript") or ""
+            is_no_ans = not ans_text or ans_text in ["No verbal response recorded.", "No response recorded.", "No response", ""] or ans_text.strip() == "" or "No verbal response recorded" in str(ans_text)
+            
+            existing_qp = existing_qps[idx] if idx < len(existing_qps) else {}
+
+            if is_no_ans:
+                q_score_val = 0.0
+                q_score_str = "0/10"
+                feedback_str = "Candidate skipped the question; no answer provided."
+                cand_ans_str = "No verbal response recorded."
+            else:
+                words = len(ans_text.strip().split())
+                q_score_val = 9.0 if words >= 40 else (8.0 if words >= 20 else (6.5 if words >= 10 else 5.0))
+                
+                # Check if AI or existing object provided a specific numeric score
+                raw_s = existing_qp.get("score") or a.get("score")
+                if raw_s is not None and str(raw_s) != "0/10" and str(raw_s) != "0":
+                    try:
+                        parsed_s = float(str(raw_s).replace("/10", "").strip())
+                        if parsed_s > 0:
+                            q_score_val = parsed_s
+                    except (ValueError, TypeError):
+                        pass
+
+                q_score_str = f"{round(q_score_val, 1)}/10"
+                feedback_str = existing_qp.get("feedback") or f"Candidate provided verbal answer ({words} words)."
+                cand_ans_str = ans_text
+
+            scores_list.append(q_score_val)
+            q_perf.append({
+                "q_num": idx + 1,
+                "topic": a.get("topic") or existing_qp.get("topic") or "Technical Concept",
+                "question_text": a.get("question_text") or existing_qp.get("question_text") or "",
+                "question_type": a.get("question_type") or existing_qp.get("question_type") or "Technical",
+                "expected_skills": a.get("expected_skills") or existing_qp.get("expected_skills") or [],
+                "candidate_answer": cand_ans_str,
+                "score": q_score_str,
+                "feedback": feedback_str
+            })
+
+        avg_score = sum(scores_list) / total_qs if total_qs > 0 else 0.0
+        overall_score = round(avg_score, 1)
+        overall_score_pct = int(round(avg_score * 10))
+
+        if overall_score_pct == 0:
+            perf_level = "NO RESPONSES PROVIDED"
+            summary_text = "Candidate did not provide any verbal answers during the interview assessment session."
+        elif overall_score_pct < 40:
+            perf_level = "Needs Significant Improvement"
+            summary_text = f"Candidate answered {len([s for s in scores_list if s > 0])} of {total_qs} questions with an overall match score of {overall_score_pct}%."
+        elif overall_score_pct < 75:
+            perf_level = "Satisfactory Performance"
+            summary_text = f"Candidate answered {len([s for s in scores_list if s > 0])} of {total_qs} questions demonstrating fair technical understanding."
+        else:
+            perf_level = "Strong Performance"
+            summary_text = f"Candidate answered {len([s for s in scores_list if s > 0])} of {total_qs} questions with good technical depth and clarity."
+
+        cat_scores = {
+            "technical_skills": round(avg_score * 1.0, 1),
+            "problem_solving": round(avg_score * 0.98, 1),
+            "communication": round(avg_score * 0.95, 1),
+            "behavioral": round(avg_score * 0.96, 1),
+            "resume_knowledge": round(avg_score * 1.0, 1),
+            "jd_capabilities": round(avg_score * 0.97, 1)
         }
+
+        if not (res and isinstance(res, dict)):
+            res = {}
+
+        res["overall_score"] = overall_score
+        res["overall_score_pct"] = overall_score_pct
+        res["performance_level"] = perf_level
+        res["summary"] = summary_text
+        res["category_scores"] = cat_scores
+        res["question_performance"] = q_perf
+
+        if "technical_skills_assessment" not in res:
+            res["technical_skills_assessment"] = { "Technical Assessment": f"{overall_score}/10" }
+
+        return res

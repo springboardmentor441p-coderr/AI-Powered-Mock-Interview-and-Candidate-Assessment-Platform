@@ -289,8 +289,24 @@ def save_details(req: SaveInterviewRequest, db: Session = Depends(get_db)):
                 "question_text": q_data.get("question_text") or q_data.get("questionText") or "",
                 "question_type": q_data.get("question_type", "Technical"),
                 "expected_skills": q_data.get("expected_skills", []),
-                "score": "8.5/10",
-                "feedback": "Clear explanation of technical design choices."
+                "candidate_answer": "No verbal response recorded." if (
+                    idx >= len(req.answers) or
+                    not req.answers[idx].get("candidate_audio_transcript") or
+                    req.answers[idx].get("candidate_audio_transcript") in ["No verbal response recorded.", "No response recorded.", "No response", ""] or
+                    "No verbal response recorded" in str(req.answers[idx].get("candidate_audio_transcript"))
+                ) else req.answers[idx].get("candidate_audio_transcript"),
+                "score": "0/10" if (
+                    idx >= len(req.answers) or
+                    not req.answers[idx].get("candidate_audio_transcript") or
+                    req.answers[idx].get("candidate_audio_transcript") in ["No verbal response recorded.", "No response recorded.", "No response", ""] or
+                    "No verbal response recorded" in str(req.answers[idx].get("candidate_audio_transcript"))
+                ) else f"{req.answers[idx].get('score', 8.5)}/10",
+                "feedback": "Candidate skipped the question; no answer provided." if (
+                    idx >= len(req.answers) or
+                    not req.answers[idx].get("candidate_audio_transcript") or
+                    req.answers[idx].get("candidate_audio_transcript") in ["No verbal response recorded.", "No response recorded.", "No response", ""] or
+                    "No verbal response recorded" in str(req.answers[idx].get("candidate_audio_transcript"))
+                ) else req.answers[idx].get("feedback", "Response matches core concepts.")
             } for idx, q_data in enumerate(req.questions)
         ],
         interview_integrity=proctoring

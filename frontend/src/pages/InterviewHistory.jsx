@@ -143,17 +143,19 @@ export const InterviewHistory = () => {
             areasForImprovement: detail.report && detail.report.weaknesses && detail.report.weaknesses.length > 0
               ? detail.report.weaknesses
               : ['Consider practicing STAR technique for behavior questions.', 'Structure system architectures step-by-step.'],
-            questionPerformance: detail.questions && detail.questions.length > 0 ? detail.questions.map((q, idx) => ({
-              qNum: idx + 1,
-              topic: q.topic || 'General Topic',
-              questionText: q.question_text || q.questionText || '',
-              answerText: detail.answers && detail.answers[idx] ? detail.answers[idx].candidate_audio_transcript : 'No verbal response recorded.',
-              expectedPoints: q.expected_points || q.expected_answer_keypoints || [],
-              score: detail.answers && detail.answers[idx] ? `${detail.answers[idx].score}/10` : '8.5/10',
-              feedback: detail.answers && detail.answers[idx] ? detail.answers[idx].feedback : 'Good explanation.'
-            })) : [
-              { qNum: 1, topic: 'General Topic', questionText: 'General Question', answerText: 'Response recorded.', expectedPoints: [], score: '8.5/10', feedback: 'Good response with clear explanation.' }
-            ],
+            questionPerformance: detail.questions && detail.questions.length > 0 ? detail.questions.map((q, idx) => {
+              const ansText = detail.answers && detail.answers[idx] ? detail.answers[idx].candidate_audio_transcript : 'No verbal response recorded.';
+              const isNoAns = !ansText || ansText === 'No verbal response recorded.' || ansText === 'No response recorded.' || ansText.trim() === '';
+              return {
+                qNum: idx + 1,
+                topic: q.topic || 'General Topic',
+                questionText: q.question_text || q.questionText || '',
+                answerText: isNoAns ? 'No verbal response recorded.' : ansText,
+                expectedPoints: q.expected_points || q.expected_answer_keypoints || [],
+                score: isNoAns ? '0 / 10' : `${detail.answers && detail.answers[idx] ? detail.answers[idx].score : 8.5} / 10`,
+                feedback: isNoAns ? 'Candidate skipped the question; no answer provided.' : (detail.answers && detail.answers[idx] ? detail.answers[idx].feedback : 'Evaluated cleanly against JD criteria.')
+              };
+            }) : [],
             aiRecommendations: detail.report && detail.report.recommendations && detail.report.recommendations.length > 0
               ? detail.report.recommendations
               : ['Study design paradigms under peak concurrency.', 'Practice formatting clear API response payloads.'],

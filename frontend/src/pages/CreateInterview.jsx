@@ -79,7 +79,10 @@ export const CreateInterview = () => {
     const [stream, setStream] = useState(null);
     const [capturedFaceUrl, setCapturedFaceUrl] = useState(setupChecks.faceDataUrl || null);
     const [acceptedRules, setAcceptedRules] = useState(false);
-    const [audioLevel, setAudioLevel] = useState(72);
+    const [audioLevel, setAudioLevel] = useState(0);
+    const [cameraStatus, setCameraStatus] = useState('Checking...');
+    const [lightingStatus, setLightingStatus] = useState('Good');
+    const [internetStatus, setInternetStatus] = useState('Stable');
 
     const sampleJdText = '';
 
@@ -89,7 +92,23 @@ export const CreateInterview = () => {
         let audioContext = null;
         let analyser = null;
         let animFrame = null;
-        let autoCapTimer = null;
+        let lightInterval = null;
+
+        const updateInternet = () => {
+            if (!navigator.onLine) {
+                setInternetStatus('Offline');
+            } else {
+                const conn = navigator.connection || navigator.mozConnection || navigator.webkitConnection;
+                if (conn && conn.downlink && conn.downlink < 1.0) {
+                    setInternetStatus('Slow');
+                } else {
+                    setInternetStatus('Stable');
+                }
+            }
+        };
+        updateInternet();
+        window.addEventListener('online', updateInternet);
+        window.addEventListener('offline', updateInternet);
 
         if (step === 2 || step === 3) {
             async function startMedia() {
@@ -103,6 +122,8 @@ export const CreateInterview = () => {
                         audio: true
                     });
                     setStream(mediaStream);
+                    setCameraStatus('Working');
+
                     if (videoRef.current) {
                         videoRef.current.srcObject = mediaStream;
                         videoRef.current.play().catch(() => {});
@@ -124,7 +145,8 @@ export const CreateInterview = () => {
                                 sum += dataArray[i];
                             }
                             const avg = sum / dataArray.length;
-                            const levelPct = Math.min(100, Math.max(15, Math.round((avg / 128) * 100)));
+                            const rawPct = Math.round((avg / 64) * 100);
+                            const levelPct = Math.min(100, Math.max(0, rawPct));
                             setAudioLevel(levelPct);
                             animFrame = requestAnimationFrame(updateVolume);
                         };
@@ -133,17 +155,33 @@ export const CreateInterview = () => {
                         console.warn("Audio metering fallback:", e);
                     }
 
-                    if (step === 3 && !capturedFaceUrl) {
-                        autoCapTimer = setTimeout(() => {
-                            if (videoRef.current && !capturedFaceUrl) {
-                                try {
-                                    handleCaptureFace();
-                                } catch (e) {}
-                            }
-                        }, 1200);
-                    }
+                    // Live Lighting Analysis
+                    const canvas = document.createElement('canvas');
+                    canvas.width = 64;
+                    canvas.height = 48;
+                    const ctx = canvas.getContext('2d', { willReadFrequently: true });
+
+                    lightInterval = setInterval(() => {
+                        if (videoRef.current && videoRef.current.readyState >= 2) {
+                            try {
+                                ctx.drawImage(videoRef.current, 0, 0, 64, 48);
+                                const imgData = ctx.getImageData(0, 0, 64, 48);
+                                const pixels = imgData.data;
+                                let totalBrightness = 0;
+                                for (let i = 0; i < pixels.length; i += 16) {
+                                    totalBrightness += (0.299 * pixels[i] + 0.587 * pixels[i + 1] + 0.114 * pixels[i + 2]);
+                                }
+                                const avgBrightness = totalBrightness / (pixels.length / 16);
+                                if (avgBrightness < 45) setLightingStatus('Dim Light');
+                                else if (avgBrightness > 210) setLightingStatus('Too Bright');
+                                else setLightingStatus('Good');
+                            } catch (e) {}
+                        }
+                    }, 500);
+
                 } catch (err) {
                     console.warn("Media access error:", err);
+                    setCameraStatus('Disconnected');
                 }
             }
             startMedia();
@@ -151,8 +189,10 @@ export const CreateInterview = () => {
 
         return () => {
             if (animFrame) cancelAnimationFrame(animFrame);
+            if (lightInterval) clearInterval(lightInterval);
             if (audioContext) audioContext.close().catch(() => {});
-            if (autoCapTimer) clearTimeout(autoCapTimer);
+            window.removeEventListener('online', updateInternet);
+            window.removeEventListener('offline', updateInternet);
             if (mediaStream) {
                 mediaStream.getTracks().forEach((track) => track.stop());
             }
@@ -693,25 +733,33 @@ export const CreateInterview = () => {
                                 <div className="bg-slate-900 p-2.5 rounded-xl border border-slate-800 text-center">
                                     <Video className="w-4 h-4 text-cyan-400 mx-auto mb-1" />
                                     <span className="text-[10px] font-mono text-slate-400 block">Camera</span>
-                                    <span className="text-[11px] font-bold text-emerald-400 font-mono">Working</span>
+                                    <span className={`text-[11px] font-bold font-mono ${cameraStatus === 'Working' ? 'text-emerald-400' : 'text-red-400'}`}>
+                                        {cameraStatus}
+                                    </span>
                                 </div>
 
                                 <div className="bg-slate-900 p-2.5 rounded-xl border border-slate-800 text-center">
                                     <Mic className="w-4 h-4 text-indigo-400 mx-auto mb-1" />
                                     <span className="text-[10px] font-mono text-slate-400 block">Microphone</span>
-                                    <span className="text-[11px] font-bold text-indigo-300 font-mono">{audioLevel}% Level</span>
+                                    <span className={`text-[11px] font-bold font-mono ${audioLevel > 0 ? 'text-indigo-300' : 'text-emerald-400'}`}>
+                                        {audioLevel > 0 ? `${audioLevel}% Level` : 'Active'}
+                                    </span>
                                 </div>
 
                                 <div className="bg-slate-900 p-2.5 rounded-xl border border-slate-800 text-center">
                                     <Sun className="w-4 h-4 text-amber-400 mx-auto mb-1" />
                                     <span className="text-[10px] font-mono text-slate-400 block">Lighting</span>
-                                    <span className="text-[11px] font-bold text-amber-300 font-mono">Good</span>
+                                    <span className={`text-[11px] font-bold font-mono ${lightingStatus === 'Good' ? 'text-amber-300' : 'text-amber-400'}`}>
+                                        {lightingStatus}
+                                    </span>
                                 </div>
 
                                 <div className="bg-slate-900 p-2.5 rounded-xl border border-slate-800 text-center">
                                     <Wifi className="w-4 h-4 text-purple-400 mx-auto mb-1" />
                                     <span className="text-[10px] font-mono text-slate-400 block">Internet</span>
-                                    <span className="text-[11px] font-bold text-purple-300 font-mono">Stable</span>
+                                    <span className={`text-[11px] font-bold font-mono ${internetStatus === 'Stable' || internetStatus.includes('Fast') ? 'text-purple-300' : 'text-amber-400'}`}>
+                                        {internetStatus}
+                                    </span>
                                 </div>
                             </div>
                         </div>

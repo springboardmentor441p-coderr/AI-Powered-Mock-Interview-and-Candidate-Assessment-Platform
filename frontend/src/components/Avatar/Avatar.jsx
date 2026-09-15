@@ -59,8 +59,37 @@ export const AIAvatar = ({ currentQuestion, isSpeaking, interviewState = INTERVI
     return () => clearInterval(blinkTimer);
   }, []);
 
+  const [displayedText, setDisplayedText] = useState('');
+
+  // Synchronized Subtitle / Typewriter Effect as AI Speaks
+  useEffect(() => {
+    if (!currentQuestion) {
+      setDisplayedText('');
+      return;
+    }
+
+    if (effectiveState === INTERVIEW_STATES.SPEAKING) {
+      setDisplayedText('');
+      const words = currentQuestion.split(' ');
+      let wordIndex = 0;
+
+      const interval = setInterval(() => {
+        if (wordIndex < words.length) {
+          setDisplayedText(words.slice(0, wordIndex + 1).join(' '));
+          wordIndex++;
+        } else {
+          clearInterval(interval);
+        }
+      }, 140); // 140ms per word matches 120-130 WPM AI presenter speech rate
+
+      return () => clearInterval(interval);
+    } else {
+      setDisplayedText(currentQuestion);
+    }
+  }, [currentQuestion, effectiveState]);
+
   return (
-    <div className="relative glass-card rounded-2xl p-6 border border-cyan-500/30 flex flex-col items-center justify-between overflow-hidden w-full min-h-[380px] bg-slate-950/90 shadow-2xl">
+    <div className="relative glass-card rounded-2xl p-6 border border-cyan-500/30 flex flex-col items-center justify-between overflow-hidden w-full h-full min-h-[380px] bg-slate-950/90 shadow-2xl">
       {/* Background Ambient Glow */}
       <div className="absolute inset-0 bg-gradient-to-b from-cyan-500/10 via-purple-500/5 to-transparent pointer-events-none" />
 
@@ -98,54 +127,36 @@ export const AIAvatar = ({ currentQuestion, isSpeaking, interviewState = INTERVI
           )}
           {effectiveState === INTERVIEW_STATES.READY && (
             <span className="flex items-center gap-1.5 text-xs text-slate-300 font-bold bg-slate-900 px-3 py-1 rounded-full border border-slate-800">
-              <CheckCircle2 className="w-4 h-4 text-emerald-400" /> Ready
+              <CheckCircle2 className="w-4 h-4 text-emerald-400" /> System Ready
             </span>
           )}
         </div>
       </div>
 
-      {/* LIFELIKE AI VIRTUAL PRESENTER AVATAR FRAME */}
-      <div className="relative flex items-center justify-center my-4">
-        {/* Glowing Aura Rings */}
-        <div
-          className={`absolute w-48 h-48 rounded-full border-2 transition-all duration-200 ${
-            effectiveState === INTERVIEW_STATES.SPEAKING
-              ? 'border-cyan-400/80 shadow-xl shadow-cyan-500/30'
-              : effectiveState === INTERVIEW_STATES.LISTENING
-              ? 'border-emerald-400/80 shadow-xl shadow-emerald-500/30'
-              : effectiveState === INTERVIEW_STATES.ANALYZING
-              ? 'border-purple-400/80 shadow-xl shadow-purple-500/30'
-              : effectiveState === INTERVIEW_STATES.GENERATING
-              ? 'border-amber-400/80 shadow-xl shadow-amber-500/30'
-              : 'border-slate-800'
-          }`}
-          style={{ transform: `scale(${pulseScale * 1.1})` }}
-        />
+      {/* Photorealistic AI Avatar Presenter Canvas */}
+      <div className="relative my-2 w-48 h-48 sm:w-56 sm:h-56 rounded-full p-1.5 bg-gradient-to-tr from-cyan-500 via-indigo-500 to-purple-600 shadow-2xl flex items-center justify-center">
+        {/* Pulsing Voice Wave Outer Aura */}
+        {effectiveState === INTERVIEW_STATES.SPEAKING && (
+          <div
+            className="absolute inset-0 rounded-full border-2 border-cyan-400/60 animate-ping pointer-events-none"
+            style={{ animationDuration: '1.8s' }}
+          />
+        )}
 
-        {/* Photorealistic Human Presenter Frame */}
         <div
-          className={`relative w-36 h-36 sm:w-44 sm:h-44 rounded-full border-4 p-1 shadow-2xl overflow-hidden z-10 transition-all duration-300 ${
-            effectiveState === INTERVIEW_STATES.SPEAKING
-              ? 'border-cyan-400/80 bg-gradient-to-tr from-cyan-500 via-purple-500 to-indigo-600'
-              : effectiveState === INTERVIEW_STATES.LISTENING
-              ? 'border-emerald-400/80 bg-gradient-to-tr from-emerald-500 via-teal-500 to-cyan-600'
-              : effectiveState === INTERVIEW_STATES.ANALYZING
-              ? 'border-purple-400/80 bg-gradient-to-tr from-purple-500 via-indigo-500 to-pink-600'
-              : effectiveState === INTERVIEW_STATES.GENERATING
-              ? 'border-amber-400/80 bg-gradient-to-tr from-amber-500 via-orange-500 to-yellow-600'
-              : 'border-slate-700 bg-slate-900'
-          }`}
+          className="relative w-full h-full rounded-full overflow-hidden bg-slate-950 border-2 border-slate-900 shadow-inner flex items-center justify-center transition-transform duration-100"
           style={{
-            transform: `scale(${pulseScale}) translateY(${breathingY}px) rotate(${headTilt}deg)`
+            transform: `translateY(${breathingY}px) rotate(${headTilt}deg) scale(${pulseScale})`
           }}
         >
+          {/* Photorealistic Presenter Avatar Image */}
           <img
             src={presenterImageUrl}
-            alt="AI Virtual Presenter"
-            className="w-full h-full object-cover rounded-full filter brightness-105 contrast-105"
+            alt="AI Virtual Presenter Advika"
+            className="w-full h-full object-cover object-top filter brightness-[1.05] contrast-[1.05]"
           />
 
-          {/* Eye Blinking Overlay Effect */}
+          {/* Realistic Eyelid Blinking Overlay */}
           {isBlinking && (
             <div className="absolute top-[32%] left-[25%] right-[25%] h-3 bg-[#3a251e] rounded-full z-20 transition-all duration-75" />
           )}
@@ -181,7 +192,10 @@ export const AIAvatar = ({ currentQuestion, isSpeaking, interviewState = INTERVI
           </span>
         </div>
         <p className="text-xs sm:text-sm font-medium leading-relaxed text-white">
-          "{currentQuestion}"
+          "{displayedText}"
+          {effectiveState === INTERVIEW_STATES.SPEAKING && displayedText !== currentQuestion && (
+            <span className="inline-block w-1.5 h-4 ml-1 bg-cyan-400 animate-pulse align-middle rounded-sm" />
+          )}
         </p>
       </div>
     </div>

@@ -77,7 +77,7 @@ export const ReportPDF = ({ data }) => {
 
           <div>
             <span className="text-[10px] text-slate-400 uppercase font-mono block">Overall Performance Index</span>
-            <span className="text-lg font-black text-emerald-400 font-mono">{data.overallScore || '88.5'} / 100</span>
+            <span className="text-lg font-black text-emerald-400 font-mono">{data.overallScore !== undefined && data.overallScore !== null ? data.overallScore : 0} / 100</span>
           </div>
         </div>
 
@@ -89,19 +89,19 @@ export const ReportPDF = ({ data }) => {
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
             <div className="bg-slate-900 p-3 rounded-xl border border-slate-800 text-center">
               <span className="text-[11px] text-slate-400 block">Technical Score</span>
-              <span className="text-base font-bold text-cyan-400 font-mono">{data.scores?.technicalKnowledge || 91.0}%</span>
+              <span className="text-base font-bold text-cyan-400 font-mono">{data.scores?.technical_skills !== undefined ? Math.round(data.scores.technical_skills * 10) : (data.scores?.technicalKnowledge ?? 0)}%</span>
             </div>
             <div className="bg-slate-900 p-3 rounded-xl border border-slate-800 text-center">
               <span className="text-[11px] text-slate-400 block">Communication Score</span>
-              <span className="text-base font-bold text-purple-400 font-mono">{data.scores?.communication || 87.5}%</span>
+              <span className="text-base font-bold text-purple-400 font-mono">{data.scores?.communication !== undefined ? (typeof data.scores.communication === 'number' && data.scores.communication <= 10 ? Math.round(data.scores.communication * 10) : data.scores.communication) : 0}%</span>
             </div>
             <div className="bg-slate-900 p-3 rounded-xl border border-slate-800 text-center">
               <span className="text-[11px] text-slate-400 block">Eye Contact Index</span>
-              <span className="text-base font-bold text-emerald-400 font-mono">{data.scores?.eyeContact || 87.5}%</span>
+              <span className="text-base font-bold text-emerald-400 font-mono">{data.scores?.eyeContact ?? 100}%</span>
             </div>
             <div className="bg-slate-900 p-3 rounded-xl border border-slate-800 text-center">
               <span className="text-[11px] text-slate-400 block">Resume vs JD Match</span>
-              <span className="text-base font-bold text-indigo-400 font-mono">{data.resumeJdMatch || 86.5}%</span>
+              <span className="text-base font-bold text-indigo-400 font-mono">{data.scores?.jd_capabilities !== undefined ? Math.round(data.scores.jd_capabilities * 10) : (data.resumeJdMatch ?? 0)}%</span>
             </div>
           </div>
         </div>

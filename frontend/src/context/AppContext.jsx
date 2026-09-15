@@ -5,27 +5,74 @@ const AppContext = createContext();
 
 export const AppProvider = ({ children }) => {
   // Candidate Profile (Single User Role)
-  const [candidate, setCandidate] = useState({
-    id: 1,
-    name: 'Dileep Kumar',
-    email: 'dileep@smarthire.ai',
-    targetRole: 'Senior Full-Stack AI Engineer',
-    gender: 'male',
-    avatar: getAvatarForUser('male', 'Dileep Kumar'),
-    isLoggedIn: true
+  const [candidate, setCandidate] = useState(() => {
+    try {
+      const saved = localStorage.getItem('smarthire_candidate');
+      return saved ? JSON.parse(saved) : {
+        id: 1,
+        name: 'Dileep Kumar',
+        email: 'dileep@smarthire.ai',
+        targetRole: 'Senior Full-Stack AI Engineer',
+        gender: 'male',
+        avatar: getAvatarForUser('male', 'Dileep Kumar'),
+        isLoggedIn: true
+      };
+    } catch (e) {
+      return {
+        id: 1,
+        name: 'Dileep Kumar',
+        email: 'dileep@smarthire.ai',
+        targetRole: 'Senior Full-Stack AI Engineer',
+        gender: 'male',
+        avatar: getAvatarForUser('male', 'Dileep Kumar'),
+        isLoggedIn: true
+      };
+    }
   });
 
-  // Step 4 & 5: Uploaded Resume Data (Pure information extraction, NO ATS score)
-  const [resumeData, setResumeData] = useState({
-    filename: '',
-    name: '',
-    targetRole: '',
-    skills: [],
-    projects: [],
-    experience: '',
-    education: '',
-    certifications: []
+  useEffect(() => {
+    try {
+      if (candidate) {
+        localStorage.setItem('smarthire_candidate', JSON.stringify(candidate));
+      }
+    } catch (e) {}
+  }, [candidate]);
+
+  // Step 4 & 5: Uploaded Resume Data (Persisted in LocalStorage until changed by user)
+  const [resumeData, setResumeData] = useState(() => {
+    try {
+      const saved = localStorage.getItem('smarthire_resume_data');
+      return saved ? JSON.parse(saved) : {
+        filename: '',
+        name: '',
+        targetRole: '',
+        skills: [],
+        projects: [],
+        experience: '',
+        education: '',
+        certifications: []
+      };
+    } catch (e) {
+      return {
+        filename: '',
+        name: '',
+        targetRole: '',
+        skills: [],
+        projects: [],
+        experience: '',
+        education: '',
+        certifications: []
+      };
+    }
   });
+
+  useEffect(() => {
+    try {
+      if (resumeData && (resumeData.filename || (resumeData.skills && resumeData.skills.length > 0))) {
+        localStorage.setItem('smarthire_resume_data', JSON.stringify(resumeData));
+      }
+    } catch (e) {}
+  }, [resumeData]);
 
   // Step 4 & 6: Job Description Data
   const [jdData, setJdData] = useState({
@@ -114,16 +161,10 @@ export const AppProvider = ({ children }) => {
             userId: item.candidate_id || item.user_id || ''
           }));
 
-          setInterviewHistory(prev => {
-            // Merge server history with existing local items, preserving unique IDs
-            const serverIds = new Set(formatted.map(f => String(f.id)));
-            const localOnly = prev.filter(p => !serverIds.has(String(p.id)));
-            const merged = [...formatted, ...localOnly];
-            try {
-              localStorage.setItem('smarthire_interview_history', JSON.stringify(merged));
-            } catch (e) {}
-            return merged;
-          });
+          setInterviewHistory(formatted);
+          try {
+            localStorage.setItem('smarthire_interview_history', JSON.stringify(formatted));
+          } catch (e) {}
         }
       } catch (err) {
         console.warn("Could not load interview history from server:", err);

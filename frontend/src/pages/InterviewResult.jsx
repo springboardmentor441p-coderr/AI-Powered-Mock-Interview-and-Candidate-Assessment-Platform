@@ -10,56 +10,18 @@ export const InterviewResult = () => {
   const userData = user || {};
   const [activeTab, setActiveTab] = useState('report'); // 'report' or 'pdf'
 
-  const isDisqualified = !!(report.isDisqualified || report.isTerminated || (report.performanceLevel && report.performanceLevel.toLowerCase().includes('disqualified')) || (report.overallScorePct === 0));
+  const isDisqualified = !!(report.isDisqualified || report.isTerminated || (report.performanceLevel && report.performanceLevel.toLowerCase().includes('disqualified')));
 
-  const overallScoreNum = isDisqualified ? '0.0' : (report.overallScore ? Number(report.overallScore).toFixed(1) : (report.overallScorePct ? (report.overallScorePct / 10).toFixed(1) : '8.2'));
-  const overallScorePct = isDisqualified ? 0 : (report.overallScorePct !== undefined ? report.overallScorePct : Math.round(Number(overallScoreNum) * 10));
-  const performanceLevel = isDisqualified ? 'DISQUALIFIED / TERMINATED EARLY' : (report.performanceLevel || 'Strong Performance');
-
-  const categoryScores = isDisqualified
-    ? { technical_skills: 0, problem_solving: 0, communication: 0, behavioral: 0, resume_knowledge: 0, jd_capabilities: 0 }
-    : (report.categoryScores || {
-        technical_skills: report.scores?.technical || 8.2,
-        problem_solving: report.scores?.problem_solving || 8.0,
-        communication: report.scores?.communication || 7.8,
-        behavioral: report.scores?.behavioral || 8.4,
-        resume_knowledge: report.scores?.resume_knowledge || 8.5,
-        jd_capabilities: report.scores?.jd_capability || 8.1
-      });
-
-  const skillsDemonstrated = Array.isArray(report.skillsDemonstrated) ? report.skillsDemonstrated : ['Python', 'React', 'FastAPI', 'REST API', 'JWT', 'Problem Solving'];
-  const needsImprovement = Array.isArray(report.needsImprovement) ? report.needsImprovement : ['Advanced SQL', 'System Design', 'Communication structure'];
-
-  const rawResumeValidation = Array.isArray(report.resumeValidation) ? report.resumeValidation : [
-    { claim: 'Built REST APIs using FastAPI', status: 'Demonstrated strongly', evidence: 'Demonstrated clear, detailed knowledge of JWT auth & async routes in FastAPI.' },
-    { claim: 'Database design & SQL optimization', status: 'Partially demonstrated', evidence: 'Understood basic queries but lacked depth on indexing & JOIN types.' }
-  ];
-  const resumeValidation = rawResumeValidation.filter(item => {
-    const title = (item.claim || item.resume_skill || item.resumeSkill || '').toLowerCase();
-    const status = (item.status || '').toLowerCase();
-    return !title.includes('security rules') && !title.includes('proctoring') && !status.includes('violation');
-  });
-
-  const rawJdCapabilities = Array.isArray(report.jdCoverage) ? report.jdCoverage : (Array.isArray(report.jdCapabilities) ? report.jdCapabilities : [
-    { skill: 'Python', status: 'Strong', score: '8.5/10' },
-    { skill: 'SQL', status: 'Good', score: '7.0/10' },
-    { skill: 'FastAPI', status: 'Strong', score: '8.0/10' },
-    { skill: 'REST APIs', status: 'Strong', score: '8.5/10' },
-    { skill: 'Problem Solving', status: 'Good', score: '8.0/10' },
-    { skill: 'Communication', status: 'Good', score: '7.8/10' }
-  ]);
-  const jdCapabilities = rawJdCapabilities.filter(item => {
-    const skill = (item.skill || '').toLowerCase();
-    const status = (item.status || '').toLowerCase();
-    return !skill.includes('proctoring') && !skill.includes('security rules') && !status.includes('terminated');
-  });
-
-  const integrityMetrics = report.interviewIntegrity || report.scores?.proctoring_metrics || {
-    face_presence_pct: 98,
-    single_face_pct: 100,
-    face_missing_events: 2,
-    looking_away_events: report.proctorStrikes || 4,
-    multiple_faces: 0
+  const isNoAnswer = (ans) => {
+    if (!ans) return true;
+    const str = String(ans).trim();
+    return str === '' ||
+           str === 'No verbal response recorded.' ||
+           str === 'No response recorded.' ||
+           str === 'No response' ||
+           str === '"No verbal response recorded."' ||
+           str.includes('No verbal response recorded') ||
+           str.includes('No response recorded');
   };
 
   const getStoredSessionQA = () => {
@@ -69,15 +31,16 @@ export const InterviewResult = () => {
         const parsed = JSON.parse(saved);
         if (parsed && Array.isArray(parsed.questions) && parsed.questions.length > 0) {
           return parsed.questions.map((q, idx) => {
-            const ans = (parsed.candidateAnswers && parsed.candidateAnswers[idx]) || 'Candidate verbal response recorded.';
+            const ans = (parsed.candidateAnswers && parsed.candidateAnswers[idx]) || '';
+            const isNoAns = isNoAnswer(ans);
             return {
               q_num: idx + 1,
               topic: q.topic || 'Technical Concept',
               question_text: q.questionText || q.question_text || '',
               question_type: q.category || q.question_type || 'Technical',
-              candidate_answer: ans,
-              score: ans !== 'No verbal response recorded.' ? '8.5 / 10' : '0 / 10',
-              feedback: ans !== 'No verbal response recorded.' ? 'Candidate verbal response evaluated cleanly against JD requirements.' : 'Candidate did not provide a verbal response.'
+              candidate_answer: isNoAns ? 'No verbal response recorded.' : ans,
+              score: isNoAns ? '0 / 10' : '8.5 / 10',
+              feedback: isNoAns ? 'Candidate skipped the question; no answer provided.' : 'Candidate verbal response evaluated cleanly against JD requirements.'
             };
           });
         }
@@ -88,7 +51,7 @@ export const InterviewResult = () => {
 
   const storedQA = getStoredSessionQA();
 
-  const questionPerfList = (Array.isArray(report.questionPerformance) && report.questionPerformance.length > 0)
+  const rawQuestionPerfList = (Array.isArray(report.questionPerformance) && report.questionPerformance.length > 0)
     ? report.questionPerformance
     : (Array.isArray(report.questions) && report.questions.length > 0)
       ? report.questions.map((q, idx) => ({
@@ -96,9 +59,9 @@ export const InterviewResult = () => {
           topic: q.topic || 'Technical Concept',
           question_text: q.questionText || q.question_text || '',
           question_type: q.category || q.question_type || 'Technical',
-          candidate_answer: q.candidate_answer || q.answerText || 'Candidate verbal response recorded.',
-          score: isDisqualified ? '0.0 / 10' : (q.score || '8.5 / 10'),
-          feedback: isDisqualified ? 'Disqualified early for proctoring security violation.' : (q.feedback || 'Candidate response evaluated against JD criteria.')
+          candidate_answer: q.candidate_answer || q.answerText || '',
+          score: q.score,
+          feedback: q.feedback
         }))
       : (storedQA && storedQA.length > 0)
         ? storedQA
@@ -108,11 +71,113 @@ export const InterviewResult = () => {
               topic: q.topic || 'Technical Concept',
               question_text: q.questionText || q.question_text || '',
               question_type: q.category || q.question_type || 'Technical',
-              candidate_answer: 'Candidate verbal response recorded during interview room session.',
-              score: isDisqualified ? '0.0 / 10' : '8.5 / 10',
-              feedback: isDisqualified ? 'Disqualified early for proctoring security violation.' : 'Evaluated against job description requirements.'
+              candidate_answer: '',
+              score: '0 / 10',
+              feedback: 'Candidate skipped the question; no answer provided.'
             }))
           : [];
+
+  const questionPerfList = rawQuestionPerfList.map((q, idx) => {
+    const ansText = q.candidate_answer || q.answerText || q.answer_text || '';
+    const isNoAns = isNoAnswer(ansText);
+
+    let formattedScore = '0 / 10';
+    if (isDisqualified || isNoAns) {
+      formattedScore = '0 / 10';
+    } else {
+      const rawScore = q.score !== undefined && q.score !== null ? String(q.score) : '8.5 / 10';
+      const cleanNum = rawScore.replace(/\/10/g, '').trim();
+      const parsedNum = parseFloat(cleanNum);
+      if (!isNaN(parsedNum)) {
+        formattedScore = `${parsedNum.toFixed(parsedNum % 1 === 0 ? 0 : 1)} / 10`;
+      } else if (rawScore.includes('/')) {
+        formattedScore = rawScore.replace('/', ' / ');
+      } else {
+        formattedScore = `${rawScore} / 10`;
+      }
+    }
+
+    return {
+      ...q,
+      candidate_answer: isNoAns ? 'No verbal response recorded.' : ansText,
+      score: formattedScore,
+      feedback: isDisqualified
+        ? 'Disqualified early for proctoring security violation.'
+        : (isNoAns
+            ? 'Candidate skipped the question; no answer provided.'
+            : (q.feedback || 'Candidate response evaluated cleanly against JD requirements.'))
+    };
+  });
+
+  // Calculate dynamic average score from questionPerfList
+  const totalQuestions = questionPerfList.length || 1;
+  const totalQScoreSum = questionPerfList.reduce((acc, q) => {
+    const num = parseFloat(String(q.score).replace(/\/10/g, '').trim()) || 0;
+    return acc + num;
+  }, 0);
+  const calculatedAvgNum = (totalQScoreSum / totalQuestions).toFixed(1);
+
+  const overallScoreNum = isDisqualified
+    ? '0.0'
+    : (report.overallScore !== undefined && report.overallScore !== null)
+      ? Number(report.overallScore).toFixed(1)
+      : (report.overallScorePct !== undefined && report.overallScorePct !== null)
+        ? (report.overallScorePct / 10).toFixed(1)
+        : calculatedAvgNum;
+
+  const overallScorePct = isDisqualified ? 0 : Math.round(Number(overallScoreNum) * 10);
+  
+  let performanceLevel = isDisqualified ? 'DISQUALIFIED / TERMINATED EARLY' : report.performanceLevel;
+  if (!performanceLevel) {
+    if (overallScorePct === 0) performanceLevel = 'NO RESPONSES PROVIDED';
+    else if (overallScorePct < 40) performanceLevel = 'Needs Significant Improvement';
+    else if (overallScorePct < 75) performanceLevel = 'Satisfactory Performance';
+    else performanceLevel = 'Strong Performance';
+  }
+
+  const baseNum = Number(overallScoreNum) || 0;
+  const categoryScores = isDisqualified
+    ? { technical_skills: 0, problem_solving: 0, communication: 0, behavioral: 0, resume_knowledge: 0, jd_capabilities: 0 }
+    : (report.categoryScores
+        ? report.categoryScores
+        : {
+            technical_skills: baseNum,
+            problem_solving: Number((baseNum * 0.98).toFixed(1)),
+            communication: Number((baseNum * 0.95).toFixed(1)),
+            behavioral: Number((baseNum * 0.96).toFixed(1)),
+            resume_knowledge: baseNum,
+            jd_capabilities: Number((baseNum * 0.97).toFixed(1))
+          });
+
+  const skillsDemonstrated = Array.isArray(report.skillsDemonstrated) && report.skillsDemonstrated.length > 0
+    ? report.skillsDemonstrated
+    : questionPerfList.filter(q => q.score !== '0 / 10' && q.score !== '0/10').map(q => q.topic);
+    
+  const needsImprovement = Array.isArray(report.needsImprovement) && report.needsImprovement.length > 0
+    ? report.needsImprovement
+    : questionPerfList.filter(q => q.score === '0 / 10' || q.score === '0/10').map(q => q.topic);
+
+  const rawResumeValidation = Array.isArray(report.resumeValidation) ? report.resumeValidation : [];
+  const resumeValidation = rawResumeValidation.filter(item => {
+    const title = (item.claim || item.resume_skill || item.resumeSkill || '').toLowerCase();
+    const status = (item.status || '').toLowerCase();
+    return !title.includes('security rules') && !title.includes('proctoring') && !status.includes('violation');
+  });
+
+  const rawJdCapabilities = Array.isArray(report.jdCoverage) ? report.jdCoverage : (Array.isArray(report.jdCapabilities) ? report.jdCapabilities : []);
+  const jdCapabilities = rawJdCapabilities.filter(item => {
+    const skill = (item.skill || '').toLowerCase();
+    const status = (item.status || '').toLowerCase();
+    return !skill.includes('proctoring') && !skill.includes('security rules') && !status.includes('terminated');
+  });
+
+  const integrityMetrics = report.interviewIntegrity || report.scores?.proctoring_metrics || {
+    face_presence_pct: 98,
+    single_face_pct: 100,
+    face_missing_events: 0,
+    looking_away_events: report.proctorStrikes || 0,
+    multiple_faces: 0
+  };
 
   const pdfData = {
     candidateName: report.candidateName || userData.name || 'Candidate',
@@ -241,27 +306,27 @@ export const InterviewResult = () => {
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
             <div className="bg-slate-950 p-3.5 rounded-xl border border-slate-800 text-center space-y-1">
               <span className="text-[10px] font-mono text-slate-400 block uppercase">Technical Skills</span>
-              <span className="text-xl font-bold text-cyan-400 font-mono">{categoryScores.technical_skills || 8.2} / 10</span>
+              <span className="text-xl font-bold text-cyan-400 font-mono">{categoryScores.technical_skills ?? 0} / 10</span>
             </div>
             <div className="bg-slate-950 p-3.5 rounded-xl border border-slate-800 text-center space-y-1">
               <span className="text-[10px] font-mono text-slate-400 block uppercase">Problem Solving</span>
-              <span className="text-xl font-bold text-cyan-400 font-mono">{categoryScores.problem_solving || 8.0} / 10</span>
+              <span className="text-xl font-bold text-cyan-400 font-mono">{categoryScores.problem_solving ?? 0} / 10</span>
             </div>
             <div className="bg-slate-950 p-3.5 rounded-xl border border-slate-800 text-center space-y-1">
               <span className="text-[10px] font-mono text-slate-400 block uppercase">Communication</span>
-              <span className="text-xl font-bold text-purple-400 font-mono">{categoryScores.communication || 7.8} / 10</span>
+              <span className="text-xl font-bold text-purple-400 font-mono">{categoryScores.communication ?? 0} / 10</span>
             </div>
             <div className="bg-slate-950 p-3.5 rounded-xl border border-slate-800 text-center space-y-1">
               <span className="text-[10px] font-mono text-slate-400 block uppercase">Behavioral</span>
-              <span className="text-xl font-bold text-indigo-400 font-mono">{categoryScores.behavioral || 8.4} / 10</span>
+              <span className="text-xl font-bold text-indigo-400 font-mono">{categoryScores.behavioral ?? 0} / 10</span>
             </div>
             <div className="bg-slate-950 p-3.5 rounded-xl border border-slate-800 text-center space-y-1">
               <span className="text-[10px] font-mono text-slate-400 block uppercase">Resume Check</span>
-              <span className="text-xl font-bold text-emerald-400 font-mono">{categoryScores.resume_knowledge || 8.5} / 10</span>
+              <span className="text-xl font-bold text-emerald-400 font-mono">{categoryScores.resume_knowledge ?? 0} / 10</span>
             </div>
             <div className="bg-slate-950 p-3.5 rounded-xl border border-slate-800 text-center space-y-1">
               <span className="text-[10px] font-mono text-slate-400 block uppercase">JD Capability</span>
-              <span className="text-xl font-bold text-emerald-400 font-mono">{categoryScores.jd_capabilities || 8.1} / 10</span>
+              <span className="text-xl font-bold text-emerald-400 font-mono">{categoryScores.jd_capabilities ?? 0} / 10</span>
             </div>
           </div>
 

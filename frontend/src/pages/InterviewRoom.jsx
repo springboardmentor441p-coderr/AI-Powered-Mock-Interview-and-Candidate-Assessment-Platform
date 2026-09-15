@@ -24,6 +24,7 @@ import {
   X,
   Award,
   Maximize2,
+  Minimize2,
   Send,
   CheckCircle2,
   PhoneOff,
@@ -459,6 +460,22 @@ export const InterviewRoom = () => {
 
   const audioEchoGuardRef = useRef(0);
   const audioContextRef = useRef(null);
+  const isListeningRef = useRef(false);
+
+  const safeStartRecognition = () => {
+    if (!isMicOn || speakingRef.current) return;
+    if (!recognitionRef.current) return;
+    if (isListeningRef.current) return;
+
+    try {
+      recognitionRef.current.start();
+      isListeningRef.current = true;
+    } catch (e) {
+      if (e.name === 'InvalidStateError' || (e.message && e.message.includes('already started'))) {
+        isListeningRef.current = true;
+      }
+    }
+  };
 
   // Chrome SpeechSynthesis Keep-Alive Un-Pause Loop
   useEffect(() => {
@@ -501,21 +518,30 @@ export const InterviewRoom = () => {
 
 
   // Zero-Latency Speech Synthesis Engine (Instant Female Voice Execution)
-  // Zero-Latency Speech Synthesis Engine (Instant Female Voice Execution)
-  const speakAIText = (text, onEndCallback = null) => {
+  const speakAIText = (text, onEndCallback = null, retryCount = 0) => {
     if (!text) return;
-    if (!('speechSynthesis' in window)) return;
+    if (!('speechSynthesis' in window)) {
+      if (onEndCallback) onEndCallback();
+      return;
+    }
 
     try {
       window.speechSynthesis.cancel();
       window.speechSynthesis.resume();
     } catch (e) {}
 
+    // STOP SpeechRecognition immediately while AI is speaking so speaker audio is not recorded
+    if (recognitionRef.current) {
+      try { recognitionRef.current.stop(); } catch (e) {}
+    }
+    isListeningRef.current = false;
+    if (silenceTimerRef.current) clearTimeout(silenceTimerRef.current);
+
     setIsSpeaking(true);
     speakingRef.current = true;
-    audioEchoGuardRef.current = Date.now() + 250;
+    audioEchoGuardRef.current = Date.now() + 2000;
     setLiveSubtitles(`[AI Interviewer]: "${text}"`);
-    setCandidateSpeechText(''); // Reset current transcript view for next answer
+    setCandidateSpeechText(''); // Clear candidate transcript view for new question
 
     const utterance = new SpeechSynthesisUtterance(text);
     utterance.lang = 'en-US';
@@ -524,11 +550,11 @@ export const InterviewRoom = () => {
 
     let targetFemaleVoice = selectedFemaleVoiceRef.current || resolveFemaleVoice();
 
-    // If voices are loading asynchronously, retry quickly
-    if (!targetFemaleVoice && window.speechSynthesis.getVoices().length === 0) {
+    // If voices are loading asynchronously, retry ONCE after a brief delay (max 2 retries to prevent hangs)
+    if (!targetFemaleVoice && window.speechSynthesis.getVoices().length === 0 && retryCount < 2) {
       setTimeout(() => {
-        speakAIText(text, onEndCallback);
-      }, 20);
+        speakAIText(text, onEndCallback, retryCount + 1);
+      }, 100);
       return;
     }
 
@@ -536,42 +562,48 @@ export const InterviewRoom = () => {
       utterance.voice = targetFemaleVoice;
     }
 
+    // Wrap callback so it can only be invoked ONCE
+    let callbackFired = false;
+    const safeCallback = () => {
+      if (!callbackFired) {
+        callbackFired = true;
+        if (onEndCallback) onEndCallback();
+      }
+    };
+
     // Safety timer to prevent speakingRef lock if browser onend fails to fire
-    const safetyMs = Math.max(1200, Math.ceil(text.length / 14) * 1000 + 400);
+    const safetyMs = Math.max(1500, Math.ceil(text.length / 12) * 1000 + 500);
     if (speakingTimerRef.current) clearTimeout(speakingTimerRef.current);
     speakingTimerRef.current = setTimeout(() => {
       if (speakingRef.current) {
         setIsSpeaking(false);
         speakingRef.current = false;
-        audioEchoGuardRef.current = 0;
+        audioEchoGuardRef.current = Date.now() + 600; // 600ms post-speech echo guard
         setInterviewState(INTERVIEW_STATES.LISTENING);
-        if (recognitionRef.current) {
-          try { recognitionRef.current.start(); } catch (e) {}
-        }
+        setTimeout(() => safeStartRecognition(), 650);
+        safeCallback();
       }
     }, safetyMs);
 
     utterance.onstart = () => {
       setIsSpeaking(true);
       speakingRef.current = true;
-      audioEchoGuardRef.current = Date.now() + 200;
+      audioEchoGuardRef.current = Date.now() + 2000;
+      if (recognitionRef.current) {
+        try { recognitionRef.current.stop(); } catch (e) {}
+      }
+      isListeningRef.current = false;
     };
 
     utterance.onend = () => {
       if (speakingTimerRef.current) clearTimeout(speakingTimerRef.current);
       setIsSpeaking(false);
       speakingRef.current = false;
-      audioEchoGuardRef.current = 0; // Unlock speech recognition immediately!
+      audioEchoGuardRef.current = Date.now() + 600; // 600ms post-speech echo guard to flush speaker audio
       setInterviewState(INTERVIEW_STATES.LISTENING);
 
-      // INSTANTLY RESTART/ENSURE MICROPHONE RECOGNITION IS ACTIVE!
-      if (recognitionRef.current) {
-        try {
-          recognitionRef.current.start();
-        } catch (e) {}
-      }
-
-      if (onEndCallback) onEndCallback();
+      setTimeout(() => safeStartRecognition(), 650);
+      safeCallback();
     };
 
     utterance.onerror = (err) => {
@@ -579,16 +611,11 @@ export const InterviewRoom = () => {
       console.warn("Speech synthesis notice:", err);
       setIsSpeaking(false);
       speakingRef.current = false;
-      audioEchoGuardRef.current = 0; // Unlock speech recognition immediately!
+      audioEchoGuardRef.current = Date.now() + 600; // 600ms post-speech echo guard
       setInterviewState(INTERVIEW_STATES.LISTENING);
 
-      if (recognitionRef.current) {
-        try {
-          recognitionRef.current.start();
-        } catch (e) {}
-      }
-
-      if (onEndCallback) onEndCallback();
+      setTimeout(() => safeStartRecognition(), 650);
+      safeCallback();
     };
 
     if (window.speechSynthesis.paused) {
@@ -662,7 +689,9 @@ export const InterviewRoom = () => {
     if (qIndex < questions.length - 1) {
       setQIndex(prev => prev + 1);
     } else {
-      handleCompleteInterview();
+      speakAIText("Thank you for taking the interview! Generating your assessment report now.", () => {
+        handleCompleteInterview();
+      });
     }
   };
 
@@ -681,6 +710,10 @@ export const InterviewRoom = () => {
         recognition.continuous = true;
         recognition.interimResults = true;
         recognition.lang = 'en-US';
+
+        recognition.onstart = () => {
+          isListeningRef.current = true;
+        };
 
         recognition.onresult = (event) => {
           if (speakingRef.current || Date.now() < audioEchoGuardRef.current) {
@@ -706,6 +739,19 @@ export const InterviewRoom = () => {
           const currentFullText = (accumulatedText + interimTranscript).trim();
 
           if (currentFullText) {
+            const rawLower = currentFullText.toLowerCase().trim();
+
+            // Echo filter: Ignore speech recognition results that match the AI's question prompt or welcome text
+            const activeQPrompt = (isWelcomePhase
+              ? "welcome to smart ai interview"
+              : (currentQ ? (currentQ.questionText || currentQ.question_text || '') : '')
+            ).toLowerCase().trim();
+
+            if (activeQPrompt && rawLower.length >= 8 && (activeQPrompt.includes(rawLower) || rawLower.includes("can you walk us through"))) {
+              console.warn("Ignoring speaker echo audio matching AI question prompt:", rawLower);
+              return;
+            }
+
             setCandidateSpeechText(currentFullText);
             setLiveSubtitles(`[Candidate]: "${currentFullText}"`);
 
@@ -719,7 +765,6 @@ export const InterviewRoom = () => {
 
             // Ultra-responsive speech listening silence detection (150ms silence)
             if (silenceTimerRef.current) clearTimeout(silenceTimerRef.current);
-            const rawLower = currentFullText.toLowerCase().trim();
             const isShortConfirmation = (
               rawLower === 'yes' ||
               rawLower === 'ready' ||
@@ -731,7 +776,7 @@ export const InterviewRoom = () => {
               rawLower.includes('ready') ||
               rawLower.includes('start')
             );
-            const silenceDelay = isShortConfirmation ? 100 : 150;
+            const silenceDelay = isShortConfirmation ? 800 : 2500;
 
             silenceTimerRef.current = setTimeout(() => {
               if (currentFullText.trim()) {
@@ -742,29 +787,25 @@ export const InterviewRoom = () => {
         };
 
         recognition.onend = () => {
+          isListeningRef.current = false;
           if (!isStopped && isMicOn) {
             setTimeout(() => {
-              if (!speakingRef.current) {
-                try {
-                  recognition.start();
-                } catch (err) { }
-              }
-            }, 30);
-          }
-        };
-
-        recognition.onerror = (err) => {
-          console.warn("Speech recognition notice:", err.error);
-          if (!isStopped && isMicOn && (err.error === 'no-speech' || err.error === 'aborted')) {
-            setTimeout(() => {
-              try { recognition.start(); } catch (e) {}
+              safeStartRecognition();
             }, 50);
           }
         };
 
-        try {
-          recognition.start();
-        } catch (e) {}
+        recognition.onerror = (err) => {
+          isListeningRef.current = false;
+          console.warn("Speech recognition notice:", err.error);
+          if (!isStopped && isMicOn && (err.error === 'no-speech' || err.error === 'aborted')) {
+            setTimeout(() => {
+              safeStartRecognition();
+            }, 50);
+          }
+        };
+
+        safeStartRecognition();
       } catch (e) {
         console.warn("Speech recognition engine error:", e);
       }
@@ -772,6 +813,7 @@ export const InterviewRoom = () => {
 
     return () => {
       isStopped = true;
+      isListeningRef.current = false;
       if (recognition) {
         recognition.onend = null;
         try { recognition.stop(); } catch (e) { }
@@ -779,6 +821,16 @@ export const InterviewRoom = () => {
       if (silenceTimerRef.current) clearTimeout(silenceTimerRef.current);
     };
   }, [isMicOn, qIndex, isWelcomePhase]);
+
+  // Failsafe Keep-Alive Poll for Speech Recognition (Ensures candidate mic NEVER dies)
+  useEffect(() => {
+    const micKeepAlive = setInterval(() => {
+      if (isMicOn && !speakingRef.current && !isListeningRef.current) {
+        safeStartRecognition();
+      }
+    }, 1000);
+    return () => clearInterval(micKeepAlive);
+  }, [isMicOn]);
 
   // Live Timer countdown
   useEffect(() => {
@@ -863,7 +915,9 @@ export const InterviewRoom = () => {
         return;
       } else {
         // Prevent fallthrough to general question responses during welcome phase
-        speakAIText("Welcome to Smart AI Interview. Shall we start the interview?");
+        if (!speakingRef.current) {
+          speakAIText("Shall we start the interview?");
+        }
         return;
       }
     }
@@ -954,46 +1008,78 @@ export const InterviewRoom = () => {
 
     const isLastQuestion = qIndex >= questions.length - 1;
 
-    // 7. EXPLICIT SKIP OR NEXT QUESTION REQUEST ("I don't know" / "skip" / "next question" / "I'm done" / "that's it")
-    const isExplicitNextCommand = (
+    // 7. EXPLICIT SKIP OR UNANSWERED QUESTION INTENT ("I don't know", "not sure", "skip", "pass", "no idea", etc.)
+    const isNoAnswerOrSkip = (
       rawText === 'next' ||
       rawText === 'done' ||
+      rawText === 'skip' ||
+      rawText === 'pass' ||
+      rawText === "i don't know" ||
+      rawText === "dont know" ||
+      rawText === "no idea" ||
+      rawText === "not sure" ||
+      rawText === "im not sure" ||
+      rawText === "i am not sure" ||
+      rawText === "no answer" ||
+      rawText === "dont have experience" ||
+      rawText === "don't have experience" ||
+      rawText === "haven't used this" ||
+      rawText === "havent used this" ||
+      rawText === "im done" ||
+      rawText === "i am done" ||
+      rawText === "that's it" ||
+      rawText === "that is it" ||
+      rawText === "that's all" ||
+      rawText === "that is all" ||
       rawText.includes("don't know") ||
       rawText.includes("dont know") ||
+      rawText.includes("not sure") ||
       rawText.includes("no idea") ||
-      rawText.includes("skip") ||
-      rawText.includes("pass") ||
-      rawText.includes("next question") ||
-      rawText.includes("move to next") ||
-      rawText.includes("im done") ||
-      rawText.includes("i am done") ||
-      rawText.includes("that's it") ||
-      rawText.includes("that is it") ||
-      rawText.includes("finished with my answer") ||
-      rawText.includes("completed my answer") ||
-      rawText.includes("that's all") ||
-      rawText.includes("that is all")
+      rawText.includes("no answer") ||
+      rawText.includes("don't have experience") ||
+      rawText.includes("dont have experience") ||
+      rawText.startsWith("skip") ||
+      rawText.startsWith("next question") ||
+      rawText.endsWith("next question") ||
+      rawText.endsWith("skip question") ||
+      rawText.endsWith("move to next") ||
+      rawText.endsWith("finished with my answer") ||
+      rawText.endsWith("completed my answer")
     );
 
-    if (isExplicitNextCommand) {
+    if (isNoAnswerOrSkip) {
       if (isLastQuestion) {
-        handleCompleteInterview();
+        speakAIText("Thank you for taking the interview! Generating your assessment report now.", () => {
+          handleCompleteInterview();
+        });
       } else {
-        autoAdvanceNextQuestion();
+        speakAIText("No problem! Moving to the next question.", () => {
+          autoAdvanceNextQuestion();
+        });
       }
       return;
     }
 
-    // 8. CANDIDATE VERBAL ANSWER (Record response silently without repeating candidate's answer or speaking filler)
+    // 8. CANDIDATE VERBAL ANSWER (Record response and automatically advance to next question)
     const wordCount = rawText.split(/\s+/).length;
-    if (wordCount >= 3) {
+    if (wordCount >= 2) {
       setCandidateAnswers(prev => {
-        const nextAns = { ...prev, [qIndex]: rawText };
+        const nextAns = { ...prev, [qIndex]: candidateText };
         try {
           localStorage.setItem('smarthire_session_qa', JSON.stringify({ questions, candidateAnswers: nextAns }));
         } catch (e) { }
         return nextAns;
       });
+
+      if (isLastQuestion) {
+        speakAIText("Thank you for taking the interview! Generating your assessment report now.", () => {
+          handleCompleteInterview();
+        });
+      } else {
+        speakAIText("Got it, thank you! Moving to the next question.", () => {
+          autoAdvanceNextQuestion();
+        });
+      }
     }
   };
 
@@ -1026,7 +1112,9 @@ export const InterviewRoom = () => {
     if (qIndex < questions.length - 1) {
       setQIndex(prev => prev + 1);
     } else {
-      handleCompleteInterview();
+      speakAIText("Thank you for taking the interview! Generating your assessment report now.", () => {
+        handleCompleteInterview();
+      });
     }
   };
 
@@ -1166,13 +1254,17 @@ export const InterviewRoom = () => {
         question_text: q.questionText || q.question_text || '',
         expected_points: q.expected_points || q.expected_answer_keypoints || []
       })),
-      answers: questions.map((q, idx) => ({
-        question_id: q.id || idx + 1,
-        candidate_audio_transcript: candidateAnswers[idx] || 'No response recorded.',
-        ideal_response_suggestion: q.expected_points ? q.expected_points.join(', ') : (q.expected_answer_keypoints ? q.expected_answer_keypoints.join(', ') : ''),
-        score: candidateAnswers[idx] ? (isTerminated ? 0.0 : 8.5) : 0.0,
-        feedback: candidateAnswers[idx] ? 'Response matches the core concept.' : 'Candidate did not provide a verbal response.'
-      })),
+      answers: questions.map((q, idx) => {
+        const rawAns = candidateAnswers[idx];
+        const isNoAns = !rawAns || rawAns === 'No response recorded.' || rawAns === 'No verbal response recorded.' || rawAns.trim() === '';
+        return {
+          question_id: q.id || idx + 1,
+          candidate_audio_transcript: isNoAns ? 'No verbal response recorded.' : rawAns,
+          ideal_response_suggestion: q.expected_points ? q.expected_points.join(', ') : (q.expected_answer_keypoints ? q.expected_answer_keypoints.join(', ') : ''),
+          score: isNoAns ? 0.0 : (isTerminated ? 0.0 : 8.5),
+          feedback: isNoAns ? 'Candidate skipped the question; no answer provided.' : 'Response matches the core concept.'
+        };
+      }),
       score: {
         overall_score: calculatedOverall,
         technical_knowledge: calculatedTech,
@@ -1315,11 +1407,37 @@ export const InterviewRoom = () => {
 
     setFinalReport(terminatedReport);
     addCompletedInterview(terminatedReport.id, selectedRole, 'Target Enterprise', 0);
-    if (document.fullscreenElement || document.webkitFullscreenElement) {
-      if (document.exitFullscreen) document.exitFullscreen().catch(() => { });
-      else if (document.webkitExitFullscreen) document.webkitExitFullscreen();
-    }
+    stopAllMediaTracks();
     navigate('/interview-result');
+  };
+
+  const stopAllMediaTracks = () => {
+    try {
+      if (recognitionRef.current) {
+        recognitionRef.current.onend = null;
+        recognitionRef.current.onerror = null;
+        recognitionRef.current.onresult = null;
+        recognitionRef.current.stop();
+      }
+    } catch (e) {}
+
+    try {
+      if ('speechSynthesis' in window) {
+        window.speechSynthesis.cancel();
+      }
+    } catch (e) {}
+
+    try {
+      if (document.fullscreenElement || document.webkitFullscreenElement) {
+        if (document.exitFullscreen) document.exitFullscreen().catch(() => {});
+        else if (document.webkitExitFullscreen) document.webkitExitFullscreen();
+      }
+    } catch (e) {}
+
+    // If launched in a standalone window or popup, close the window
+    if (window.opener && window.opener !== window) {
+      try { window.close(); } catch (e) {}
+    }
   };
 
   const formatTime = (secs) => {
@@ -1329,7 +1447,7 @@ export const InterviewRoom = () => {
   };
 
   const handleCompleteInterview = async () => {
-    if ('speechSynthesis' in window) window.speechSynthesis.cancel();
+    stopAllMediaTracks();
     uvEndSession(); // Cleanly end Ultravox WebRTC call if active
 
     if (document.fullscreenElement || document.webkitFullscreenElement) {
@@ -1359,17 +1477,17 @@ export const InterviewRoom = () => {
             targetRole: activeRole,
             company: 'Target Enterprise',
             videoRecordingUrl: realVideoUrl || detail.video_recording_url || localStorage.getItem('smarthire_video_url'),
-            overallScore: detail.overall_score || (detail.overall_score_pct ? (detail.overall_score_pct / 10).toFixed(1) : 8.2),
-            overallScorePct: detail.overall_score_pct || 82,
-            performanceLevel: detail.performance_level || 'Strong Performance',
+            overallScore: detail.overall_score !== undefined && detail.overall_score !== null ? detail.overall_score : (detail.overall_score_pct !== undefined && detail.overall_score_pct !== null ? (detail.overall_score_pct / 10).toFixed(1) : 0),
+            overallScorePct: detail.overall_score_pct !== undefined && detail.overall_score_pct !== null ? detail.overall_score_pct : 0,
+            performanceLevel: detail.performance_level || (detail.overall_score_pct === 0 ? 'NO RESPONSES PROVIDED' : 'Strong Performance'),
             summary: detail.summary,
             categoryScores: detail.category_scores || {
-              technical_skills: 8.2,
-              problem_solving: 8.0,
-              communication: 7.8,
-              behavioral: 8.4,
-              resume_knowledge: 8.5,
-              jd_capabilities: 8.1
+              technical_skills: 0,
+              problem_solving: 0,
+              communication: 0,
+              behavioral: 0,
+              resume_knowledge: 0,
+              jd_capabilities: 0
             },
             technicalSkillsAssessment: detail.technical_skills_assessment || { Python: '8.5/10', SQL: '7.0/10', React: '9.0/10', FastAPI: '8.0/10' },
             skillsDemonstrated: detail.skills_demonstrated || ['Python', 'React', 'FastAPI', 'REST API', 'JWT', 'Problem Solving'],
@@ -1389,17 +1507,26 @@ export const InterviewRoom = () => {
             strengths: detail.strengths || ['Strong project knowledge and hands-on FastAPI experience', 'Good technical fundamentals and architectural clarity'],
             areasForImprovement: detail.areas_for_improvement || detail.weaknesses || ['Deepen understanding of advanced SQL query optimization'],
             questionPerformance: (detail.question_performance && detail.question_performance.length > 0)
-              ? detail.question_performance
+              ? detail.question_performance.map(qp => {
+                const ansText = qp.candidate_answer || qp.answerText || '';
+                const isNoAns = !ansText || ansText === 'No verbal response recorded.' || ansText === 'No response recorded.' || ansText === '"No verbal response recorded."' || ansText.trim() === '' || ansText.includes('No verbal response recorded');
+                return {
+                  ...qp,
+                  score: isNoAns ? '0/10' : (qp.score || '8.5/10'),
+                  feedback: isNoAns ? 'Candidate skipped the question; no answer provided.' : (qp.feedback || 'Response matches core concepts.')
+                };
+              })
               : questions.map((q, idx) => {
-                const ansText = candidateAnswers[idx] || 'No response recorded.';
+                const rawAns = candidateAnswers[idx] || '';
+                const isNoAns = !rawAns || rawAns === 'No response recorded.' || rawAns === 'No verbal response recorded.' || rawAns.trim() === '';
                 return {
                   q_num: idx + 1,
                   topic: q.topic || 'General Concept',
                   question_text: q.questionText || q.question_text || '',
                   question_type: q.category || q.question_type || 'Technical',
-                  candidate_answer: ansText,
-                  score: ansText !== 'No response recorded.' ? '8.5/10' : '0/10',
-                  feedback: ansText !== 'No response recorded.' ? 'Response matches core concepts.' : 'Candidate did not respond.'
+                  candidate_answer: isNoAns ? 'No verbal response recorded.' : rawAns,
+                  score: isNoAns ? '0/10' : '8.5/10',
+                  feedback: isNoAns ? 'Candidate skipped the question; no answer provided.' : 'Response matches core concepts.'
                 };
               }),
             aiRecommendations: detail.ai_recommendations || detail.recommendations || ['Review SQL JOIN types and indexing strategies.'],
@@ -1417,46 +1544,63 @@ export const InterviewRoom = () => {
       }
     }
 
-    const finalReportToSet = dynamicReport || {
-      id: sessionId || Date.now(),
-      candidateName: candidate?.name || resumeData?.name || user?.name || 'Candidate',
-      targetRole: activeRole,
-      company: 'Target Enterprise',
-      overallScore: 8.2,
-      overallScorePct: 82,
-      performanceLevel: 'Strong Performance',
-      categoryScores: {
-        technical_skills: 8.2,
-        problem_solving: 8.0,
-        communication: 7.8,
-        behavioral: 8.4,
-        resume_knowledge: 8.5,
-        jd_capabilities: 8.1
-      },
-      skillsDemonstrated: ['Python', 'React', 'FastAPI', 'REST API', 'JWT', 'Problem Solving'],
-      needsImprovement: ['Advanced SQL', 'System Design', 'Communication structure'],
-      resumeValidation: [
-        { claim: 'Built REST APIs using FastAPI', status: 'Demonstrated strongly', evidence: 'Candidate gave a clear, detailed explanation of JWT auth & routing in FastAPI.' },
-        { claim: 'Database design & SQL optimization', status: 'Partially demonstrated', evidence: 'Candidate understood basic queries but lacked depth on indexing & joins.' }
-      ],
-      jdCapabilities: [
-        { skill: 'Python', status: 'Strong', score: '8.5/10' },
-        { skill: 'SQL', status: 'Good', score: '7.0/10' },
-        { skill: 'FastAPI', status: 'Strong', score: '8.0/10' },
-        { skill: 'REST APIs', status: 'Strong', score: '8.5/10' }
-      ],
-      strengths: ['Strong project knowledge and hands-on FastAPI experience', 'Good technical fundamentals and architectural clarity'],
-      areasForImprovement: ['Deepen understanding of advanced SQL query optimization'],
-      questionPerformance: questions.map((q, idx) => ({
+    const totalQs = questions.length || 1;
+    const computedQuestionPerf = questions.map((q, idx) => {
+      const rawAns = candidateAnswers[idx] || '';
+      const isNoAns = !rawAns || rawAns === 'No response recorded.' || rawAns === 'No verbal response recorded.' || rawAns.trim() === '';
+      let qScoreNum = 0.0;
+      if (!isNoAns) {
+        const words = rawAns.trim().split(/\s+/).length;
+        qScoreNum = words >= 40 ? 9.0 : (words >= 20 ? 8.0 : (words >= 10 ? 6.5 : 5.0));
+      }
+      return {
         q_num: idx + 1,
         topic: q.topic || 'General Concept',
         question_text: q.questionText || q.question_text || '',
         question_type: q.category || q.question_type || 'Technical',
-        candidate_answer: candidateAnswers[idx] || 'Response provided by candidate.',
-        score: candidateAnswers[idx] ? '8.5/10' : '0/10',
-        feedback: candidateAnswers[idx] ? 'Response provided.' : 'Candidate did not respond.'
-      })),
-      aiRecommendations: ['Review SQL JOIN types and indexing strategies.'],
+        candidate_answer: isNoAns ? 'No verbal response recorded.' : rawAns,
+        scoreNum: qScoreNum,
+        score: isNoAns ? '0 / 10' : `${qScoreNum.toFixed(1)} / 10`,
+        feedback: isNoAns ? 'Candidate skipped the question; no answer provided.' : `Candidate response provided (${rawAns.trim().split(/\s+/).length} words).`
+      };
+    });
+
+    const sumScores = computedQuestionPerf.reduce((acc, curr) => acc + curr.scoreNum, 0);
+    const avgScore = sumScores / totalQs;
+    const overallNum = (Math.round(avgScore * 10) / 10).toFixed(1);
+    const overallPct = Math.round(avgScore * 10);
+
+    let perfLevel = 'Strong Performance';
+    if (overallPct === 0) perfLevel = 'NO RESPONSES PROVIDED';
+    else if (overallPct < 40) perfLevel = 'Needs Significant Improvement';
+    else if (overallPct < 75) perfLevel = 'Satisfactory Performance';
+
+    const fallbackReport = {
+      id: sessionId || Date.now(),
+      candidateName: candidate?.name || resumeData?.name || user?.name || 'Candidate',
+      targetRole: activeRole,
+      company: 'Target Enterprise',
+      overallScore: overallNum,
+      overallScorePct: overallPct,
+      performanceLevel: perfLevel,
+      categoryScores: {
+        technical_skills: Math.round(avgScore * 10) / 10,
+        problem_solving: Math.round(avgScore * 0.98 * 10) / 10,
+        communication: Math.round(avgScore * 0.95 * 10) / 10,
+        behavioral: Math.round(avgScore * 0.96 * 10) / 10,
+        resume_knowledge: Math.round(avgScore * 10) / 10,
+        jd_capabilities: Math.round(avgScore * 0.97 * 10) / 10
+      },
+      skillsDemonstrated: computedQuestionPerf.filter(q => q.scoreNum > 0).map(q => q.topic),
+      needsImprovement: computedQuestionPerf.filter(q => q.scoreNum === 0).map(q => q.topic),
+      strengths: computedQuestionPerf.filter(q => q.scoreNum > 0).length > 0
+        ? [`Answered ${computedQuestionPerf.filter(q => q.scoreNum > 0).length} technical question(s) directly`]
+        : ['No verbal responses recorded during session'],
+      areasForImprovement: computedQuestionPerf.filter(q => q.scoreNum === 0).length > 0
+        ? [`Skipped ${computedQuestionPerf.filter(q => q.scoreNum === 0).length} question(s)`]
+        : ['Practice structuring concise answers using STAR format'],
+      questionPerformance: computedQuestionPerf,
+      aiRecommendations: ['Practice speaking responses clearly to all technical questions.'],
       interviewIntegrity: {
         face_presence_pct: 98,
         single_face_pct: 100,
@@ -1466,8 +1610,18 @@ export const InterviewRoom = () => {
       }
     };
 
+    const finalReportToSet = dynamicReport ? {
+      ...dynamicReport,
+      overallScore: dynamicReport.overall_score || dynamicReport.overallScore || overallNum,
+      overallScorePct: dynamicReport.overall_score_pct !== undefined ? dynamicReport.overall_score_pct : overallPct,
+      questionPerformance: (dynamicReport.questionPerformance && dynamicReport.questionPerformance.length > 0)
+        ? dynamicReport.questionPerformance
+        : computedQuestionPerf
+    } : fallbackReport;
+
     setFinalReport(finalReportToSet);
     addCompletedInterview(finalReportToSet.id, activeRole, 'Target Enterprise', finalReportToSet.overallScorePct);
+    stopAllMediaTracks();
     navigate('/interview-result');
   };
 
@@ -1489,9 +1643,9 @@ export const InterviewRoom = () => {
   }
 
   return (
-    <div className="w-full px-4 sm:px-6 py-4 space-y-4 relative min-h-screen">
+    <div className="w-full min-h-screen h-full p-3 sm:p-4 space-y-3 relative flex flex-col justify-between bg-[#0B0F19]">
       {/* 1. PERSON-TO-PERSON CALL HEADER BAR */}
-      <div className="glass-card rounded-2xl p-4 border border-slate-800 bg-slate-950/90 flex flex-wrap items-center justify-between gap-4 shadow-xl">
+      <div className="glass-card rounded-2xl p-4 border border-slate-800 bg-slate-950/90 flex flex-wrap items-center justify-between gap-4 shadow-xl shrink-0">
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-cyan-500 via-indigo-500 to-purple-600 p-0.5 shadow-md shadow-cyan-500/20">
             <div className="w-full h-full bg-slate-950 rounded-[10px] flex items-center justify-center">
@@ -1528,6 +1682,25 @@ export const InterviewRoom = () => {
             <strong className="text-sm font-bold text-cyan-300">{formatTime(timerSeconds)}</strong>
           </div>
 
+          {/* Full Screen Toggle Button */}
+          <button
+            type="button"
+            onClick={() => {
+              const isFS = !!(document.fullscreenElement || document.webkitFullscreenElement);
+              if (isFS) {
+                if (document.exitFullscreen) document.exitFullscreen().catch(() => {});
+                else if (document.webkitExitFullscreen) document.webkitExitFullscreen();
+                setIsFullscreen(false);
+              } else {
+                handleReEnterFullscreen();
+              }
+            }}
+            className="bg-indigo-950/90 hover:bg-indigo-900 text-indigo-300 border border-indigo-500/50 px-3.5 py-2 rounded-xl text-xs font-mono font-bold flex items-center gap-1.5 transition-all cursor-pointer shadow-md"
+            title="Toggle Proctored Full Screen View"
+          >
+            {isFullscreen ? <Minimize2 className="w-3.5 h-3.5 text-indigo-400" /> : <Maximize2 className="w-3.5 h-3.5 text-indigo-400" />}
+            <span>{isFullscreen ? 'Exit Full Screen' : 'Full Screen Mode'}</span>
+          </button>
 
           <button
             type="button"
@@ -1540,7 +1713,11 @@ export const InterviewRoom = () => {
 
           <button
             type="button"
-            onClick={handleCompleteInterview}
+            onClick={() => {
+              speakAIText("Thank you for taking the interview! Generating your assessment report now.", () => {
+                handleCompleteInterview();
+              });
+            }}
             className="bg-emerald-600/90 hover:bg-emerald-500 text-white px-4 py-2 rounded-xl text-xs font-mono font-bold flex items-center gap-2 transition-all cursor-pointer shadow-lg shadow-emerald-500/20"
           >
             <Send className="w-4 h-4" />
@@ -1560,9 +1737,9 @@ export const InterviewRoom = () => {
 
 
       {/* 2. DUAL-PANE SIDE-BY-SIDE VIDEO CALL STAGE */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 items-stretch min-h-[520px]">
+      <div className="flex-1 grid grid-cols-1 lg:grid-cols-12 gap-4 items-stretch w-full min-h-[540px] my-1">
         {/* Left Pane (7 cols): AI Presenter Stage */}
-        <div className="lg:col-span-7 flex flex-col justify-between">
+        <div className="lg:col-span-7 flex flex-col h-full justify-between">
           <AIAvatar
             currentQuestion={
               isWelcomePhase
@@ -1575,9 +1752,9 @@ export const InterviewRoom = () => {
         </div>
 
         {/* Right Pane (5 cols): Candidate Live Feed & Telemetry */}
-        <div className="lg:col-span-5 flex flex-col gap-4">
+        <div className="lg:col-span-5 flex flex-col h-full gap-4">
           {/* Candidate Live Webcam Box */}
-          <div className="glass-card rounded-2xl border-2 border-cyan-400/80 overflow-hidden bg-slate-950 relative shadow-2xl flex-1 min-h-[300px] flex flex-col justify-between p-3">
+          <div className="glass-card rounded-2xl border-2 border-cyan-400/80 overflow-hidden bg-slate-950 relative shadow-2xl flex-1 h-full min-h-[340px] flex flex-col justify-between p-3">
             <div className="flex items-center justify-between z-20">
               <div className="bg-slate-950/80 backdrop-blur-sm px-2.5 py-1 rounded-xl text-[10px] font-mono text-cyan-300 border border-cyan-500/30 flex items-center gap-1.5 shadow-sm">
                 <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
@@ -1588,7 +1765,7 @@ export const InterviewRoom = () => {
               </span>
             </div>
 
-            <div className="flex-1 w-full my-2 rounded-xl overflow-hidden relative">
+            <div className="flex-1 w-full my-2 rounded-xl overflow-hidden relative min-h-[240px]">
               <VisionAnalyzer compact={false} onTelemetryUpdate={handleTelemetryUpdate} onStreamActive={handleStreamActive} faceSignature={setupChecks?.faceSignature} />
             </div>
 
