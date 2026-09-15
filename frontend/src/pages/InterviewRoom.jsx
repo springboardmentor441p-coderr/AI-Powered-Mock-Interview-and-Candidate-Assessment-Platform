@@ -501,13 +501,10 @@ export const InterviewRoom = () => {
 
 
   // Zero-Latency Speech Synthesis Engine (Instant Female Voice Execution)
+  // Zero-Latency Speech Synthesis Engine (Instant Female Voice Execution)
   const speakAIText = (text, onEndCallback = null) => {
     if (!text) return;
     if (!('speechSynthesis' in window)) return;
-
-    if (recognitionRef.current) {
-      try { recognitionRef.current.abort(); } catch (e) { }
-    }
 
     try {
       window.speechSynthesis.cancel();
@@ -516,8 +513,9 @@ export const InterviewRoom = () => {
 
     setIsSpeaking(true);
     speakingRef.current = true;
-    audioEchoGuardRef.current = Date.now() + 200;
+    audioEchoGuardRef.current = Date.now() + 250;
     setLiveSubtitles(`[AI Interviewer]: "${text}"`);
+    setCandidateSpeechText(''); // Reset current transcript view for next answer
 
     const utterance = new SpeechSynthesisUtterance(text);
     utterance.lang = 'en-US';
@@ -546,6 +544,7 @@ export const InterviewRoom = () => {
         setIsSpeaking(false);
         speakingRef.current = false;
         audioEchoGuardRef.current = 0;
+        setInterviewState(INTERVIEW_STATES.LISTENING);
         if (recognitionRef.current) {
           try { recognitionRef.current.start(); } catch (e) {}
         }
@@ -555,7 +554,7 @@ export const InterviewRoom = () => {
     utterance.onstart = () => {
       setIsSpeaking(true);
       speakingRef.current = true;
-      audioEchoGuardRef.current = Date.now() + 150;
+      audioEchoGuardRef.current = Date.now() + 200;
     };
 
     utterance.onend = () => {
@@ -565,7 +564,7 @@ export const InterviewRoom = () => {
       audioEchoGuardRef.current = 0; // Unlock speech recognition immediately!
       setInterviewState(INTERVIEW_STATES.LISTENING);
 
-      // INSTANTLY START MICROPHONE RECOGNITION TO LISTEN TO CANDIDATE ANSWER!
+      // INSTANTLY RESTART/ENSURE MICROPHONE RECOGNITION IS ACTIVE!
       if (recognitionRef.current) {
         try {
           recognitionRef.current.start();
@@ -684,7 +683,7 @@ export const InterviewRoom = () => {
         recognition.lang = 'en-US';
 
         recognition.onresult = (event) => {
-          if (speakingRef.current) {
+          if (speakingRef.current || Date.now() < audioEchoGuardRef.current) {
             return; // Ignore audio feedback while AI is speaking
           }
 
@@ -718,7 +717,7 @@ export const InterviewRoom = () => {
               }));
             }
 
-            // Ultra-responsive speech listening silence detection (200ms silence)
+            // Ultra-responsive speech listening silence detection (150ms silence)
             if (silenceTimerRef.current) clearTimeout(silenceTimerRef.current);
             const rawLower = currentFullText.toLowerCase().trim();
             const isShortConfirmation = (
@@ -732,7 +731,7 @@ export const InterviewRoom = () => {
               rawLower.includes('ready') ||
               rawLower.includes('start')
             );
-            const silenceDelay = isShortConfirmation ? 120 : 220;
+            const silenceDelay = isShortConfirmation ? 100 : 150;
 
             silenceTimerRef.current = setTimeout(() => {
               if (currentFullText.trim()) {
@@ -743,20 +742,29 @@ export const InterviewRoom = () => {
         };
 
         recognition.onend = () => {
-          if (!isStopped && isMicOn && !speakingRef.current) {
-            try {
-              recognition.start();
-            } catch (err) { }
+          if (!isStopped && isMicOn) {
+            setTimeout(() => {
+              if (!speakingRef.current) {
+                try {
+                  recognition.start();
+                } catch (err) { }
+              }
+            }, 30);
           }
         };
 
         recognition.onerror = (err) => {
-          console.warn("Speech recognition engine warning:", err.error);
+          console.warn("Speech recognition notice:", err.error);
+          if (!isStopped && isMicOn && (err.error === 'no-speech' || err.error === 'aborted')) {
+            setTimeout(() => {
+              try { recognition.start(); } catch (e) {}
+            }, 50);
+          }
         };
 
-        if (!speakingRef.current) {
+        try {
           recognition.start();
-        }
+        } catch (e) {}
       } catch (e) {
         console.warn("Speech recognition engine error:", e);
       }
