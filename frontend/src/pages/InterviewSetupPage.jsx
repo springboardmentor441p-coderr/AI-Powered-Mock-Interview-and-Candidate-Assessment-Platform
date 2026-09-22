@@ -8,6 +8,7 @@ export default function InterviewSetupPage({ setActivePage, setInterviewSession 
   const [domain, setDomain] = useState('Python Developer');
   const [difficulty, setDifficulty] = useState('Medium');
   const [numQuestions, setNumQuestions] = useState(5);
+  const [timeLimit, setTimeLimit] = useState(20); // Default 20 Minutes
   const [loading, setLoading] = useState(false);
 
   // Hardware permission states
@@ -64,7 +65,8 @@ export default function InterviewSetupPage({ setActivePage, setInterviewSession 
       category,
       domain,
       difficulty,
-      num_questions: numQuestions
+      num_questions: numQuestions,
+      time_limit: timeLimit
     });
 
     if (session && !session.error && session.questions && session.questions.length > 0) {
@@ -74,7 +76,8 @@ export default function InterviewSetupPage({ setActivePage, setInterviewSession 
         category: session.category || category,
         difficulty: session.difficulty || difficulty,
         total_questions: session.total_questions || numQuestions,
-        num_questions: session.questions ? session.questions.length : numQuestions
+        num_questions: session.questions ? session.questions.length : numQuestions,
+        time_limit: timeLimit
       });
       setLoading(false);
       setActivePage('interview-room');
@@ -95,7 +98,7 @@ export default function InterviewSetupPage({ setActivePage, setInterviewSession 
               <Sparkles className="w-3.5 h-3.5" /> AI Technical Interview Configuration
             </div>
             <h1 className="text-3xl font-extrabold text-white">Configure Your AI Interview Session</h1>
-            <p className="text-xs text-slate-400 max-w-lg mx-auto">Customize your target domain, difficulty tier, and question count before starting.</p>
+            <p className="text-xs text-slate-400 max-w-lg mx-auto">Customize your target technical domain, difficulty tier, question count, and session duration.</p>
           </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
@@ -109,6 +112,7 @@ export default function InterviewSetupPage({ setActivePage, setInterviewSession 
                 {domainsList.map((d) => (
                   <button
                     key={d}
+                    type="button"
                     onClick={() => setDomain(d)}
                     className={`w-full text-left p-3 rounded-2xl text-xs font-semibold border transition-all flex items-center justify-between ${
                       domain === d ? 'bg-indigo-600/20 border-indigo-500 text-cyan-300 shadow-lg' : 'bg-slate-900/60 border-slate-800 text-slate-300 hover:border-slate-700'
@@ -132,6 +136,7 @@ export default function InterviewSetupPage({ setActivePage, setInterviewSession 
                     {['Easy', 'Medium', 'Hard'].map((diff) => (
                       <button
                         key={diff}
+                        type="button"
                         onClick={() => setDifficulty(diff)}
                         className={`py-2.5 rounded-xl text-xs font-bold border transition-all ${
                           difficulty === diff ? 'bg-indigo-600 border-indigo-500 text-white shadow-lg' : 'bg-slate-900 border-slate-800 text-slate-400 hover:text-white'
@@ -143,34 +148,43 @@ export default function InterviewSetupPage({ setActivePage, setInterviewSession 
                   </div>
                 </div>
 
-                {/* 2. Number of Questions */}
+                {/* 2. Overall Interview Duration (Primary Control) */}
                 <div className="space-y-2">
                   <div className="flex justify-between items-center">
-                    <h2 className="text-xs font-bold text-slate-300 uppercase font-mono tracking-wider">2. Number of Questions</h2>
-                    <span className="text-xs font-mono font-bold text-cyan-400">{numQuestions} Questions</span>
+                    <h2 className="text-xs font-bold text-slate-300 uppercase font-mono tracking-wider">2. Overall Session Duration</h2>
+                    <span className="text-xs font-mono font-bold text-emerald-400">⏱️ {timeLimit} Minutes</span>
                   </div>
-                  <div className="grid grid-cols-4 gap-3">
-                    {[3, 5, 10, 15].map((qCount) => (
+                  <div className="grid grid-cols-3 gap-3">
+                    {[5, 10, 15, 20, 25, 30].map((tVal) => (
                       <button
-                        key={qCount}
-                        onClick={() => setNumQuestions(qCount)}
-                        className={`py-2.5 rounded-xl text-xs font-bold border transition-all ${
-                          numQuestions === qCount ? 'bg-indigo-600 border-indigo-500 text-white shadow-lg' : 'bg-slate-900 border-slate-800 text-slate-400 hover:text-white'
+                        key={tVal}
+                        type="button"
+                        onClick={() => setTimeLimit(tVal)}
+                        className={`py-2.5 rounded-xl text-xs font-bold border transition-all flex items-center justify-center gap-1.5 ${
+                          timeLimit === tVal ? 'bg-indigo-600 border-indigo-500 text-white shadow-lg ring-2 ring-indigo-500/30' : 'bg-slate-900 border-slate-800 text-slate-400 hover:text-white'
                         }`}
                       >
-                        {qCount} Questions
+                        <span>{tVal} Mins</span>
+                        {tVal === 20 && <span className="text-[9px] px-1.5 py-0.5 rounded bg-cyan-500/20 text-cyan-300 font-mono">Recommended</span>}
                       </button>
                     ))}
                   </div>
+                  <p className="text-[11px] text-slate-400 font-mono pt-1">
+                    💡 The AI interviewer asks questions continuously while interview time remains (~4–8 questions depending on answer length and adaptive follow-up probing).
+                  </p>
                 </div>
 
               </div>
 
               {/* Summary Bar & Proceed Button */}
               <div className="pt-4 border-t border-slate-800 space-y-3">
-                <div className="p-3 rounded-2xl bg-slate-900 border border-slate-800 text-xs font-mono flex items-center justify-between text-slate-300">
-                  <span>Selected: <strong className="text-white">{domain}</strong> ({difficulty})</span>
-                  <span><strong>{numQuestions} Questions</strong></span>
+                <div className="p-3.5 rounded-2xl bg-indigo-950/40 border border-indigo-500/30 text-xs font-mono flex flex-wrap items-center justify-between gap-3 text-slate-200 shadow-md">
+                  <div>
+                    <span className="text-slate-400">Selected Role:</span> <strong className="text-white">{domain}</strong> ({difficulty})
+                  </div>
+                  <div>
+                    <span className="text-slate-400">Interview Duration:</span> <strong className="text-emerald-400">⏱️ {timeLimit} Minutes</strong>
+                  </div>
                 </div>
 
                 <button
@@ -196,12 +210,13 @@ export default function InterviewSetupPage({ setActivePage, setInterviewSession 
           </div>
 
           {/* Configuration Summary Badge */}
-          <div className="glass-card p-4 rounded-2xl border border-indigo-500/30 bg-indigo-950/20 font-mono text-xs text-indigo-200 flex flex-wrap items-center justify-between gap-3">
+          <div className="glass-card p-4 rounded-2xl border border-indigo-500/30 bg-indigo-950/30 font-mono text-xs text-indigo-200 flex flex-wrap items-center justify-between gap-3 shadow-lg">
             <div>
               <span className="text-slate-400">Target Role:</span> <strong className="text-white">{domain}</strong> ({difficulty})
             </div>
-            <div>
-              <span className="text-slate-400">Questions:</span> <strong className="text-cyan-400">{numQuestions} Questions</strong>
+            <div className="flex items-center gap-4">
+              <span>Questions: <strong className="text-cyan-400">{numQuestions} Questions</strong></span>
+              <span>Session Duration: <strong className="text-emerald-400">⏱️ {timeLimit} Minutes</strong></span>
             </div>
           </div>
 

@@ -5,9 +5,10 @@ from passlib.context import CryptContext
 from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
 from sqlalchemy.orm import Session
+import os
 import database, models
 
-SECRET_KEY = "smarthire_ai_infosys_secret_key_super_secure"
+SECRET_KEY = os.getenv("SECRET_KEY", "smarthire_ai_infosys_secret_key_super_secure")
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 60 * 24 # 24 hours
 

@@ -466,14 +466,21 @@ export default function InterviewRoomPage({ sessionData, setActivePage, setFinal
       type: 'candidate'
     };
 
-    // 2. Determine Next Question immediately for seamless UI update
-    const hasMoreQuestions = currentIdx < maxQuestions - 1;
-    let initialNextQ = hasMoreQuestions ? questionsList[currentIdx + 1] : null;
+    // 2. Determine Next Question immediately for seamless UI update — TIME-BASED PROGRESSION
+    const hasMoreQuestions = overallTimeRef.current > 0 && !finalizingRef.current;
+    let initialNextQ = questionsList[currentIdx + 1] || null;
     if (hasMoreQuestions && (!initialNextQ || !initialNextQ.question_text)) {
+      const fallbackPrompts = [
+        `Could you elaborate on your experience with core architectural design patterns, system scalability, and error handling in ${activeDomain}?`,
+        `How do you approach debugging, performance profiling, and optimizing complex applications in ${activeDomain}?`,
+        `Can you describe a challenging technical problem you solved using ${activeDomain} and how you tested your solution?`,
+        `What best practices do you follow for maintainability, security, and clean code in ${activeDomain}?`
+      ];
+      const promptIdx = (currentIdx + 1) % fallbackPrompts.length;
       initialNextQ = {
         id: currentIdx + 2,
-        question_text: `Could you elaborate on your experience with core architectural design patterns in ${activeDomain}?`,
-        skill_focus: `${activeDomain} Architecture`
+        question_text: fallbackPrompts[promptIdx],
+        skill_focus: `${activeDomain} Core Concepts`
       };
     }
 
@@ -539,7 +546,7 @@ export default function InterviewRoomPage({ sessionData, setActivePage, setFinal
     setCandidateAnswersList(updatedAnswers);
 
     if (hasMoreQuestions) {
-      // Background async call to fetch adaptive question refinement from Groq LLM if desired
+      // Background async call to fetch adaptive question refinement from Groq LLM
       const previousQuestionsAsked = updatedAnswers.map(a => a.q_text);
       try {
         const nextQObj = await fetchNextAdaptiveQuestion({
@@ -564,13 +571,13 @@ export default function InterviewRoomPage({ sessionData, setActivePage, setFinal
       submittingRef.current = false;
       setSubmitting(false);
     } else {
-      // Reached configured max questions -> Finalize session cleanly as completed
+      // Session time expired -> Finalize session cleanly
       submittingRef.current = false;
-      await handleFinalizeSession("completed", updatedAnswers);
+      await handleFinalizeSession("time_expired", updatedAnswers);
     }
   };
 
-  // DEDICATED SKIP QUESTION HANDLER
+  // DEDICATED SKIP QUESTION HANDLER — TIME-BASED PROGRESSION
   const handleSkipQuestion = async () => {
     if (submittingRef.current || finalizingRef.current || !currentQ) return;
     submittingRef.current = true;
@@ -591,13 +598,13 @@ export default function InterviewRoomPage({ sessionData, setActivePage, setFinal
       type: 'candidate'
     };
 
-    const hasMoreQuestions = currentIdx < maxQuestions - 1;
-    let initialNextQ = hasMoreQuestions ? questionsList[currentIdx + 1] : null;
+    const hasMoreQuestions = overallTimeRef.current > 0 && !finalizingRef.current;
+    let initialNextQ = questionsList[currentIdx + 1] || null;
     if (hasMoreQuestions && (!initialNextQ || !initialNextQ.question_text)) {
       initialNextQ = {
         id: currentIdx + 2,
-        question_text: `Could you elaborate on your experience with core architectural design patterns in ${activeDomain}?`,
-        skill_focus: `${activeDomain} Architecture`
+        question_text: `No problem. Could you describe your experience with application architecture, testing, and debugging in ${activeDomain}?`,
+        skill_focus: `${activeDomain} Core Skills`
       };
     }
 
@@ -896,27 +903,24 @@ export default function InterviewRoomPage({ sessionData, setActivePage, setFinal
               Mira AI Interview Room <span className="text-[10px] text-cyan-400 font-mono font-normal">• Live Session</span>
             </h1>
             <span className="text-[11px] text-indigo-300 font-mono">
-              Candidate: <strong className="text-white">{activeUser?.full_name || "Candidate User"}</strong> | Role: <strong className="text-white">{activeDomain}</strong> ({activeDifficulty} Level — Question {currentIdx + 1} of {maxQuestions})
+              Candidate: <strong className="text-white">{activeUser?.full_name || "Candidate User"}</strong> | Role: <strong className="text-white">{activeDomain}</strong> ({activeDifficulty} Level — Question {currentIdx + 1} • Time-Based Adaptive Flow)
             </span>
           </div>
         </div>
 
         {/* LIVE SESSION TIMERS & FINISH BUTTON */}
         <div className="flex flex-wrap items-center gap-3">
-          {/* Overall Interview Session Timer */}
-          <div className={`px-3 py-1.5 rounded-xl border font-mono text-xs font-bold flex items-center gap-1.5 transition-all ${
-            overallTimeRemaining < 120 ? 'bg-red-500/20 border-red-500/50 text-red-300 animate-pulse' : 'bg-slate-900 border-slate-800 text-indigo-300'
+          {/* Prominent Overall Interview Session Countdown Timer */}
+          <div className={`px-4 py-1.5 rounded-xl border font-mono text-xs font-extrabold flex items-center gap-2 transition-all shadow-md ${
+            overallTimeRemaining < 120 ? 'bg-red-600/30 border-red-500 text-red-200 animate-pulse ring-2 ring-red-500/50' : 'bg-indigo-950/60 border-indigo-500/40 text-cyan-300'
           }`}>
-            <span className="text-slate-400 font-normal text-[10px] uppercase">Interview Time:</span>
-            <span>{formatTime(overallTimeRemaining)}</span>
+            <span className="text-slate-300 font-medium text-[11px]">⏱️ Session Time Remaining:</span>
+            <span className="text-sm font-bold tracking-wider">{formatTime(overallTimeRemaining)}</span>
           </div>
 
-          {/* Per-Question Timer */}
-          <div className={`px-3 py-1.5 rounded-xl border font-mono text-xs font-bold flex items-center gap-1.5 transition-all ${
-            questionTimeRemaining < 30 ? 'bg-amber-500/20 border-amber-500/50 text-amber-300 animate-pulse' : 'bg-slate-900 border-slate-800 text-cyan-300'
-          }`}>
-            <span className="text-slate-400 font-normal text-[10px] uppercase">Question Time:</span>
-            <span>{formatTime(questionTimeRemaining)}</span>
+          {/* Subtle Per-Question Informational Indicator */}
+          <div className="px-3 py-1.5 rounded-xl border border-slate-800 bg-slate-900/80 font-mono text-[11px] text-slate-300 flex items-center gap-1.5">
+            <span className="text-cyan-400 font-semibold">💡 Take your time — answer when you're ready.</span>
           </div>
 
           <button

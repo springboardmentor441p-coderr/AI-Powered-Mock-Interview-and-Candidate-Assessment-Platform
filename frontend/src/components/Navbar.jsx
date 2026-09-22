@@ -134,27 +134,28 @@ export default function Navbar({ activePage, setActivePage }) {
           <div className="flex items-center gap-2 shrink-0">
             {user ? (
               <div className="flex items-center gap-2">
-                <div className="flex items-center gap-2 bg-slate-900/90 border border-slate-800 px-3 py-1.5 rounded-xl">
-                  <div className="w-6 h-6 rounded-full bg-gradient-to-br from-indigo-500 to-cyan-400 flex items-center justify-center text-xs font-bold text-white uppercase">
-                    {user.full_name ? user.full_name[0] : 'U'}
-                  </div>
-                  <span className="text-xs font-medium text-slate-200 hidden sm:inline">{user.full_name}</span>
+                <div className="flex items-center gap-2 bg-indigo-950/40 border border-indigo-500/30 px-3 py-1.5 rounded-xl text-xs shadow-inner">
+                  <div className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse shrink-0" />
+                  <span className="text-slate-300 font-mono text-[11px]">
+                    Signed in as <strong className="text-cyan-300">{user.role ? user.role.charAt(0).toUpperCase() + user.role.slice(1) : 'Candidate'}</strong>: <strong className="text-white">{user.full_name || user.email}</strong>
+                  </span>
                 </div>
                 <button
                   onClick={handleLogout}
-                  title="Sign out"
-                  className="p-2 rounded-xl bg-slate-900 border border-slate-800 text-slate-400 hover:text-red-400 hover:border-red-500/30 transition-all"
+                  title="Sign out of account"
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-900 border border-slate-800 text-xs font-semibold text-slate-300 hover:text-red-400 hover:border-red-500/30 transition-all shadow-md"
                 >
-                  <LogOut className="w-4 h-4" />
+                  <LogOut className="w-3.5 h-3.5" />
+                  <span className="hidden md:inline">Sign Out</span>
                 </button>
               </div>
             ) : (
               <div className="flex items-center gap-2">
                 <button
                   onClick={() => setActivePage('login')}
-                  className="px-3 py-1.5 rounded-xl text-xs font-semibold text-slate-300 hover:text-white hover:bg-slate-900 transition-all"
+                  className="px-3.5 py-1.5 rounded-xl text-xs font-semibold text-white bg-indigo-600 hover:bg-indigo-500 transition-all shadow-md"
                 >
-                  Log In
+                  Sign In
                 </button>
               </div>
             )}
