@@ -1,0 +1,14 @@
+node_modules/
+.venv/
+.venv-1/
+__pycache__/
+*.pyc
+.env
+dist/
+build/
+*.zip
+.vscode/
+smarthire.db
+smarthire_persistent_db.json
+stitch_nexiq_interactive_ai_interviews*
+
